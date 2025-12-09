@@ -1,9 +1,15 @@
 .idea/
 .vscode/
+
 config.json
+
 data/keys.db
-data/reversals.db
 data/keys.db-shm
 data/keys.db-wal
+
+data/reversals.db
 data/reversals.db-shm
 data/reversals.db-wal
+
+*.exe
+*.so
