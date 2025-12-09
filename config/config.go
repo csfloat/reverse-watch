@@ -1,14 +1,7 @@
 package config
 
 import (
-	"sync"
-
 	"github.com/spf13/viper"
-)
-
-var (
-	once sync.Once
-	cfg  = &Config{}
 )
 
 type Environment string
@@ -38,14 +31,11 @@ type Config struct {
 	Environment Environment
 }
 
-func Get() Config {
-	once.Do(func() {
-		load()
-	})
-	return *cfg
+func Load() Config {
+	return load()
 }
 
-func load() {
+func load() Config {
 	v := viper.New()
 
 	v.SetDefault("ReversalsDB.Filename", "./data/reversals.db")
@@ -60,8 +50,10 @@ func load() {
 	if err := v.ReadInConfig(); err != nil {
 		panic(err)
 	}
-
-	if err := v.Unmarshal(cfg); err != nil {
+	
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
 		panic(err)
 	}
+	return cfg
 }
