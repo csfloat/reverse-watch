@@ -7,9 +7,7 @@ import (
 )
 
 type Key struct {
-	// ID is the Public UUID that is used to identify the key
-	ID              string       `gorm:"primaryKey" json:"id"`
-	CreatedAt       int64        `gorm:"autoCreateTime:milli" json:"created_at"`
+	*Model
 	KeyHash         string       `gorm:"unique" json:"key_hash"`
 	MarketplaceSlug string       `json:"marketplace_slug"`
 	Marketplace     *Marketplace `json:"marketplace"`
@@ -18,9 +16,6 @@ type Key struct {
 }
 
 func (k *Key) BeforeCreate(tx *gorm.DB) error {
-	if k.ID == "" {
-		return fmt.Errorf("id is required")
-	}
 	if k.KeyHash == "" {
 		return fmt.Errorf("key hash is required")
 	}

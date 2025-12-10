@@ -8,8 +8,8 @@ import (
 
 type Marketplace struct {
 	Slug      string `gorm:"primaryKey" json:"slug"`
-	CreatedAt int64  `gorm:"autoCreateTime:milli" json:"created_at"`
-	UpdatedAt int64  `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	CreatedAt uint64 `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt uint64 `gorm:"autoUpdateTime:milli" json:"updated_at"`
 	Name      string `json:"name"`
 	IsActive  bool   `json:"is_active"`
 }

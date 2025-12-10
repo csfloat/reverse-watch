@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,12 +19,31 @@ var (
 
 type Snowflake uint64
 
+func (s *Snowflake) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strconv.FormatUint(uint64(*s), 10))
+}
+
+func (s *Snowflake) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+
+	n, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	*s = Snowflake(n)
+	return nil
+}
+
 type Parts struct {
 	// Timestamp is the first 41 (+1 top zero bit) bits and represents the millisecond-level timestamp
 	Timestamp uint64
-	// WorkerID is the next 5 bits
+	// WorkerID is the next 5 bits and represents the ID of the physical machine
 	WorkerID uint8
-	// ProcessID is the next 5 bits
+	// ProcessID is the next 5 bits and represents the ID of the process running on the physical machine
 	ProcessID uint8
 	// Sequence is the last 12 bits and represents snowflakes generated within the same millisecond
 	Sequence uint16
