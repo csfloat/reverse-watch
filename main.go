@@ -10,8 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"reverse-watch/api"
 	"reverse-watch/config"
+	"reverse-watch/database"
 	"reverse-watch/logging"
+	"reverse-watch/services/private"
+	"reverse-watch/services/public"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -24,6 +28,18 @@ func main() {
 
 	logging.Log.Info("Starting Unified Reversal Database")
 
+	privateDB, err := database.InitializePrivateDB(cfg)
+	if err != nil {
+		logging.Log.Fatalf("failed to initialize private database: %v", err)
+	}
+	publicDB, err := database.InitializePublicDB(cfg)
+	if err != nil {
+		logging.Log.Fatalf("failed to initialize public database: %v", err)
+	}
+
+	privateService := private.NewService(privateDB)
+	publicService := public.NewService(publicDB)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -31,6 +47,8 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
+
+	r.Mount("/api", api.Router(privateService, publicService))
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
