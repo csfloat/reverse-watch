@@ -12,11 +12,11 @@ const (
 )
 
 type Config struct {
-	ReversalsDB struct {
+	PublicDB struct {
 		Filename string
 	}
 
-	KeysDB struct {
+	PrivateDB struct {
 		Filename string
 	}
 
@@ -38,8 +38,8 @@ func Load() Config {
 func load() Config {
 	v := viper.New()
 
-	v.SetDefault("ReversalsDB.Filename", "./data/reversals.db")
-	v.SetDefault("KeysDB.Filename", "./data/keys.db")
+	v.SetDefault("PublicDB.Filename", "./data/public.db")
+	v.SetDefault("PrivateDB.Filename", "./data/private.db")
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", Development)
 
@@ -50,7 +50,7 @@ func load() Config {
 	if err := v.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	
+
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		panic(err)

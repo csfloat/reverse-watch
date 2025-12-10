@@ -3,13 +3,9 @@
 
 config.json
 
-data/keys.db
-data/keys.db-shm
-data/keys.db-wal
-
-data/reversals.db
-data/reversals.db-shm
-data/reversals.db-wal
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 *.exe
 *.so
