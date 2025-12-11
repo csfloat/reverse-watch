@@ -12,7 +12,7 @@ import (
 )
 
 func createMarketplace(w http.ResponseWriter, r *http.Request) {
-	keySvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
+	privateSvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
 
 	var req struct {
 		MarketplaceSlug string `json:"marketplace_slug"`
@@ -32,7 +32,7 @@ func createMarketplace(w http.ResponseWriter, r *http.Request) {
 		IsActive: true,
 	}
 
-	if err := keySvc.CreateMarketplace(marketplace); err != nil {
+	if err := privateSvc.CreateMarketplace(marketplace); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}
@@ -43,7 +43,7 @@ func createMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := keySvc.CreateKey(rawKey.ToKey()); err != nil {
+	if err := privateSvc.CreateKey(rawKey.ToKey()); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}

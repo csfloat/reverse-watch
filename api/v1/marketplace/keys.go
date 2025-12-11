@@ -14,7 +14,7 @@ import (
 )
 
 func createKeyHandler(w http.ResponseWriter, r *http.Request) {
-	keySvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
+	privateSvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
 	key := r.Context().Value(middleware.KeyContextKey).(*types.Key)
 
 	var req struct {
@@ -28,7 +28,7 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scopeEnum, err := keySvc.GetScopeEnum(req.Scope)
+	scopeEnum, err := privateSvc.GetScopeEnum(req.Scope)
 	if err != nil {
 		render.Error(w, r, &errors.BadRequest)
 		return
@@ -40,7 +40,7 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := keySvc.CreateKey(rawKey.ToKey()); err != nil {
+	if err := privateSvc.CreateKey(rawKey.ToKey()); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}
@@ -59,10 +59,10 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listKeysHandler(w http.ResponseWriter, r *http.Request) {
-	keySvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
+	privateSvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
 	key := r.Context().Value(middleware.KeyContextKey).(*types.Key)
 
-	keysList, err := keySvc.ListKeys(&private.ListKeyOptions{
+	keysList, err := privateSvc.ListKeys(&private.ListKeyOptions{
 		MarketplaceSlug: key.MarketplaceSlug,
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func listKeysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
-	keySvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
+	privateSvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
 	key := r.Context().Value(middleware.KeyContextKey).(*types.Key)
 
 	idStr := chi.URLParam(r, "id")
@@ -103,7 +103,7 @@ func deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keyToDelete, err := keySvc.GetKeyFromID(id)
+	keyToDelete, err := privateSvc.GetKeyFromID(id)
 	if err != nil {
 		render.Error(w, r, &errors.NotFound)
 		return
@@ -120,7 +120,7 @@ func deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := keySvc.DeleteKey(id); err != nil {
+	if err := privateSvc.DeleteKey(id); err != nil {
 		render.Error(w, r, &errors.DBDelete)
 		return
 	}
