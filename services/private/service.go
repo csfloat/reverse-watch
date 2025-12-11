@@ -1,6 +1,7 @@
 package private
 
 import (
+	"strconv"
 	"strings"
 
 	"reverse-watch/errors"
@@ -19,15 +20,16 @@ func NewService(conn *gorm.DB) *Service {
 	}
 }
 
-func GetKeyParts(secretKey string) (id string, secret string, err error) {
+func GetKeyParts(secretKey string) (id types.Snowflake, secret string, err error) {
 	parts := strings.Split(secretKey, ".")
 	if len(parts) != 2 {
-		return "", "", &errors.InvalidApiKey
+		return 0, "", &errors.InvalidApiKey
 	}
 
-	id = strings.Replace(parts[0], "sk_live_", "", 1)
-	secret = parts[1]
-	return id, secret, nil
+	idStr := strings.Replace(parts[0], "sk_live_", "", 1)
+	n, _ := strconv.ParseUint(idStr, 10, 64)
+
+	return types.Snowflake(n), parts[1], nil
 }
 
 func (s *Service) GetKeyFromSecretKey(secretKey string) (*types.Key, error) {

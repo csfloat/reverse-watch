@@ -127,3 +127,11 @@ func ParseSnowflake(snowflake Snowflake) Parts {
 		Sequence:  uint16(snowflake & 0xFFF),
 	}
 }
+
+func ToSnowflake(str string) (Snowflake, error) {
+	id, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return Snowflake(id), nil
+}

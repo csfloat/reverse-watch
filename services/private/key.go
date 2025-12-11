@@ -10,11 +10,11 @@ func (s *Service) CreateKey(key *types.Key) error {
 	return s.conn.Table("keys").Create(key).Error
 }
 
-func (s *Service) DeleteKey(id string) error {
+func (s *Service) DeleteKey(id types.Snowflake) error {
 	return s.conn.Table("keys").Where("id = ?", id).Delete(&types.Key{}).Error
 }
 
-func (s *Service) GetKeyFromID(id string) (*types.Key, error) {
+func (s *Service) GetKeyFromID(id types.Snowflake) (*types.Key, error) {
 	var key types.Key
 	err := s.conn.Table("keys").
 		Preload("Marketplace").

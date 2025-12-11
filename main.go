@@ -16,6 +16,7 @@ import (
 	"reverse-watch/logging"
 	"reverse-watch/services/private"
 	"reverse-watch/services/public"
+	"reverse-watch/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -25,6 +26,7 @@ import (
 func main() {
 	logging.Initialize()
 	cfg := config.Load()
+	types.InitSnowflakeGenerator(0, 0)
 
 	logging.Log.Info("Starting Unified Reversal Database")
 

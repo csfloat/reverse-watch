@@ -73,7 +73,7 @@ func generateRawKey(marketplaceSlug string, scope types.Scope) (*RawKey, error) 
 
 	rawKey.secret = base64.RawURLEncoding.EncodeToString(secret)
 	rawKey.Salt = base64.RawURLEncoding.EncodeToString(salt)
-	rawKey.SecretKey = fmt.Sprintf("sk_live_%s.%s", rawKey.ID, rawKey.secret)
+	rawKey.SecretKey = fmt.Sprintf("sk_live_%d.%s", rawKey.ID, rawKey.secret)
 
 	return rawKey, nil
 }

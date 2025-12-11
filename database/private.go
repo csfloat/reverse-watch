@@ -90,6 +90,10 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 	if key == "" {
 		return nil
 	}
+	salt := cfg.Admin.Salt
+	if salt == "" {
+		return nil
+	}
 
 	id, secret, err := private.GetKeyParts(key)
 	if err != nil {
@@ -97,8 +101,11 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 	}
 
 	adminKey := &types.Key{
-		ID:              id,
-		KeyHash:         private.HashSecret(secret),
+		Model: types.Model{
+			ID: id,
+		},
+		KeyHash:         private.HashSecret(secret, salt),
+		Salt:            salt,
 		MarketplaceSlug: "csfloat",
 		Scope:           types.ScopeAdmin,
 	}

@@ -26,6 +26,7 @@ type Config struct {
 
 	Admin struct {
 		APIKey string
+		Salt   string
 	}
 
 	Environment Environment
