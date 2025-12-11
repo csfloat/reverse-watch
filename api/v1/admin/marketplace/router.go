@@ -16,7 +16,7 @@ func Router(privateSvc *private.Service) chi.Router {
 		Route("/", func(r chi.Router) {
 			r.Post("/", createMarketplace)
 			r.Patch("/{slug}", patchMarketplace)
+			r.Delete("/{slug}", deleteMarketplace)
 		})
-
 	return r
 }

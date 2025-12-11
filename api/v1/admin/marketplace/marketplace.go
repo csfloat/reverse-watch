@@ -115,3 +115,19 @@ func patchMarketplace(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, marketplace)
 }
+
+func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
+	privateSvc := r.Context().Value(middleware.PrivateServiceContextKey).(*private.Service)
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		render.Error(w, r, &errors.BadRequest)
+		return
+	}
+
+	if err := privateSvc.DeleteMarketplace(slug); err != nil {
+		render.Error(w, r, &errors.DBDelete)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

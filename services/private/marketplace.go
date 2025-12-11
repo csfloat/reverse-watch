@@ -13,7 +13,24 @@ func (s *Service) UpdateMarketplace(slug string, fields map[string]interface{}) 
 }
 
 func (s *Service) DeleteMarketplace(slug string) error {
-	// TODO: Implement
+	tx := s.conn.Begin()
+
+	// Delete associated keys
+	if err := tx.Table("keys").Where("marketplace_slug = ?", slug).Delete(&types.Key{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Table("marketplaces").Where("slug = ?", slug).Delete(&types.Marketplace{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	return nil
 }
 
