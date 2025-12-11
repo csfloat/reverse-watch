@@ -18,7 +18,7 @@ func (s *Service) Validate(secretKey string) (*types.Key, error) {
 		return nil, err
 	}
 
-	hash := HashSecret(secret)
+	hash := HashSecret(secret, storedKey.Salt)
 	if subtle.ConstantTimeCompare([]byte(storedKey.KeyHash), []byte(hash)) != 1 {
 		return nil, &errors.InvalidApiKey
 	}

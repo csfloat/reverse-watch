@@ -9,6 +9,10 @@ type Model struct {
 }
 
 func (m *Model) BeforeCreate(tx *gorm.DB) error {
+	if m.ID != 0 {
+		return nil
+	}
+	
 	snowflake, err := GenSnowflake()
 	if err != nil {
 		return err

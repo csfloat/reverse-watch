@@ -7,10 +7,11 @@ import (
 )
 
 type Key struct {
-	*Model
-	KeyHash         string       `gorm:"unique" json:"key_hash"`
+	Model
+	KeyHash         string       `gorm:"unique" json:"-"`
+	Salt            string       `json:"salt"`
 	MarketplaceSlug string       `json:"marketplace_slug"`
-	Marketplace     *Marketplace `json:"marketplace"`
+	Marketplace     *Marketplace `json:"-"`
 	Scope           Scope        `json:"scope"`
 	ScopeDetail     *ScopeEnum   `gorm:"foreignKey:Scope;references:Scope" json:"-"`
 }

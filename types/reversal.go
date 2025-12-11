@@ -8,7 +8,7 @@ import (
 )
 
 type Reversal struct {
-	*Model
+	Model
 	SteamID         SteamID `json:"steam_id"`
 	MarketplaceSlug string  `json:"marketplace_slug"`
 	ReversedAt      uint64  `json:"reversed_at"`
