@@ -12,7 +12,7 @@ type Reversal struct {
 	SteamID         SteamID `json:"steam_id"`
 	MarketplaceSlug string  `json:"marketplace_slug"`
 	ReversedAt      uint64  `json:"reversed_at"`
-	ExpungedAt      uint64  `json:"expunged_at"`
+	ExpungedAt      *uint64 `json:"expunged_at,omitempty"`
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {

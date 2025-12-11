@@ -15,6 +15,7 @@ func Router(privateSvc *private.Service) chi.Router {
 	r.With(middleware.PrivateServiceMiddleware(privateSvc)).
 		Route("/", func(r chi.Router) {
 			r.Post("/", createMarketplace)
+			r.Patch("/{slug}", patchMarketplace)
 		})
 
 	return r

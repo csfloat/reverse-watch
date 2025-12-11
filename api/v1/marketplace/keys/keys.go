@@ -1,4 +1,4 @@
-package marketplace
+package keys
 
 import (
 	"encoding/json"
@@ -18,23 +18,21 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*types.Key)
 
 	var req struct {
-		Scope string `json:"scope"`
+		Scope *types.Scope `json:"scope"`
 	}
 
 	defer r.Body.Close()
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		render.Error(w, r, &errors.JSONDecode)
+		return
+	}
+
+	if req.Scope == nil {
 		render.Error(w, r, &errors.BadRequest)
 		return
 	}
 
-	scopeEnum, err := privateSvc.GetScopeEnum(req.Scope)
-	if err != nil {
-		render.Error(w, r, &errors.BadRequest)
-		return
-	}
-
-	rawKey, err := private.NewRawKey(key.MarketplaceSlug, scopeEnum.Scope)
+	rawKey, err := private.NewRawKey(key.MarketplaceSlug, *req.Scope)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
 		return
@@ -45,17 +43,7 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, struct {
-		ID              types.Snowflake `json:"id"`
-		SecretKey       string          `json:"secret_key"`
-		MarketplaceSlug string          `json:"marketplace_slug"`
-		Scope           string          `json:"scope"`
-	}{
-		ID:              rawKey.ID,
-		SecretKey:       rawKey.SecretKey,
-		MarketplaceSlug: rawKey.MarketplaceSlug,
-		Scope:           rawKey.Scope.String(),
-	})
+	render.JSON(w, r, rawKey)
 }
 
 func listKeysHandler(w http.ResponseWriter, r *http.Request) {
@@ -70,26 +58,7 @@ func listKeysHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sanitize keys by removing the hash
-	type sanitizedKey struct {
-		ID              types.Snowflake `json:"id"`
-		CreatedAt       uint64          `json:"created_at"`
-		MarketplaceSlug string          `json:"marketplace_slug"`
-		Scope           string          `json:"scope"`
-	}
-
-	sanitizedKeys := make([]*sanitizedKey, 0)
-	for _, key := range keysList {
-		sanitized := &sanitizedKey{
-			ID:              key.ID,
-			CreatedAt:       key.CreatedAt,
-			MarketplaceSlug: key.MarketplaceSlug,
-			Scope:           key.Scope.String(),
-		}
-		sanitizedKeys = append(sanitizedKeys, sanitized)
-	}
-
-	render.JSON(w, r, sanitizedKeys)
+	render.JSON(w, r, keysList)
 }
 
 func deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +72,7 @@ func deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keyToDelete, err := privateSvc.GetKeyFromID(id)
+	keyToDelete, err := privateSvc.GetKey(id)
 	if err != nil {
 		render.Error(w, r, &errors.NotFound)
 		return

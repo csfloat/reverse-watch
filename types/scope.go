@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -29,6 +30,27 @@ var ScopeToName = map[Scope]string{
 	ScopeWrite:  "write",
 	ScopeManage: "manage",
 	ScopeAdmin:  "admin",
+}
+
+func (s Scope) MarshalJSON() ([]byte, error) {
+	str, ok := ScopeToName[s]
+	if !ok {
+		return nil, fmt.Errorf("invalid scope")
+	}
+	return json.Marshal(str)
+}
+
+func (s *Scope) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	for scope, name := range ScopeToName {
+		if str == name {
+			*s = scope
+		}
+	}
+	return nil
 }
 
 func (s Scope) String() string {

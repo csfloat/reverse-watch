@@ -37,7 +37,7 @@ func (s *Service) GetKeyFromSecretKey(secretKey string) (*types.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.GetKeyFromID(id)
+	return s.GetKey(id)
 }
 
 func NewKey(marketplaceSlug string, scope types.Scope) (*types.Key, error) {

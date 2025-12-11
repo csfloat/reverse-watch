@@ -63,6 +63,8 @@ var (
 	InvalidPermission   = Error{Code: 6, status: http.StatusUnauthorized, Message: "invalid permission"}
 	InvalidApiKey       = Error{Code: 7, status: http.StatusUnauthorized, Message: "invalid api key"}
 	DBCreate            = Error{Code: 8, status: http.StatusInternalServerError, Message: "failed to create resource"}
-	DBUpdate            = Error{Code: 9, status: http.StatusInternalServerError, Message: "failed to update resource"}
-	DBDelete            = Error{Code: 10, status: http.StatusInternalServerError, Message: "failed to delete resource"}
+	DBRead              = Error{Code: 9, status: http.StatusInternalServerError, Message: "failed to read resource"}
+	DBUpdate            = Error{Code: 10, status: http.StatusInternalServerError, Message: "failed to update resource"}
+	DBDelete            = Error{Code: 11, status: http.StatusInternalServerError, Message: "failed to delete resource"}
+	JSONDecode          = Error{Code: 12, status: http.StatusBadRequest, Message: "failed to decode JSON"}
 )

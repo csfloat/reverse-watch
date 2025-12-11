@@ -1,0 +1,26 @@
+package private
+
+import (
+	"reverse-watch/types"
+)
+
+func (s *Service) CreateMarketplace(marketplace *types.Marketplace) error {
+	return s.conn.Table("marketplaces").Create(marketplace).Error
+}
+
+func (s *Service) UpdateMarketplace(slug string, fields map[string]interface{}) error {
+	return s.conn.Table("marketplaces").Where("slug = ?", slug).Updates(fields).Error
+}
+
+func (s *Service) DeleteMarketplace(slug string) error {
+	// TODO: Implement
+	return nil
+}
+
+func (s *Service) GetMarketplace(slug string) (*types.Marketplace, error) {
+	var marketplace types.Marketplace
+	if err := s.conn.Table("marketplaces").Where("slug = ?", slug).First(&marketplace).Error; err != nil {
+		return nil, err
+	}
+	return &marketplace, nil
+}

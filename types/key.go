@@ -9,7 +9,7 @@ import (
 type Key struct {
 	Model
 	KeyHash         string       `gorm:"unique" json:"-"`
-	Salt            string       `json:"salt"`
+	Salt            string       `gorm:"unique" json:"-"`
 	MarketplaceSlug string       `json:"marketplace_slug"`
 	Marketplace     *Marketplace `json:"-"`
 	Scope           Scope        `json:"scope"`

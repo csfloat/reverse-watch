@@ -13,7 +13,7 @@ func (s *Service) Validate(secretKey string) (*types.Key, error) {
 		return nil, err
 	}
 
-	storedKey, err := s.GetKeyFromID(id)
+	storedKey, err := s.GetKey(id)
 	if err != nil {
 		return nil, err
 	}

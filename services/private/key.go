@@ -14,7 +14,7 @@ func (s *Service) DeleteKey(id types.Snowflake) error {
 	return s.conn.Table("keys").Where("id = ?", id).Delete(&types.Key{}).Error
 }
 
-func (s *Service) GetKeyFromID(id types.Snowflake) (*types.Key, error) {
+func (s *Service) GetKey(id types.Snowflake) (*types.Key, error) {
 	var key types.Key
 	err := s.conn.Table("keys").
 		Preload("Marketplace").
@@ -53,8 +53,4 @@ func (s *Service) GetScopeEnum(scope string) (*types.ScopeEnum, error) {
 		return nil, err
 	}
 	return &scopeEnum, nil
-}
-
-func (s *Service) CreateMarketplace(marketplace *types.Marketplace) error {
-	return s.conn.Table("marketplaces").Create(marketplace).Error
 }
