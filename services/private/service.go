@@ -40,10 +40,14 @@ func (s *Service) GetKeyFromSecretKey(secretKey string) (*types.Key, error) {
 	return s.GetKey(id)
 }
 
-func NewKey(marketplaceSlug string, scope types.Scope) (*types.Key, error) {
-	rawKey, err := NewRawKey(marketplaceSlug, scope)
+func (s *Service) NewKey(slug string, scope types.Scope) (*RawKey, error) {
+	rawKey, err := NewRawKey(slug, scope)
 	if err != nil {
 		return nil, err
 	}
-	return rawKey.ToKey(), nil
+
+	if err := s.CreateKey(rawKey.ToKey()); err != nil {
+		return nil, err
+	}
+	return rawKey, nil
 }

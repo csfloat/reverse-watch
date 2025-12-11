@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"reverse-watch/api/v1/admin/keys"
 	"reverse-watch/api/v1/admin/marketplace"
 	"reverse-watch/middleware"
 	"reverse-watch/services/private"
@@ -16,5 +17,6 @@ func Router(privateSvc *private.Service, publicSvc *public.Service) chi.Router {
 	r.Use(middleware.RequirePermission(types.PermissionAdmin))
 
 	r.Mount("/marketplace", marketplace.Router(privateSvc))
+	r.Mount("/keys", keys.Router(privateSvc))
 	return r
 }

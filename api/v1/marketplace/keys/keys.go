@@ -32,14 +32,9 @@ func createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawKey, err := private.NewRawKey(key.MarketplaceSlug, *req.Scope)
+	rawKey, err := privateSvc.NewKey(key.MarketplaceSlug, *req.Scope)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
-		return
-	}
-
-	if err := privateSvc.CreateKey(rawKey.ToKey()); err != nil {
-		render.Error(w, r, &errors.DBCreate)
 		return
 	}
 
