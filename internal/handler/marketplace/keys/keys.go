@@ -17,7 +17,7 @@ func (h *Handler) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	var req struct {
-		Permissions *models.Permissions `json:"permissions"`
+		Permissions models.Permissions `json:"permissions"`
 	}
 
 	defer r.Body.Close()
@@ -26,12 +26,12 @@ func (h *Handler) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Permissions == nil {
+	if req.Permissions == 0 {
 		render.Error(w, r, &errors.BadRequest)
 		return
 	}
 
-	rawKey, err := h.keySvc.CreateKey(key.MarketplaceSlug, *req.Permissions)
+	rawKey, err := h.keySvc.CreateKey(key.MarketplaceSlug, req.Permissions)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
 		return
@@ -72,11 +72,6 @@ func (h *Handler) deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure API consumer owns the key being deleted
 	if key.MarketplaceSlug != keyToDelete.MarketplaceSlug {
-		render.Error(w, r, &errors.BadRequest)
-		return
-	}
-
-	if key.Permissions < keyToDelete.Permissions {
 		render.Error(w, r, &errors.BadRequest)
 		return
 	}
