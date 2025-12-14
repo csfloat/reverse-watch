@@ -3,7 +3,7 @@ package models
 import "gorm.io/gorm"
 
 type Model struct {
-	ID        Snowflake `gorm:"primaryKey;autoIncrement:false" json:"id"`
+	ID        Snowflake `gorm:"primaryKey;not null;autoIncrement:false" json:"id"`
 	CreatedAt uint64    `gorm:"autoCreateTime:milli" json:"created_at"`
 	UpdatedAt uint64    `gorm:"autoUpdateTime:milli" json:"updated_at"`
 }

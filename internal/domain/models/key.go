@@ -16,6 +16,10 @@ type Key struct {
 }
 
 func (k *Key) BeforeCreate(tx *gorm.DB) error {
+	if err := k.Model.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if k.KeyHash == "" {
 		return fmt.Errorf("key hash is required")
 	}

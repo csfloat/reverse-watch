@@ -16,6 +16,10 @@ type Reversal struct {
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
+	if err := r.Model.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if !r.SteamID.IsValid() {
 		return fmt.Errorf("steam_id is invalid")
 	}
@@ -29,7 +33,7 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("reversed_at cannot be in the future")
 	}
 
-	if r.ReversedAt <= 0 {
+	if r.ReversedAt == 0 {
 		r.ReversedAt = now
 	}
 	return nil

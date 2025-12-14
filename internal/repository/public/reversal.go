@@ -22,27 +22,27 @@ func NewReversalRepository(conn *gorm.DB) repository.ReversalRepository {
 }
 
 func (r *reversalRepository) Create(reversal *models.Reversal) error {
-	return r.conn.Table("reversals").Create(reversal).Error
+	return r.conn.Model(&models.Reversal{}).Create(reversal).Error
 }
 
 func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error) {
 	var reversal models.Reversal
-	if err := r.conn.Table("reversals").Where("id = ?", id).First(&reversal).Error; err != nil {
+	if err := r.conn.Model(&models.Reversal{}).Where("id = ?", id).First(&reversal).Error; err != nil {
 		return nil, err
 	}
 	return &reversal, nil
 }
 
 func (r *reversalRepository) Update(id models.Snowflake, fields map[string]interface{}) error {
-	return r.conn.Table("reversals").Where("id = ?", id).Updates(fields).Error
+	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields).Error
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
-	return r.conn.Table("reversals").Where("id = ?", id).Delete(&models.Reversal{}).Error
+	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Delete(&models.Reversal{}).Error
 }
 
 func (r *reversalRepository) buildListQuery(opts *service.ListReversalOptions) *gorm.DB {
-	query := r.conn.Table("reversals")
+	query := r.conn.Model(&models.Reversal{})
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)
 	}
