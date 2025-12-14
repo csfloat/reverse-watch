@@ -17,8 +17,8 @@ const (
 )
 
 type Config struct {
-	// DataDir Directory containing the database files
-	// Relative to the project's root directory
+	// DataDir is the directory containing the database files
+	// This is relative to the project's root directory
 	DataDir string
 
 	PublicDB struct {

@@ -42,10 +42,6 @@ func NewPrivateRepository(cfg config.Config) (repository.PrivateRepository, erro
 		return nil, err
 	}
 
-	if err := seedScopeEnums(conn); err != nil {
-		return nil, err
-	}
-
 	if err := seedMarketplaces(conn); err != nil {
 		return nil, err
 	}
@@ -68,30 +64,13 @@ func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
 }
 
 func migratePrivateModels(tx *gorm.DB) error {
-	models := []interface{}{
-		(*models.ScopeEnum)(nil),
+	privateModels := []interface{}{
 		(*models.Key)(nil),
 		(*models.Marketplace)(nil),
 	}
 
-	for _, model := range models {
+	for _, model := range privateModels {
 		if err := tx.AutoMigrate(model); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func seedScopeEnums(tx *gorm.DB) error {
-	for scope, name := range models.ScopeToName {
-		val := &models.ScopeEnum{
-			Scope: scope,
-			Name:  name,
-		}
-
-		if err := tx.Clauses(clause.OnConflict{
-			DoNothing: true,
-		}).Create(val).Error; err != nil {
 			return err
 		}
 	}
@@ -125,6 +104,12 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 		return err
 	}
 
+	permissions := models.PermissionAdmin
+	permissions.AddPermission(models.PermissionDelete)
+	permissions.AddPermission(models.PermissionManage)
+	permissions.AddPermission(models.PermissionWrite)
+	permissions.AddPermission(models.PermissionRead)
+
 	adminKey := &models.Key{
 		Model: models.Model{
 			ID: models.Snowflake(id),
@@ -132,7 +117,7 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 		KeyHash:         crypto.HashSecret(secret, salt),
 		Salt:            salt,
 		MarketplaceSlug: "csfloat",
-		Scope:           models.ScopeAdmin,
+		Permissions:     permissions,
 	}
 
 	return tx.Clauses(clause.OnConflict{

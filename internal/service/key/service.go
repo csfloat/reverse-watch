@@ -23,7 +23,7 @@ func NewKeyService(repo repository.PrivateRepository) service.KeyService {
 	}
 }
 
-func (s *keyService) CreateKey(marketplaceSlug string, scope models.Scope) (*models.RawKey, error) {
+func (s *keyService) CreateKey(marketplaceSlug string, permissions models.Permissions) (*models.RawKey, error) {
 	snowflake, err := models.GenSnowflake()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (s *keyService) CreateKey(marketplaceSlug string, scope models.Scope) (*mod
 		KeyHash:         crypto.HashSecret(encodedSecret, encodedSalt),
 		Salt:            encodedSalt,
 		MarketplaceSlug: marketplaceSlug,
-		Scope:           scope,
+		Permissions:     permissions,
 	}
 
 	if err := s.Key().Create(key); err != nil {
@@ -59,12 +59,16 @@ func (s *keyService) CreateKey(marketplaceSlug string, scope models.Scope) (*mod
 		ID:              snowflake,
 		SecretKey:       crypto.FormatAPIKey(uint64(snowflake), encodedSecret),
 		MarketplaceSlug: marketplaceSlug,
-		Scope:           scope,
+		Permissions:     permissions,
 	}, nil
 }
 
 func (s *keyService) GetKey(id models.Snowflake) (*models.Key, error) {
 	return s.Key().Read(id)
+}
+
+func (s *keyService) UpdateKey(id models.Snowflake, opts *service.UpdateKeyOptions) error {
+	return s.Key().Update(id, opts)
 }
 
 func (s *keyService) DeleteKey(id models.Snowflake) error {
@@ -91,8 +95,4 @@ func (s *keyService) ValidateKey(secretKey string) (*models.Key, error) {
 		return nil, &errors.InvalidApiKey
 	}
 	return storedKey, nil
-}
-
-func (s *keyService) GetScopeEnum(scope string) (*models.ScopeEnum, error) {
-	return s.Key().GetScopeEnum(scope)
 }

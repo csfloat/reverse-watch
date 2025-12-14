@@ -8,7 +8,7 @@ import (
 	"reverse-watch/internal/render"
 )
 
-func RequirePermission(permission models.Permission) func(http.Handler) http.Handler {
+func RequirePermissions(permissions ...models.Permissions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			key, ok := r.Context().Value(KeyContextKey).(*models.Key)
@@ -17,7 +17,7 @@ func RequirePermission(permission models.Permission) func(http.Handler) http.Han
 				return
 			}
 
-			if !key.Scope.HasPermission(permission) {
+			if !key.HasPermissions(permissions...) {
 				render.Error(w, r, &errors.NotAuthorized)
 				return
 			}

@@ -12,19 +12,20 @@ type Key struct {
 	Salt            string       `gorm:"unique" json:"-"`
 	MarketplaceSlug string       `json:"marketplace_slug"`
 	Marketplace     *Marketplace `json:"-"`
-	Scope           Scope        `json:"scope"`
-	ScopeDetail     *ScopeEnum   `gorm:"foreignKey:Scope;references:Scope" json:"-"`
+	Permissions     Permissions  `json:"permissions"`
 }
 
 func (k *Key) BeforeCreate(tx *gorm.DB) error {
 	if k.KeyHash == "" {
 		return fmt.Errorf("key hash is required")
 	}
-	if !k.Scope.IsValid() {
-		return fmt.Errorf("invalid scope")
-	}
-	if k.Scope == ScopeAdmin && k.MarketplaceSlug != "csfloat" {
-		return fmt.Errorf("admin scoped keys can only be created by CSFloat")
+
+	if k.HasPermissions(PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
+		return fmt.Errorf("admin scoped keys can only be created for CSFloat")
 	}
 	return nil
+}
+
+func (k *Key) HasPermissions(permissions ...Permissions) bool {
+	return k.Permissions.HasPermissions(permissions...)
 }

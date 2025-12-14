@@ -56,7 +56,7 @@ func New(cfg config.Config) *Server {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(rwmiddleware.Middleware(keySvc))
-			r.Use(rwmiddleware.RequirePermission(models.PermissionAdmin))
+			r.Use(rwmiddleware.RequirePermissions(models.PermissionAdmin))
 			r.Route("/keys", func(r chi.Router) {
 				adminkeys.NewKeyHandler(keySvc).RegisterRoutes(r)
 			})
@@ -66,7 +66,7 @@ func New(cfg config.Config) *Server {
 		})
 		r.Route("/marketplace", func(r chi.Router) {
 			r.Use(rwmiddleware.Middleware(keySvc))
-			r.Use(rwmiddleware.RequirePermission(models.PermissionManage))
+			r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
 			r.Route("/keys", func(r chi.Router) {
 				keys.NewKeyHandler(keySvc).RegisterRoutes(r)
 			})

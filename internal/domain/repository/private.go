@@ -8,9 +8,9 @@ import (
 type KeyRepository interface {
 	Create(key *models.Key) error
 	Read(id models.Snowflake) (*models.Key, error)
+	Update(id models.Snowflake, opts *service.UpdateKeyOptions) error
 	Delete(id models.Snowflake) error
 	List(opts *service.ListKeyOptions) ([]*models.Key, error)
-	GetScopeEnum(scope string) (*models.ScopeEnum, error)
 }
 
 type MarketplaceRepository interface {

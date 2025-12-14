@@ -54,11 +54,11 @@ func (p *publicRepository) Reversal() repository.ReversalRepository {
 }
 
 func migratePublicModels(tx *gorm.DB) error {
-	models := []interface{}{
+	publicModels := []interface{}{
 		(*models.Reversal)(nil),
 	}
 
-	for _, model := range models {
+	for _, model := range publicModels {
 		if err := tx.AutoMigrate(model); err != nil {
 			return err
 		}

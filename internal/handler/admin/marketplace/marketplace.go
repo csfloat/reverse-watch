@@ -39,7 +39,7 @@ func (h *Handler) createMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawKey, err := h.keySvc.CreateKey(marketplace.Slug, models.ScopeManage)
+	rawKey, err := h.keySvc.CreateKey(marketplace.Slug, models.PermissionManage)
 	if err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return

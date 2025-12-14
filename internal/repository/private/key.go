@@ -29,12 +29,15 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	var key models.Key
 	err := k.conn.Table("keys").
 		Preload("Marketplace").
-		Preload("ScopeDetail").
 		Where("id = ?", id).First(&key).Error
 	if err != nil {
 		return nil, err
 	}
 	return &key, nil
+}
+
+func (k *keyRepository) Update(id models.Snowflake, opts *service.UpdateKeyOptions) error {
+	return nil
 }
 
 func (k *keyRepository) Delete(id models.Snowflake) error {
@@ -56,12 +59,4 @@ func (k *keyRepository) List(opts *service.ListKeyOptions) ([]*models.Key, error
 	}
 
 	return keys, nil
-}
-
-func (k *keyRepository) GetScopeEnum(scope string) (*models.ScopeEnum, error) {
-	var scopeEnum models.ScopeEnum
-	if err := k.conn.Table("scope_enums").Where("name = ?", scope).First(&scopeEnum).Error; err != nil {
-		return nil, err
-	}
-	return &scopeEnum, nil
 }

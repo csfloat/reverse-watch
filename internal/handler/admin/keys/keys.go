@@ -11,8 +11,8 @@ import (
 
 func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		MarketplaceSlug string       `json:"marketplace_slug"`
-		Scope           models.Scope `json:"scope"`
+		MarketplaceSlug string             `json:"marketplace_slug"`
+		Permissions     models.Permissions `json:"permissions"`
 	}
 
 	defer r.Body.Close()
@@ -21,12 +21,12 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if req.MarketplaceSlug == "" || !req.Scope.IsValid() {
+	if req.MarketplaceSlug == "" || req.Permissions == 0 {
 		render.Error(w, r, &errors.BadRequest)
 		return
 	}
 
-	rawKey, err := h.keySvc.CreateKey(req.MarketplaceSlug, req.Scope)
+	rawKey, err := h.keySvc.CreateKey(req.MarketplaceSlug, req.Permissions)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
 		return
