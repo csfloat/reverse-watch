@@ -9,6 +9,7 @@ import (
 	adminkeys "reverse-watch/internal/handler/admin/keys"
 	adminmarketplace "reverse-watch/internal/handler/admin/marketplace"
 	"reverse-watch/internal/handler/marketplace/keys"
+	"reverse-watch/internal/handler/reversals"
 	rwmiddleware "reverse-watch/internal/middleware"
 	"reverse-watch/internal/repository/private"
 	"reverse-watch/internal/repository/public"
@@ -64,12 +65,18 @@ func New(cfg config.Config) *Server {
 				adminmarketplace.NewMarketplaceHandler(keySvc, marketplaceSvc).RegisterRoutes(r)
 			})
 		})
+
 		r.Route("/marketplace", func(r chi.Router) {
 			r.Use(rwmiddleware.Middleware(keySvc))
 			r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
 			r.Route("/keys", func(r chi.Router) {
 				keys.NewKeyHandler(keySvc).RegisterRoutes(r)
 			})
+		})
+
+		r.Route("/reversals", func(r chi.Router) {
+			r.Use(rwmiddleware.Middleware(keySvc))
+			reversals.NewReversalHandler(keySvc, reversalSvc).RegisterRoutes(r)
 		})
 	})
 
