@@ -10,12 +10,18 @@ import (
 	"reverse-watch/internal/render"
 )
 
-func (h *Handler) createReversalHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
+	type reversal struct {
+		SteamID        models.SteamID  `json:"steam_id"`
+		Source         *models.Source  `json:"source"`
+		RelatedSteamID *models.SteamID `json:"related_steam_id"`
+		ReversedAt     uint64          `json:"reversed_at"`
+	}
+
 	var req struct {
-		SteamID    models.SteamID `json:"steam_id"`
-		ReversedAt uint64         `json:"reversed_at"`
+		Data []*reversal `json:"data"`
 	}
 
 	defer r.Body.Close()
@@ -24,21 +30,31 @@ func (h *Handler) createReversalHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !req.SteamID.IsValid() {
-		render.Errorf(w, r, errors.BadRequest, "invalid steam id")
-		return
+	reversals := make([]*models.Reversal, 0)
+	for _, reversal := range req.Data {
+		if !reversal.SteamID.IsValid() {
+			render.Errorf(w, r, errors.BadRequest, "invalid steam id")
+			return
+		}
+
+		if reversal.RelatedSteamID != nil && !reversal.RelatedSteamID.IsValid() {
+			render.Errorf(w, r, errors.BadRequest, "invalid related steam id")
+			return
+		}
+
+		reversals = append(reversals, &models.Reversal{
+			SteamID:         reversal.SteamID,
+			MarketplaceSlug: key.MarketplaceSlug,
+			Source:          reversal.Source,
+			RelatedSteamID:  reversal.RelatedSteamID,
+			ReversedAt:      reversal.ReversedAt,
+		})
 	}
 
-	reversal := &models.Reversal{
-		SteamID:         req.SteamID,
-		MarketplaceSlug: key.MarketplaceSlug,
-		ReversedAt:      req.ReversedAt,
-	}
-
-	if err := h.reversalSvc.CreateReversal(reversal); err != nil {
+	if err := h.reversalSvc.BulkCreateReversals(reversals); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}
 
-	render.JSON(w, r, reversal)
+	render.JSON(w, r, &reversals)
 }

@@ -25,6 +25,10 @@ func (r *reversalRepository) Create(reversal *models.Reversal) error {
 	return r.conn.Model(&models.Reversal{}).Create(reversal).Error
 }
 
+func (r *reversalRepository) BulkCreate(reversals []*models.Reversal) error {
+	return r.conn.Model(&models.Reversal{}).Create(reversals).Error
+}
+
 func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error) {
 	var reversal models.Reversal
 	if err := r.conn.Model(&models.Reversal{}).Where("id = ?", id).First(&reversal).Error; err != nil {

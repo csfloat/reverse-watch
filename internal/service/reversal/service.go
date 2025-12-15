@@ -24,6 +24,10 @@ func (s *reversalService) CreateReversal(reversal *models.Reversal) error {
 	return s.Reversal().Create(reversal)
 }
 
+func (s *reversalService) BulkCreateReversals(reversals []*models.Reversal) error {
+	return s.Reversal().BulkCreate(reversals)
+}
+
 func (s *reversalService) GetReversal(id models.Snowflake) (*models.Reversal, error) {
 	return s.Reversal().Read(id)
 }
