@@ -4,7 +4,6 @@ import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
-	"reverse-watch/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -36,7 +35,7 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	return &key, nil
 }
 
-func (k *keyRepository) Update(id models.Snowflake, opts *service.UpdateKeyOptions) error {
+func (k *keyRepository) Update(id models.Snowflake, opts service.UpdateKeyOptions) error {
 	return nil
 }
 
@@ -44,11 +43,7 @@ func (k *keyRepository) Delete(id models.Snowflake) error {
 	return k.conn.Model(&models.Key{}).Where("id = ?", id).Delete(&models.Key{}).Error
 }
 
-func (k *keyRepository) List(opts *service.ListKeyOptions) ([]*models.Key, error) {
-	if opts == nil {
-		return nil, errors.New(errors.InternalServerError, "ListKeyOptions is required")
-	}
-
+func (k *keyRepository) List(opts service.KeyListOptions) ([]*models.Key, error) {
 	keys := make([]*models.Key, 0)
 	err := k.conn.Model(&models.Key{}).
 		Where("marketplace_slug = ?", opts.MarketplaceSlug).

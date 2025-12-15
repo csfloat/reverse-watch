@@ -13,6 +13,7 @@ import (
 	rwmiddleware "reverse-watch/internal/middleware"
 	"reverse-watch/internal/repository/private"
 	"reverse-watch/internal/repository/public"
+	"reverse-watch/internal/service/adminaudit"
 	"reverse-watch/internal/service/key"
 	"reverse-watch/internal/service/marketplace"
 	"reverse-watch/internal/service/reversal"
@@ -43,6 +44,7 @@ func New(cfg config.Config) *Server {
 	// Create Services
 	keySvc := key.NewKeyService(privateRepo)
 	marketplaceSvc := marketplace.NewMarketplaceService(privateRepo)
+	adminAuditSvc := adminaudit.NewAdminAuditService(privateRepo)
 	reversalSvc := reversal.NewReversalService(privateRepo, publicRepo)
 
 	r := chi.NewRouter()
@@ -59,10 +61,10 @@ func New(cfg config.Config) *Server {
 			r.Use(rwmiddleware.Middleware(keySvc))
 			r.Use(rwmiddleware.RequirePermissions(models.PermissionAdmin))
 			r.Route("/keys", func(r chi.Router) {
-				adminkeys.NewKeyHandler(keySvc).RegisterRoutes(r)
+				adminkeys.NewKeyHandler(keySvc, adminAuditSvc).RegisterRoutes(r)
 			})
 			r.Route("/marketplace", func(r chi.Router) {
-				adminmarketplace.NewMarketplaceHandler(keySvc, marketplaceSvc).RegisterRoutes(r)
+				adminmarketplace.NewMarketplaceHandler(keySvc, marketplaceSvc, adminAuditSvc).RegisterRoutes(r)
 			})
 		})
 

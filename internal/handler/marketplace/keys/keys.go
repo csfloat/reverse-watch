@@ -43,7 +43,7 @@ func (h *Handler) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listKeysHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
-	keysList, err := h.keySvc.ListKeys(&service.ListKeyOptions{
+	keysList, err := h.keySvc.ListKeys(service.KeyListOptions{
 		MarketplaceSlug: key.MarketplaceSlug,
 	})
 	if err != nil {

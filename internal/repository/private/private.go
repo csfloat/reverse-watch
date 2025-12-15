@@ -63,10 +63,15 @@ func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
 	return NewMarketplaceRepository(p.conn)
 }
 
+func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
+	return NewAdminAuditRepository(p.conn)
+}
+
 func migratePrivateModels(tx *gorm.DB) error {
 	privateModels := []interface{}{
 		(*models.Key)(nil),
 		(*models.Marketplace)(nil),
+		(*models.AdminAudit)(nil),
 	}
 
 	for _, model := range privateModels {

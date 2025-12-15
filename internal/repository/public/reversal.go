@@ -4,7 +4,6 @@ import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
-	"reverse-watch/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -45,7 +44,7 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Delete(&models.Reversal{}).Error
 }
 
-func (r *reversalRepository) buildListQuery(opts *service.ListReversalOptions) *gorm.DB {
+func (r *reversalRepository) buildListQuery(opts service.ReversalListOptions) *gorm.DB {
 	query := r.conn.Model(&models.Reversal{})
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)
@@ -56,11 +55,7 @@ func (r *reversalRepository) buildListQuery(opts *service.ListReversalOptions) *
 	return query
 }
 
-func (r *reversalRepository) List(opts *service.ListReversalOptions) ([]*models.Reversal, error) {
-	if opts == nil {
-		return nil, errors.New(errors.InternalServerError, "ListReversalOptions is required")
-	}
-
+func (r *reversalRepository) List(opts service.ReversalListOptions) ([]*models.Reversal, error) {
 	query := r.buildListQuery(opts)
 
 	reversals := make([]*models.Reversal, 0)

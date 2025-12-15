@@ -7,12 +7,14 @@ import (
 )
 
 type Handler struct {
-	keySvc service.KeyService
+	keySvc        service.KeyService
+	adminAuditSvc service.AdminAuditService
 }
 
-func NewKeyHandler(keySvc service.KeyService) *Handler {
+func NewKeyHandler(keySvc service.KeyService, adminAuditSvc service.AdminAuditService) *Handler {
 	return &Handler{
-		keySvc: keySvc,
+		keySvc:        keySvc,
+		adminAuditSvc: adminAuditSvc,
 	}
 }
 
