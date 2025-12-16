@@ -16,6 +16,6 @@ const (
 type AdminAudit struct {
 	Model
 	TargetAction   TargetAction `gorm:"not null" json:"target_action"`
-	TargetResource Snowflake    `gorm:"not null" json:"target_resource"`
+	TargetResource *Snowflake   `json:"target_resource"`
 	Details        *Jsonb       `gorm:"type:jsonb" json:"details"`
 }

@@ -51,6 +51,16 @@ func (h *Handler) createMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
+		TargetAction: models.TargetActionAddMarketplace,
+		Details: &models.Jsonb{
+			"slug": storedMarketplace.Slug,
+		},
+	}); err != nil {
+		render.Error(w, r, &errors.DBCreate)
+		return
+	}
+
 	render.JSON(w, r, struct {
 		Marketplace *models.Marketplace `json:"marketplace"`
 		Key         *models.RawKey      `json:"key"`
@@ -92,13 +102,29 @@ func (h *Handler) patchMarketplace(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.marketplaceSvc.UpdateMarketplace(slug, fields); err != nil {
-		render.Error(w, r, &errors.DBUpdate)
+		render.Errorf(w, r, errors.DBUpdate, "failed to update marketplace")
 		return
 	}
 
 	marketplace, err := h.marketplaceSvc.GetMarketplace(slug)
 	if err != nil {
-		render.Error(w, r, &errors.DBRead)
+		render.Errorf(w, r, errors.DBRead, "failed to find marketplace")
+		return
+	}
+
+	// Construct details for admin audit
+	details := models.Jsonb{
+		"slug": slug,
+	}
+	for k, v := range fields {
+		details[k] = v
+	}
+
+	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
+		TargetAction: models.TargetActionUpdateMarketplace,
+		Details:      &details,
+	}); err != nil {
+		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
 	}
 
@@ -113,7 +139,17 @@ func (h *Handler) deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.marketplaceSvc.DeleteMarketplace(slug); err != nil {
-		render.Error(w, r, &errors.DBDelete)
+		render.Errorf(w, r, errors.DBDelete, "failed to delete marketplace")
+		return
+	}
+
+	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
+		TargetAction: models.TargetActionRemoveMarketplace,
+		Details: &models.Jsonb{
+			"slug": slug,
+		},
+	}); err != nil {
+		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

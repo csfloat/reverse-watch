@@ -20,5 +20,5 @@ func NewKeyHandler(keySvc service.KeyService, adminAuditSvc service.AdminAuditSe
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/", h.adminCreateKeyHandler)
-	r.Delete("/", h.adminDeleteKeyHandler)
+	r.Delete("/{id}", h.adminDeleteKeyHandler)
 }

@@ -34,6 +34,18 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
+		TargetAction:   models.TargetActionAddKey,
+		TargetResource: &rawKey.ID,
+		Details: &models.Jsonb{
+			"marketplace_slug": req.MarketplaceSlug,
+			"permissions":      req.Permissions,
+		},
+	}); err != nil {
+		render.Error(w, r, &errors.InternalServerError)
+		return
+	}
+
 	render.JSON(w, r, rawKey)
 }
 
@@ -50,8 +62,27 @@ func (h *Handler) adminDeleteKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Fetch key and add details to admin audit
+	key, err := h.keySvc.GetKey(snowflake)
+	if err != nil {
+		render.Error(w, r, &errors.DBRead)
+		return
+	}
+
 	if err := h.keySvc.DeleteKey(snowflake); err != nil {
 		render.Error(w, r, &errors.DBDelete)
+		return
+	}
+
+	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
+		TargetAction:   models.TargetActionRemoveKey,
+		TargetResource: &snowflake,
+		Details: &models.Jsonb{
+			"marketplace_slug": key.MarketplaceSlug,
+			"permissions":      key.Permissions,
+		},
+	}); err != nil {
+		render.Error(w, r, &errors.DBCreate)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
