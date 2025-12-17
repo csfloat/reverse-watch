@@ -24,13 +24,13 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if req.MarketplaceSlug == "" || req.Permissions == 0 {
-		render.Error(w, r, &errors.BadRequest)
+		render.Errorf(w, r, errors.BadRequest, "marketplace slug and permissions are required")
 		return
 	}
 
 	rawKey, err := h.keySvc.CreateKey(req.MarketplaceSlug, req.Permissions)
 	if err != nil {
-		render.Error(w, r, &errors.InternalServerError)
+		render.Errorf(w, r, errors.InternalServerError, "failed to create key")
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 			"permissions":      req.Permissions,
 		},
 	}); err != nil {
-		render.Error(w, r, &errors.InternalServerError)
+		render.Errorf(w, r, errors.InternalServerError, "failed to create admin audit")
 		return
 	}
 

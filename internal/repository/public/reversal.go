@@ -1,6 +1,8 @@
 package public
 
 import (
+	"time"
+
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
@@ -42,6 +44,10 @@ func (r *reversalRepository) Update(id models.Snowflake, fields map[string]inter
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
 	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Delete(&models.Reversal{}).Error
+}
+
+func (r *reversalRepository) Expunge(id models.Snowflake) error {
+	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Update("expunged_at", time.Now().UnixMilli()).Error
 }
 
 func (r *reversalRepository) buildListQuery(opts service.ReversalListOptions) *gorm.DB {

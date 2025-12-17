@@ -40,6 +40,10 @@ func (s *reversalService) DeleteReversal(id models.Snowflake) error {
 	return s.Reversal().Delete(id)
 }
 
+func (s *reversalService) ExpungeReversal(id models.Snowflake) error {
+	return s.Reversal().Expunge(id)
+}
+
 func (s *reversalService) ListReversals(opts service.ReversalListOptions) ([]*models.Reversal, error) {
 	return s.Reversal().List(opts)
 }

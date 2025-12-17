@@ -8,6 +8,8 @@ import (
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,4 +59,36 @@ func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	render.JSON(w, r, &reversals)
+}
+
+func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request) {
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		render.Error(w, r, &errors.BadRequest)
+		return
+	}
+
+	snowflake, err := models.ToSnowflake(id)
+	if err != nil {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	reversal, err := h.reversalSvc.GetReversal(snowflake)
+	if err != nil {
+		render.Errorf(w, r, errors.UnknownResource, "reversal not found")
+		return
+	}
+
+	if key.MarketplaceSlug != reversal.MarketplaceSlug {
+		render.Errorf(w, r, errors.NotAuthorized, "marketplace mismatch")
+	}
+
+	if err := h.reversalSvc.ExpungeReversal(snowflake); err != nil {
+		render.Errorf(w, r, errors.DBCreate, "failed to expunge reversal")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

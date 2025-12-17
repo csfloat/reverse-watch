@@ -21,5 +21,8 @@ func NewReversalHandler(keySvc service.KeyService, reversalSvc service.ReversalS
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	r.With(middleware.RequirePermissions(models.PermissionWrite)).Post("/", h.createReversalsHandler)
+	r.Use(middleware.RequirePermissions(models.PermissionWrite))
+
+	r.Post("/", h.createReversalsHandler)
+	r.Patch("/", h.expungeReversalHandler)
 }
