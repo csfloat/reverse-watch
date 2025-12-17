@@ -24,5 +24,5 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Use(middleware.RequirePermissions(models.PermissionWrite))
 
 	r.Post("/", h.createReversalsHandler)
-	r.Patch("/", h.expungeReversalHandler)
+	r.Delete("/{id}", h.expungeReversalHandler)
 }
