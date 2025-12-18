@@ -61,7 +61,7 @@ func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("reversed_at <= ? AND id < ?)", opts.Cursor.ReversedAt, opts.Cursor.ID)
+		query = query.Where("reversed_at <= ? AND id < ?", opts.Cursor.ReversedAt, opts.Cursor.ID)
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))
