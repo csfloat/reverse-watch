@@ -114,6 +114,7 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 	permissions.AddPermission(models.PermissionManage)
 	permissions.AddPermission(models.PermissionWrite)
 	permissions.AddPermission(models.PermissionRead)
+	permissions.AddPermission(models.PermissionExport)
 
 	adminKey := &models.Key{
 		Model: models.Model{

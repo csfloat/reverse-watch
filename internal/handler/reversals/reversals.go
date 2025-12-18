@@ -3,6 +3,7 @@ package reversals
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"reverse-watch/internal/domain/models"
@@ -56,7 +57,7 @@ func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.reversalSvc.BulkCreateReversals(reversals); err != nil {
-		render.Error(w, r, &errors.DBCreate)
+		render.Errorf(w, r, errors.DBCreate, "failed to create bulk reversals")
 		return
 	}
 
@@ -95,56 +96,46 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
-	defaultLimit := uint(5_000)
-	maxLimit := uint(10_000)
-
+func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *models.Cursor, error) {
 	listOpts := &repository.ReversalListOptions{
 		Limit: &defaultLimit,
 	}
 
-	query := r.URL.Query()
-
-	if steamIDStr := query.Get("steam_id"); steamIDStr != "" {
+	if steamIDStr := queryValues.Get("steam_id"); steamIDStr != "" {
 		steamID, err := models.ToSteamID(steamIDStr)
 		if err != nil {
-			render.Errorf(w, r, errors.BadRequest, "invalid steam id")
-			return
+			return nil, nil, errors.New(errors.BadRequest, "invalid steam id")
 		}
 		listOpts.SteamID = steamID
 	}
 
-	if marketplaceSlugStr := query.Get("marketplace_slug"); marketplaceSlugStr != "" {
+	if marketplaceSlugStr := queryValues.Get("marketplace_slug"); marketplaceSlugStr != "" {
 		listOpts.MarketplaceSlug = &marketplaceSlugStr
 	}
 
-	if limitStr := query.Get("limit"); limitStr != "" {
+	if limitStr := queryValues.Get("limit"); limitStr != "" {
 		limit64, err := strconv.ParseUint(limitStr, 10, 64)
 		if err != nil {
-			render.Errorf(w, r, errors.BadRequest, "invalid limit")
-			return
+			return nil, nil, errors.New(errors.BadRequest, "invalid limit")
 		}
 		limit := uint(limit64)
 		if limit > maxLimit {
-			render.Errorf(w, r, errors.BadRequest, "maximum limit exceeded")
-			return
+			return nil, nil, errors.Newf(errors.BadRequest, nil, "limit exceeds max limit of %d", maxLimit)
 		}
 		listOpts.Limit = &limit
 	}
 
-	if cursorStr := query.Get("cursor"); cursorStr != "" {
+	if cursorStr := queryValues.Get("cursor"); cursorStr != "" {
 		cursor, err := models.ToCursor(cursorStr)
 		if err != nil {
-			render.Errorf(w, r, errors.BadRequest, "invalid cursor")
-			return
+			return nil, nil, errors.New(errors.BadRequest, "invalid cursor")
 		}
 		listOpts.Cursor = cursor
 	}
 
 	reversals, err := h.reversalSvc.ListReversals(listOpts)
 	if err != nil {
-		render.Error(w, r, &errors.InternalServerError)
-		return
+		return nil, nil, errors.New(errors.InternalServerError, "failed to list reversals")
 	}
 
 	var nextCursor *models.Cursor
@@ -156,6 +147,19 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 				ReversedAt: reversals[len(reversals)-1].ReversedAt,
 			}
 		}
+	}
+
+	return reversals, nextCursor, nil
+}
+
+func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
+	defaultLimit := uint(5_000)
+	maxLimit := uint(10_000)
+
+	reversals, nextCursor, err := h.listReversals(r.URL.Query(), defaultLimit, maxLimit)
+	if err != nil {
+		render.Error(w, r, err)
+		return
 	}
 
 	type metadata struct {

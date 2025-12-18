@@ -9,11 +9,13 @@ import (
 type Permissions uint32
 
 const (
+	PermissionNone   Permissions = 0
 	PermissionAdmin  Permissions = 1
 	PermissionDelete Permissions = 1 << 1
 	PermissionManage Permissions = 1 << 2
 	PermissionWrite  Permissions = 1 << 3
 	PermissionRead   Permissions = 1 << 4
+	PermissionExport Permissions = 1 << 5
 )
 
 func (p *Permissions) HasPermissions(permissions ...Permissions) bool {
@@ -52,6 +54,9 @@ func (p *Permissions) MarshalJSON() ([]byte, error) {
 	if p.HasPermissions(PermissionRead) {
 		permissions = append(permissions, "read")
 	}
+	if p.HasPermissions(PermissionExport) {
+		permissions = append(permissions, "export")
+	}
 	return json.Marshal(permissions)
 }
 
@@ -73,8 +78,10 @@ func (p *Permissions) UnmarshalJSON(data []byte) error {
 			p.AddPermission(PermissionWrite)
 		case "read":
 			p.AddPermission(PermissionRead)
+		case "export":
+			p.AddPermission(PermissionExport)
 		default:
-			return fmt.Errorf("unknown permission: %s", p)
+			return fmt.Errorf("unknown permission: %v", p)
 		}
 	}
 	return nil
