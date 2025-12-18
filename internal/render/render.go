@@ -32,11 +32,6 @@ func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
 	render.JSON(w, r, v)
 }
 
-func Status(w http.ResponseWriter, r *http.Request, code int, v interface{}) {
-	render.Status(r, code)
-	render.JSON(w, r, v)
-}
-
 func Success(w http.ResponseWriter, r *http.Request, message string) {
 	JSON(w, r, message)
 }
