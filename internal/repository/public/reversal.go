@@ -77,5 +77,3 @@ func (r *reversalRepository) List(opts *repository.ReversalListOptions) ([]*mode
 	}
 	return reversals, nil
 }
-
-// SELECT * FROM reversals WHERE steam_id =
