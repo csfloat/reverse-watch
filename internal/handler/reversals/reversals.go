@@ -132,7 +132,7 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 		listOpts.Cursor = cursor
 	}
 
-	reversals, err := h.reversalSvc.ListReversals(listOpts)
+	reversals, err := h.reversalSvc.ListReversals(&listOpts)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
 		return
