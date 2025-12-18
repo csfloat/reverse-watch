@@ -1,0 +1,11 @@
+.idea/
+.vscode/
+
+config.json
+
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+*.exe
+*.so
