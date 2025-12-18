@@ -68,7 +68,8 @@ func migratePublicModels(tx *gorm.DB) error {
 
 func createIndexes(tx *gorm.DB) error {
 	indexes := []string{
-		`CREATE INDEX IF NOT EXISTS idx_reversals_steam_id_reversed_at_desc ON reversals(steam_id, reversed_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_reversals_steam_id_reversed_at_desc ON reversals(steam_id, reversed_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug_reversed_at_desc ON reversals(marketplace_slug, reversed DESC, id DESC)`,
 	}
 
 	for _, index := range indexes {

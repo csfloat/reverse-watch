@@ -3,8 +3,10 @@ package reversals
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"reverse-watch/internal/domain/models"
+	"reverse-watch/internal/domain/service"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
@@ -91,4 +93,72 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
+	var listOpts service.ReversalListOptions
+
+	query := r.URL.Query()
+
+	if steamIDStr := query.Get("steam_id"); steamIDStr != "" {
+		steamID, err := models.ToSteamID(steamIDStr)
+		if err != nil {
+			render.Errorf(w, r, errors.BadRequest, "invalid steam id")
+			return
+		}
+		listOpts.SteamID = steamID
+	}
+
+	if marketplaceSlugStr := query.Get("marketplace_slug"); marketplaceSlugStr != "" {
+		listOpts.MarketplaceSlug = &marketplaceSlugStr
+	}
+
+	if limitStr := query.Get("limit"); limitStr != "" {
+		limit64, err := strconv.ParseUint(limitStr, 10, 64)
+		if err != nil {
+			render.Errorf(w, r, errors.BadRequest, "invalid limit")
+			return
+		}
+		limit := uint(limit64)
+		listOpts.Limit = &limit
+	}
+
+	if cursorStr := query.Get("cursor"); cursorStr != "" {
+		cursor, err := models.ToCursor(cursorStr)
+		if err != nil {
+			render.Errorf(w, r, errors.BadRequest, "invalid cursor")
+			return
+		}
+		listOpts.Cursor = cursor
+	}
+
+	reversals, err := h.reversalSvc.ListReversals(listOpts)
+	if err != nil {
+		render.Error(w, r, &errors.InternalServerError)
+		return
+	}
+
+	nextCursor := &models.Cursor{}
+	if len(reversals) != 0 {
+		nextCursor.ID = reversals[len(reversals)-1].ID
+		nextCursor.ReversedAt = reversals[len(reversals)-1].ReversedAt
+	}
+
+	type metadata struct {
+		Count      uint           `json:"count"`
+		NextCursor *models.Cursor `json:"next_cursor"`
+	}
+
+	type resp struct {
+		Data     []*models.Reversal `json:"data"`
+		Metadata metadata           `json:"metadata"`
+	}
+
+	render.JSON(w, r, &resp{
+		Data: reversals,
+		Metadata: metadata{
+			Count:      uint(len(reversals)),
+			NextCursor: nextCursor,
+		},
+	})
 }

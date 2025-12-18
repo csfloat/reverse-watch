@@ -12,7 +12,7 @@ type ReversalRepository interface {
 	Update(id models.Snowflake, fields map[string]interface{}) error
 	Delete(id models.Snowflake) error
 	Expunge(id models.Snowflake) error
-	List(opts service.ReversalListOptions) ([]*models.Reversal, error)
+	List(opts *service.ReversalListOptions) ([]*models.Reversal, error)
 }
 
 type PublicRepository interface {

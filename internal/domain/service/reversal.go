@@ -13,8 +13,8 @@ type ReversalService interface {
 }
 
 type ReversalListOptions struct {
-	SteamID         models.SteamID
-	MarketplaceSlug string
-	Cursor          string
-	Limit           uint
+	SteamID         *models.SteamID
+	MarketplaceSlug *string
+	Cursor          *models.Cursor
+	Limit           *uint
 }

@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -46,4 +47,17 @@ func (s *SteamID) IsValid() bool {
 
 	instance := (*s >> 32) & 0xFFFFF
 	return instance <= 32
+}
+
+func ToSteamID(str string) (*SteamID, error) {
+	n, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	id := SteamID(n)
+	if !id.IsValid() {
+		return nil, fmt.Errorf("invalid steam id: %s", str)
+	}
+	return &id, nil
 }

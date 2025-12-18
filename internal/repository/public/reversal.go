@@ -50,23 +50,37 @@ func (r *reversalRepository) Expunge(id models.Snowflake) error {
 	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Update("expunged_at", time.Now().UnixMilli()).Error
 }
 
-func (r *reversalRepository) buildListQuery(opts service.ReversalListOptions) *gorm.DB {
+func (r *reversalRepository) buildListQuery(opts *service.ReversalListOptions) *gorm.DB {
 	query := r.conn.Model(&models.Reversal{})
+	
+	if opts == nil {
+		return query
+	}
+
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)
 	}
-	if opts.MarketplaceSlug != "" {
+
+	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
+
+	if opts.Cursor != nil {
+		query = query.Where("(reversed_at, id) < (?, ?)", opts.Cursor.ReversedAt, opts.Cursor.ID)
+	}
+
+	if opts.Limit != nil {
+		query = query.Limit(int(*opts.Limit))
+	}
+
 	return query
 }
 
-func (r *reversalRepository) List(opts service.ReversalListOptions) ([]*models.Reversal, error) {
+func (r *reversalRepository) List(opts *service.ReversalListOptions) ([]*models.Reversal, error) {
 	query := r.buildListQuery(opts)
 
-	reversals := make([]*models.Reversal, 0)
-	err := query.Order("reversed_at DESC").Find(&reversals).Error
-	if err != nil {
+	var reversals []*models.Reversal
+	if err := query.Find(&reversals).Error; err != nil {
 		return nil, err
 	}
 	return reversals, nil
