@@ -6,12 +6,10 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
-	"reverse-watch/internal/errors"
 )
 
-// January 1, 2019 00:00:0000 in milliseconds
-const epoch uint64 = 1546300800000
+// January 1, 2025 00:00:0000 in milliseconds
+const epoch uint64 = 1735689600000
 
 var (
 	once             sync.Once
@@ -69,7 +67,7 @@ func InitSnowflakeGenerator(workerID uint8, processID uint8) {
 
 func genSnowflakeWithParts(parts Parts) (Snowflake, error) {
 	if parts.Timestamp < epoch {
-		return 0, errors.New(errors.InternalServerError, "snowflake's timestamp cannot be before epoch")
+		return 0, fmt.Errorf("snowflake's timestamp cannot be before epoch")
 	}
 
 	timestamp := parts.Timestamp - epoch
