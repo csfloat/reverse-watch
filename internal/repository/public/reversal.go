@@ -50,7 +50,7 @@ func (r *reversalRepository) Expunge(id models.Snowflake) error {
 }
 
 func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{})
+	query := r.conn.Model(&models.Reversal{}).Order("reversed_at DESC")
 	if opts == nil {
 		return query
 	}
@@ -66,7 +66,7 @@ func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))
 	}
-	return query.Order("reversed_at DESC")
+	return query
 }
 
 func (r *reversalRepository) List(opts *repository.ReversalListOptions) ([]*models.Reversal, error) {
