@@ -32,8 +32,8 @@ func (c *Cursor) Encode() string {
 }
 
 func ToCursor(str string) (*Cursor, error) {
-	bytes := make([]byte, 0)
-	if _, err := base64.RawURLEncoding.Decode(bytes, []byte(str)); err != nil {
+	bytes, err := base64.RawURLEncoding.DecodeString(str)
+	if err != nil {
 		return nil, err
 	}
 
