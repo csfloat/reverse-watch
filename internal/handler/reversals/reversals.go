@@ -96,7 +96,12 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
-	var listOpts repository.ReversalListOptions
+	defaultLimit := uint(5_000)
+	maxLimit := uint(10_000)
+
+	listOpts := &repository.ReversalListOptions{
+		Limit: &defaultLimit,
+	}
 
 	query := r.URL.Query()
 
@@ -120,6 +125,10 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		limit := uint(limit64)
+		if limit > maxLimit {
+			render.Errorf(w, r, errors.BadRequest, "maximum limit exceeded")
+			return
+		}
 		listOpts.Limit = &limit
 	}
 
@@ -132,7 +141,7 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 		listOpts.Cursor = cursor
 	}
 
-	reversals, err := h.reversalSvc.ListReversals(&listOpts)
+	reversals, err := h.reversalSvc.ListReversals(listOpts)
 	if err != nil {
 		render.Error(w, r, &errors.InternalServerError)
 		return
@@ -140,9 +149,12 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var nextCursor *models.Cursor
 	if len(reversals) != 0 {
-		nextCursor = &models.Cursor{
-			ID:         reversals[len(reversals)-1].ID,
-			ReversedAt: reversals[len(reversals)-1].ReversedAt,
+		// Omit cursor on last page
+		if len(reversals) == int(*listOpts.Limit) {
+			nextCursor = &models.Cursor{
+				ID:         reversals[len(reversals)-1].ID,
+				ReversedAt: reversals[len(reversals)-1].ReversedAt,
+			}
 		}
 	}
 
