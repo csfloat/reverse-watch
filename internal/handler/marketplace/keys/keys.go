@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/service"
+	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
@@ -43,8 +43,8 @@ func (h *Handler) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listKeysHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
-	keysList, err := h.keySvc.ListKeys(service.KeyListOptions{
-		MarketplaceSlug: key.MarketplaceSlug,
+	keysList, err := h.keySvc.ListKeys(&repository.KeyListOptions{
+		MarketplaceSlug: &key.MarketplaceSlug,
 	})
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list keys")

@@ -2,8 +2,14 @@ package repository
 
 import (
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/service"
 )
+
+type ReversalListOptions struct {
+	SteamID         *models.SteamID
+	MarketplaceSlug *string
+	Cursor          *models.Cursor
+	Limit           *uint
+}
 
 type ReversalRepository interface {
 	Create(reversal *models.Reversal) error
@@ -12,7 +18,7 @@ type ReversalRepository interface {
 	Update(id models.Snowflake, fields map[string]interface{}) error
 	Delete(id models.Snowflake) error
 	Expunge(id models.Snowflake) error
-	List(opts *service.ReversalListOptions) ([]*models.Reversal, error)
+	List(opts *ReversalListOptions) ([]*models.Reversal, error)
 }
 
 type PublicRepository interface {

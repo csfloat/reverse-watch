@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/service"
+	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
@@ -96,7 +96,7 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
-	var listOpts service.ReversalListOptions
+	var listOpts repository.ReversalListOptions
 
 	query := r.URL.Query()
 

@@ -25,4 +25,5 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 	r.Post("/", h.createReversalsHandler)
 	r.Delete("/{id}", h.expungeReversalHandler)
+	r.Get("/", h.listReversalsHandler)
 }

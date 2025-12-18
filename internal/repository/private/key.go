@@ -3,7 +3,6 @@ package private
 import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
-	"reverse-watch/internal/domain/service"
 
 	"gorm.io/gorm"
 )
@@ -35,7 +34,7 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	return &key, nil
 }
 
-func (k *keyRepository) Update(id models.Snowflake, opts service.UpdateKeyOptions) error {
+func (k *keyRepository) Update(id models.Snowflake, opts *repository.UpdateKeyOptions) error {
 	return nil
 }
 
@@ -43,15 +42,23 @@ func (k *keyRepository) Delete(id models.Snowflake) error {
 	return k.conn.Model(&models.Key{}).Where("id = ?", id).Delete(&models.Key{}).Error
 }
 
-func (k *keyRepository) List(opts service.KeyListOptions) ([]*models.Key, error) {
-	keys := make([]*models.Key, 0)
-	err := k.conn.Model(&models.Key{}).
-		Where("marketplace_slug = ?", opts.MarketplaceSlug).
-		Order("created_at DESC").
-		Find(&keys).Error
-	if err != nil {
+func (k *keyRepository) buildListQuery(opts *repository.KeyListOptions) *gorm.DB {
+	query := k.conn.Model(&models.Key{})
+	if opts == nil {
+		return query
+	}
+	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
+		query = query.Where("marketplace_slug = ?", *opts.MarketplaceSlug)
+	}
+	return query
+}
+
+func (k *keyRepository) List(opts *repository.KeyListOptions) ([]*models.Key, error) {
+	query := k.buildListQuery(opts)
+
+	var keys []*models.Key
+	if err := query.Order("created_at DESC").Find(&keys).Error; err != nil {
 		return nil, err
 	}
-
 	return keys, nil
 }

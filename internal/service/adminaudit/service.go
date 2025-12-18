@@ -30,6 +30,6 @@ func (a *adminAuditService) DeleteAdminAudit(id models.Snowflake) error {
 	return a.AdminAudit().Delete(id)
 }
 
-func (a *adminAuditService) ListAdminAudits(opts service.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+func (a *adminAuditService) ListAdminAudits(opts *repository.AdminAuditListOptions) ([]*models.AdminAudit, error) {
 	return a.AdminAudit().List(opts)
 }

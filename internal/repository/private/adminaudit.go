@@ -3,7 +3,6 @@ package private
 import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
-	"reverse-watch/internal/domain/service"
 
 	"gorm.io/gorm"
 )
@@ -36,13 +35,13 @@ func (a *adminAuditRepository) Delete(id models.Snowflake) error {
 	return a.conn.Model(&models.AdminAudit{}).Where("id = ?", id).Delete(&models.AdminAudit{}).Error
 }
 
-func (a *adminAuditRepository) List(opts service.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+func (a *adminAuditRepository) List(opts *repository.AdminAuditListOptions) ([]*models.AdminAudit, error) {
 	query := a.conn.Model(&models.AdminAudit{})
 
 	if opts.TargetResource != nil {
 		query = query.Where("resource_id = ?", opts.TargetResource)
 	}
-	
+
 	if len(opts.TargetActions) > 0 {
 		query = query.Where("target_action IN (?)", opts.TargetActions)
 	}
