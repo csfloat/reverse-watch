@@ -138,15 +138,17 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nextCursor := &models.Cursor{}
+	var nextCursor *models.Cursor
 	if len(reversals) != 0 {
-		nextCursor.ID = reversals[len(reversals)-1].ID
-		nextCursor.ReversedAt = reversals[len(reversals)-1].ReversedAt
+		nextCursor = &models.Cursor{
+			ID:         reversals[len(reversals)-1].ID,
+			ReversedAt: reversals[len(reversals)-1].ReversedAt,
+		}
 	}
 
 	type metadata struct {
 		Count      uint           `json:"count"`
-		NextCursor *models.Cursor `json:"next_cursor"`
+		NextCursor *models.Cursor `json:"next_cursor,omitempty"`
 	}
 
 	type resp struct {
