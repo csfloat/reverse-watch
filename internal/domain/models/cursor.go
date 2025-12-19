@@ -24,6 +24,11 @@ func (c *Cursor) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Cursor) UnmarshalJSON(data []byte) error {
+	var encoded string
+	if err := json.Unmarshal(data, &encoded); err != nil {
+		return err
+	}
+
 	cursor, err := DecodeCursor(string(data))
 	if err != nil {
 		return err
