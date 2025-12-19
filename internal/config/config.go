@@ -17,25 +17,12 @@ const (
 )
 
 type Config struct {
-	// DataDir is the directory containing the database files
+	// StaticDir is the directory containing the database files
 	// This is relative to the project's root directory
-	DataDir string
-
-	PublicDB struct {
-		Filename string
-	}
-
-	PrivateDB struct {
-		Filename string
-	}
+	StaticDir string
 
 	HTTP struct {
 		Port string
-	}
-
-	Admin struct {
-		APIKey string
-		Salt   string
 	}
 
 	Environment Environment
@@ -48,9 +35,7 @@ func Load() Config {
 func load() Config {
 	v := viper.New()
 
-	v.SetDefault("DataDir", "./data")
-	v.SetDefault("PublicDB.Filename", "public.db")
-	v.SetDefault("PrivateDB.Filename", "private.db")
+	v.SetDefault("StaticDir", "./static")
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", Development)
 

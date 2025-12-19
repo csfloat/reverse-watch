@@ -1,11 +1,13 @@
 package private
 
 import (
+	"encoding/base64"
 	"path/filepath"
 
 	"reverse-watch/internal/config"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
+	"reverse-watch/internal/logging"
 	"reverse-watch/pkg/crypto"
 
 	"gorm.io/driver/sqlite"
@@ -26,7 +28,7 @@ func NewPrivateRepository(cfg config.Config) (repository.PrivateRepository, erro
 		return nil, err
 	}
 
-	dsn := filepath.Join(rootDir, cfg.DataDir, cfg.PrivateDB.Filename)
+	dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
 	conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -46,7 +48,7 @@ func NewPrivateRepository(cfg config.Config) (repository.PrivateRepository, erro
 		return nil, err
 	}
 
-	if err := seedAdminAPIKey(conn, cfg); err != nil {
+	if err := seedAdminAPIKey(conn); err != nil {
 		return nil, err
 	}
 
@@ -94,20 +96,38 @@ func seedMarketplaces(tx *gorm.DB) error {
 	}).Create(marketplace).Error
 }
 
-func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
-	key := cfg.Admin.APIKey
-	if key == "" {
-		return nil
-	}
-	salt := cfg.Admin.Salt
-	if salt == "" {
-		return nil
-	}
-
-	id, secret, err := crypto.ParseSecretKey(key)
+func seedAdminAPIKey(tx *gorm.DB) error {
+	var exists bool
+	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ?)`, models.PermissionAdmin, models.PermissionAdmin).
+		Row().Scan(&exists)
 	if err != nil {
 		return err
 	}
+
+	if exists {
+		return nil
+	}
+
+	id, err := models.GenSnowflake()
+	if err != nil {
+		return err
+	}
+
+	secret, err := crypto.GenerateSecret()
+	if err != nil {
+		return err
+	}
+
+	salt, err := crypto.GenerateSalt()
+	if err != nil {
+		return err
+	}
+
+	encodedSecret := base64.RawURLEncoding.EncodeToString(secret)
+	encodedSalt := base64.RawURLEncoding.EncodeToString(salt)
+
+	secretKey := crypto.FormatAPIKey(uint64(id), encodedSecret)
+	logging.Log.Infof("Generated admin secret key: %s", secretKey)
 
 	permissions := models.PermissionAdmin
 	permissions.AddPermission(models.PermissionDelete)
@@ -118,10 +138,10 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config) error {
 
 	adminKey := &models.Key{
 		Model: models.Model{
-			ID: models.Snowflake(id),
+			ID: id,
 		},
-		KeyHash:         crypto.HashSecret(secret, salt),
-		Salt:            salt,
+		KeyHash:         crypto.HashSecret(encodedSecret, encodedSalt),
+		Salt:            encodedSalt,
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,
 	}

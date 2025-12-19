@@ -24,7 +24,7 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 		return nil, err
 	}
 
-	dsn := filepath.Join(rootDir, cfg.DataDir, cfg.PublicDB.Filename)
+	dsn := filepath.Join(rootDir, cfg.StaticDir, "public.db")
 	conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
