@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
+
+	cpb "reverse-watch/internal/domain/models/cursorpb"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type Cursor struct {
@@ -14,11 +16,15 @@ type Cursor struct {
 }
 
 func (c *Cursor) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.Encode())
+	cursor, err := c.Encode()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(cursor)
 }
 
 func (c *Cursor) UnmarshalJSON(data []byte) error {
-	cursor, err := ToCursor(string(data))
+	cursor, err := DecodeCursor(string(data))
 	if err != nil {
 		return err
 	}
@@ -26,35 +32,34 @@ func (c *Cursor) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (c *Cursor) Encode() string {
-	cursor := strconv.FormatUint(c.ReversedAt, 10) + ":" + c.ID.String()
-	return base64.RawURLEncoding.EncodeToString([]byte(cursor))
+func (c *Cursor) Encode() (*string, error) {
+	cursorpb := &cpb.Cursor{
+		Snowflake:  uint64(c.ID),
+		ReversedAt: c.ReversedAt,
+	}
+
+	data, err := proto.Marshal(cursorpb)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal cursor: %s", err)
+	}
+
+	encoded := base64.RawURLEncoding.EncodeToString(data)
+	return &encoded, nil
 }
 
-func ToCursor(str string) (*Cursor, error) {
-	bytes, err := base64.RawURLEncoding.DecodeString(str)
+func DecodeCursor(encoded string) (*Cursor, error) {
+	bytes, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode cursor: %s", err)
 	}
 
-	cursorStr := string(bytes)
-	parts := strings.Split(cursorStr, ":")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid cursor")
-	}
-
-	reversedAt, err := strconv.ParseUint(parts[0], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid cursor")
-	}
-
-	id, err := ToSnowflake(parts[1])
-	if err != nil {
-		return nil, err
+	var cursorpb cpb.Cursor
+	if err := proto.Unmarshal(bytes, &cursorpb); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cursor: %s", err)
 	}
 
 	return &Cursor{
-		ID:         id,
-		ReversedAt: reversedAt,
+		ID:         Snowflake(cursorpb.Snowflake),
+		ReversedAt: cursorpb.ReversedAt,
 	}, nil
 }

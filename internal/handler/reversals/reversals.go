@@ -126,7 +126,7 @@ func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit u
 	}
 
 	if cursorStr := queryValues.Get("cursor"); cursorStr != "" {
-		cursor, err := models.ToCursor(cursorStr)
+		cursor, err := models.DecodeCursor(cursorStr)
 		if err != nil {
 			return nil, nil, errors.New(errors.BadRequest, "invalid cursor")
 		}
