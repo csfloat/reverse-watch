@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"reverse-watch/internal/domain/models"
 )
 
 func HashSecret(secret, salt string) string {
@@ -16,7 +18,7 @@ func HashSecret(secret, salt string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func ParseSecretKey(secretKey string) (id uint64, secret string, err error) {
+func ParseSecretKey(secretKey string) (id models.Snowflake, secret string, err error) {
 	parts := strings.Split(secretKey, ".")
 	if len(parts) != 2 {
 		return 0, "", fmt.Errorf("invalid secret key")
@@ -25,10 +27,27 @@ func ParseSecretKey(secretKey string) (id uint64, secret string, err error) {
 	idStr := strings.Replace(parts[0], "sk_live_", "", 1)
 	n, _ := strconv.ParseUint(idStr, 10, 64)
 
-	return n, parts[1], nil
+	return models.Snowflake(n), parts[1], nil
 }
 
-func GenerateRandomBytes(length uint) ([]byte, error) {
+func GenerateSecretKey() (id models.Snowflake, secret []byte, salt []byte, err error) {
+	id, err = models.GenSnowflake()
+	if err != nil {
+		return 0, nil, nil, err
+	}
+
+	secret, err = generateRandomBytes(32)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	salt, err = generateRandomBytes(16)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	return id, secret, salt, nil
+}
+
+func generateRandomBytes(length uint) ([]byte, error) {
 	if length == 0 {
 		return nil, fmt.Errorf("length must greater than zero")
 	}
@@ -38,14 +57,6 @@ func GenerateRandomBytes(length uint) ([]byte, error) {
 		return nil, err
 	}
 	return bytes, nil
-}
-
-func GenerateSecret() ([]byte, error) {
-	return GenerateRandomBytes(32)
-}
-
-func GenerateSalt() ([]byte, error) {
-	return GenerateRandomBytes(16)
 }
 
 func FormatAPIKey(id uint64, secret string) string {

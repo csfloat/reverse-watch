@@ -4,11 +4,11 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 
+	"reverse-watch/internal/crypto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
 	"reverse-watch/internal/errors"
-	"reverse-watch/pkg/crypto"
 )
 
 type keyService struct {
@@ -24,16 +24,7 @@ func NewKeyService(repo repository.PrivateRepository) service.KeyService {
 }
 
 func (s *keyService) CreateKey(marketplaceSlug string, permissions models.Permissions) (*models.RawKey, error) {
-	snowflake, err := models.GenSnowflake()
-	if err != nil {
-		return nil, err
-	}
-
-	secret, err := crypto.GenerateSecret()
-	if err != nil {
-		return nil, err
-	}
-	salt, err := crypto.GenerateSalt()
+	snowflake, secret, salt, err := crypto.GenerateSecretKey()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +76,7 @@ func (s *keyService) ValidateKey(secretKey string) (*models.Key, error) {
 		return nil, err
 	}
 
-	storedKey, err := s.GetKey(models.Snowflake(id))
+	storedKey, err := s.GetKey(id)
 	if err != nil {
 		return nil, err
 	}

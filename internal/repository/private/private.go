@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"reverse-watch/internal/config"
+	"reverse-watch/internal/crypto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/logging"
-	"reverse-watch/pkg/crypto"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -108,17 +108,7 @@ func seedAdminAPIKey(tx *gorm.DB) error {
 		return nil
 	}
 
-	id, err := models.GenSnowflake()
-	if err != nil {
-		return err
-	}
-
-	secret, err := crypto.GenerateSecret()
-	if err != nil {
-		return err
-	}
-
-	salt, err := crypto.GenerateSalt()
+	id, secret, salt, err := crypto.GenerateSecretKey()
 	if err != nil {
 		return err
 	}
