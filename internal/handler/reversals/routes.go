@@ -25,5 +25,6 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.With(middleware.RequirePermissions(models.PermissionDelete)).Delete("/{id}", h.expungeReversalHandler)
 	r.With(middleware.RequirePermissions(models.PermissionExport)).Route("/", func(r chi.Router) {
 		r.Get("/", h.listReversalsHandler)
+		r.Get("/export", h.exportReversalsHandler)
 	})
 }

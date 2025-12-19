@@ -67,4 +67,5 @@ var (
 	DBUpdate            = Error{Code: 10, status: http.StatusInternalServerError, Message: "failed to update resource"}
 	DBDelete            = Error{Code: 11, status: http.StatusInternalServerError, Message: "failed to delete resource"}
 	JSONDecode          = Error{Code: 12, status: http.StatusBadRequest, Message: "failed to decode JSON"}
+	CSVEncode           = Error{Code: 13, status: http.StatusInternalServerError, Message: "failed to encode CSV"}
 )

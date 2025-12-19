@@ -65,6 +65,19 @@ const (
 	SourceUserReport  Source = 2
 )
 
+func (s *Source) String() string {
+	var source string
+	switch *s {
+	case SourceDirect:
+		source = "direct"
+	case SourceRelatedUser:
+		source = "related_user"
+	case SourceUserReport:
+		source = "user_report"
+	}
+	return source
+}
+
 func (s *Source) MarshalJSON() ([]byte, error) {
 	var source string
 	switch *s {
