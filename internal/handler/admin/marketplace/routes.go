@@ -22,6 +22,6 @@ func NewMarketplaceHandler(keySvc service.KeyService, marketplaceSvc service.Mar
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/", h.createMarketplace)
-	r.Patch("/", h.patchMarketplace)
+	r.Patch("/{slug}", h.patchMarketplace)
 	r.Delete("/{slug}", h.deleteMarketplace)
 }
