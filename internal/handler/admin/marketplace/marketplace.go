@@ -105,26 +105,22 @@ func (h *Handler) patchMarketplace(w http.ResponseWriter, r *http.Request) {
 		render.Errorf(w, r, errors.DBUpdate, "failed to update marketplace")
 		return
 	}
-
-	marketplace, err := h.marketplaceSvc.GetMarketplace(slug)
-	if err != nil {
-		render.Errorf(w, r, errors.DBRead, "failed to find marketplace")
-		return
-	}
-
+	
 	// Construct details for admin audit
-	details := models.Jsonb{
-		"slug": slug,
-	}
-	for k, v := range fields {
-		details[k] = v
-	}
+	details := models.Jsonb(fields)
+	details["slug"] = slug
 
 	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
 		TargetAction: models.TargetActionUpdateMarketplace,
 		Details:      &details,
 	}); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
+		return
+	}
+
+	marketplace, err := h.marketplaceSvc.GetMarketplace(slug)
+	if err != nil {
+		render.Errorf(w, r, errors.DBRead, "failed to find marketplace")
 		return
 	}
 

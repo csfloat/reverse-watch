@@ -18,11 +18,7 @@ type Reversal struct {
 	ExpungedAt      *uint64  `json:"expunged_at,omitempty"`
 }
 
-func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
-	if err := r.Model.BeforeCreate(tx); err != nil {
-		return err
-	}
-
+func (r *Reversal) validate() error {
 	if !r.SteamID.IsValid() {
 		return fmt.Errorf("steam_id is invalid")
 	}
@@ -51,10 +47,30 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("reversed_at cannot be in the future")
 	}
 
+	if r.ExpungedAt != nil && *r.ExpungedAt > now {
+		return fmt.Errorf("expunged_at cannot be in the future")
+	}
+
+	return nil
+}
+
+func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
+	if err := r.Model.BeforeCreate(tx); err != nil {
+		return err
+	}
+
+	if err := r.validate(); err != nil {
+		return err
+	}
+
 	if r.ReversedAt == 0 {
-		r.ReversedAt = now
+		r.ReversedAt = uint64(time.Now().UnixMilli())
 	}
 	return nil
+}
+
+func (r *Reversal) BeforeUpdate(tx *gorm.DB) error {
+	return r.validate()
 }
 
 type Source uint

@@ -39,16 +39,6 @@ func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request)
 
 	reversals := make([]*models.Reversal, 0)
 	for _, reversal := range req.Data {
-		if !reversal.SteamID.IsValid() {
-			render.Errorf(w, r, errors.BadRequest, "invalid steam id")
-			return
-		}
-
-		if reversal.RelatedSteamID != nil && !reversal.RelatedSteamID.IsValid() {
-			render.Errorf(w, r, errors.BadRequest, "invalid related steam id")
-			return
-		}
-
 		reversals = append(reversals, &models.Reversal{
 			SteamID:         reversal.SteamID,
 			MarketplaceSlug: key.MarketplaceSlug,

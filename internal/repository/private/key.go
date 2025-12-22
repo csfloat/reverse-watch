@@ -34,7 +34,7 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	return &key, nil
 }
 
-func (k *keyRepository) Update(id models.Snowflake, opts *repository.UpdateKeyOptions) error {
+func (k *keyRepository) Update(id models.Snowflake, opts *repository.KeyUpdateOptions) error {
 	return nil
 }
 

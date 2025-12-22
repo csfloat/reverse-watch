@@ -32,8 +32,8 @@ func (s *reversalService) GetReversal(id models.Snowflake) (*models.Reversal, er
 	return s.Reversal().Read(id)
 }
 
-func (s *reversalService) UpdateReversal(id models.Snowflake, fields map[string]interface{}) error {
-	return s.Reversal().Update(id, fields)
+func (s *reversalService) UpdateReversal(id models.Snowflake, opts *repository.ReversalUpdateOptions) error {
+	return s.Reversal().Update(id, opts)
 }
 
 func (s *reversalService) DeleteReversal(id models.Snowflake) error {
