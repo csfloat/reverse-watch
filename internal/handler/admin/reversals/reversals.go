@@ -60,7 +60,7 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.reversalSvc.UpdateReversal(snowflake, opts); err != nil {
-		render.Errorf(w, r, errors.DBUpdate, "failed to update reversal with id %q", snowflake)
+		render.Errorf(w, r, errors.DBUpdate, "failed to update reversal with id %q", snowflake.String())
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 
 	reversal, err := h.reversalSvc.GetReversal(snowflake)
 	if err != nil {
-		render.Errorf(w, r, errors.DBRead, "failed to get reversal with id %q", snowflake)
+		render.Errorf(w, r, errors.DBRead, "failed to get updated reversal with id %q", snowflake.String())
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *Handler) deleteReversalHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.reversalSvc.DeleteReversal(snowflake); err != nil {
-		render.Errorf(w, r, errors.DBDelete, "failed to delete reversal with id %q", snowflake)
+		render.Errorf(w, r, errors.DBDelete, "failed to delete reversal with id %q", snowflake.String())
 		return
 	}
 

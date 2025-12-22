@@ -11,6 +11,7 @@ import (
 	adminreversals "reverse-watch/internal/handler/admin/reversals"
 	"reverse-watch/internal/handler/marketplace/keys"
 	"reverse-watch/internal/handler/reversals"
+	"reverse-watch/internal/handler/users"
 	rwmiddleware "reverse-watch/internal/middleware"
 	"reverse-watch/internal/repository/private"
 	"reverse-watch/internal/repository/public"
@@ -83,6 +84,10 @@ func New(cfg config.Config) *Server {
 		r.Route("/reversals", func(r chi.Router) {
 			r.Use(rwmiddleware.Middleware(keySvc))
 			reversals.NewReversalHandler(keySvc, reversalSvc).RegisterRoutes(r)
+		})
+
+		r.Route("/users", func(r chi.Router) {
+			users.NewUsersHandler(reversalSvc).RegisterRoutes(r)
 		})
 	})
 
