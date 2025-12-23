@@ -4,10 +4,6 @@ import (
 	"reverse-watch/internal/domain/models"
 )
 
-type UpdateKeyOptions struct {
-	Permissions *models.Permissions
-}
-
 type KeyListOptions struct {
 	MarketplaceSlug *string
 }
@@ -15,7 +11,6 @@ type KeyListOptions struct {
 type KeyRepository interface {
 	Create(key *models.Key) error
 	Read(id models.Snowflake) (*models.Key, error)
-	Update(id models.Snowflake, opts *UpdateKeyOptions) error
 	Delete(id models.Snowflake) error
 	List(opts *KeyListOptions) ([]*models.Key, error)
 }
