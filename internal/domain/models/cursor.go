@@ -39,7 +39,7 @@ func (c *Cursor) UnmarshalJSON(data []byte) error {
 
 func (c *Cursor) Encode() (*string, error) {
 	cursorpb := &cpb.Cursor{
-		Snowflake:  uint64(c.ID),
+		Id:         uint64(c.ID),
 		ReversedAt: c.ReversedAt,
 	}
 
@@ -64,7 +64,7 @@ func DecodeCursor(encoded string) (*Cursor, error) {
 	}
 
 	return &Cursor{
-		ID:         Snowflake(cursorpb.Snowflake),
+		ID:         Snowflake(cursorpb.Id),
 		ReversedAt: cursorpb.ReversedAt,
 	}, nil
 }
