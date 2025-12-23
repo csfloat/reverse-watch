@@ -7,7 +7,7 @@ option go_package = "../cursorpb";
 message Cursor {
   // REQUIRED
   // ID of the last reversal from the query that generated this cursor
-  uint64 snowflake = 1;
+  uint64 id = 1;
 
   // REQUIRED
   // The timestamp of the last reversal from the query that generated this cursor

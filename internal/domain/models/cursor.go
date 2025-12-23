@@ -29,7 +29,7 @@ func (c *Cursor) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	cursor, err := DecodeCursor(string(data))
+	cursor, err := DecodeCursor(encoded)
 	if err != nil {
 		return err
 	}

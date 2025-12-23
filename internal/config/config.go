@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
@@ -35,6 +37,22 @@ func Load() Config {
 func load() Config {
 	v := viper.New()
 
+	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			if from.Kind() != reflect.String || to.Type() != reflect.TypeOf(Environment("")) {
+				return from.Interface(), nil
+			}
+
+			env := Environment(from.String())
+			switch env {
+			case Development, Production:
+				return env, nil
+			default:
+				return nil, fmt.Errorf("invalid environment")
+			}
+		},
+	))
+
 	v.SetDefault("StaticDir", "./static")
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", Development)
@@ -53,7 +71,7 @@ func load() Config {
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg, opts); err != nil {
 		panic(err)
 	}
 	return cfg
