@@ -23,6 +23,12 @@ func (k *Key) BeforeCreate(tx *gorm.DB) error {
 	if k.KeyHash == "" {
 		return fmt.Errorf("key hash is required")
 	}
+	if k.Salt == "" {
+		return fmt.Errorf("salt is required")
+	}
+	if k.MarketplaceSlug == "" {
+		return fmt.Errorf("marketplace_slug is required")
+	}
 
 	if k.HasPermissions(PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
 		return fmt.Errorf("admin scoped keys can only be created for CSFloat")
