@@ -43,9 +43,6 @@ func (m *marketplaceRepository) Delete(slug string) error {
 		if err := tx.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Commit().Error; err != nil {
-			return err
-		}
 		return nil
 	})
 }

@@ -62,7 +62,7 @@ func (p *privateRepository) Key() repository.KeyRepository {
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
-	return nil
+	return NewMarketplaceRepository(p.conn)
 }
 
 func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
