@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"fmt"
+	"time"
+
 	"reverse-watch/internal/domain/models"
 )
 
@@ -12,12 +15,12 @@ type ReversalListOptions struct {
 }
 
 type ReversalUpdateOptions struct {
-	SteamID         *models.SteamID
-	MarketplaceSlug *string
-	Source          *models.Source
-	RelatedSteamID  *models.SteamID
-	ReversedAt      *uint64
-	ExpungedAt      *uint64
+	SteamID         *models.SteamID `json:"steam_id"`
+	MarketplaceSlug *string         `json:"marketplace_slug"`
+	Source          *models.Source  `json:"source"`
+	RelatedSteamID  *models.SteamID `json:"related_steam_id"`
+	ReversedAt      *uint64         `json:"reversed_at"`
+	ExpungedAt      *uint64         `json:"expunged_at"`
 }
 
 func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {
@@ -40,7 +43,39 @@ func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {
 	if o.ExpungedAt != nil {
 		fields["expunged_at"] = o.ExpungedAt
 	}
+
+	// Ensure related_steam_id is nullified when source is not SourceRelatedUser
+	if o.Source != nil && *o.Source != models.SourceRelatedUser {
+		fields["related_steam_id"] = nil
+	}
 	return fields
+}
+
+func (o *ReversalUpdateOptions) Validate() error {
+	if o.SteamID != nil {
+		if !o.SteamID.IsValid() {
+			return fmt.Errorf("steam_id is invalid")
+		}
+	}
+	if o.MarketplaceSlug != nil {
+		if *o.MarketplaceSlug == "" {
+			return fmt.Errorf("cannot set an empty marketplace_slug")
+		}
+	}
+
+	if err := models.ValidateSourceAndRelatedID(o.Source, o.RelatedSteamID); err != nil {
+		return err
+	}
+
+	now := uint64(time.Now().UnixMilli())
+	if o.ReversedAt != nil && *o.ReversedAt > now {
+		return fmt.Errorf("reversed_at cannot be in the future")
+	}
+
+	if o.ExpungedAt != nil && *o.ExpungedAt > now {
+		return fmt.Errorf("expunged_at cannot be in the future")
+	}
+	return nil
 }
 
 type ReversalRepository interface {

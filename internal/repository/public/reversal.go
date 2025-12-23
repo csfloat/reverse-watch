@@ -1,11 +1,11 @@
 package public
 
 import (
+	"fmt"
 	"time"
 
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
-	"reverse-watch/internal/errors"
 
 	"gorm.io/gorm"
 )
@@ -40,9 +40,14 @@ func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error)
 
 func (r *reversalRepository) Update(id models.Snowflake, opts *repository.ReversalUpdateOptions) error {
 	if opts == nil {
-		return errors.New(errors.InternalServerError, "opts cannot be nil")
+		return fmt.Errorf("opts cannot be nil")
 	}
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(opts.ToFields()).Error
+	if err := opts.Validate(); err != nil {
+		return err
+	}
+
+	fields := opts.ToFields()
+	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields).Error
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
@@ -59,7 +64,7 @@ func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions
 		return query
 	}
 	if opts.SteamID.IsValid() {
-		query = query.Where("steam_id = ?", opts.SteamID)
+		query = query.Where("steam_id = ? OR related_steam_id = ?", opts.SteamID, opts.SteamID)
 	}
 	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)

@@ -31,19 +31,8 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("marketplace_slug is required")
 	}
 
-	if r.RelatedSteamID != nil {
-		if !r.RelatedSteamID.IsValid() {
-			return fmt.Errorf("related_steam_id is invalid")
-		}
-		if r.Source == nil || *r.Source != SourceRelatedUser {
-			return fmt.Errorf("invalid related_steam_id and source combination")
-		}
-	}
-
-	if r.Source != nil && *r.Source == SourceRelatedUser {
-		if r.RelatedSteamID == nil || !r.RelatedSteamID.IsValid() {
-			return fmt.Errorf("invalid related_steam_id and source combination")
-		}
+	if err := ValidateSourceAndRelatedID(r.Source, r.RelatedSteamID); err != nil {
+		return err
 	}
 
 	now := uint64(time.Now().UnixMilli())
@@ -57,6 +46,28 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 
 	if r.ReversedAt == 0 {
 		r.ReversedAt = now
+	}
+	return nil
+}
+
+func ValidateSourceAndRelatedID(source *Source, relatedSteamID *SteamID) error {
+	if relatedSteamID != nil {
+		if !relatedSteamID.IsValid() {
+			return fmt.Errorf("related_steam_id is invalid")
+		}
+		if source == nil || *source != SourceRelatedUser {
+			return fmt.Errorf("invalid related_steam_id and source combination")
+		}
+	}
+
+	if source != nil {
+		if *source == SourceRelatedUser {
+			if relatedSteamID == nil || !relatedSteamID.IsValid() {
+				return fmt.Errorf("invalid related_steam_id and source combination")
+			}
+		} else if relatedSteamID != nil {
+			return fmt.Errorf("invalid related_steam_id and source combination")
+		}
 	}
 	return nil
 }

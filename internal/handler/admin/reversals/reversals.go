@@ -25,42 +25,14 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req struct {
-		SteamID         *models.SteamID `json:"steam_id"`
-		MarketplaceSlug *string         `json:"marketplace_slug"`
-		Source          *models.Source  `json:"source"`
-		RelatedSteamID  *models.SteamID `json:"related_steam_id"`
-		ReversedAt      *uint64         `json:"reversed_at"`
-		ExpungedAt      *uint64         `json:"expunged_at"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var opts repository.ReversalUpdateOptions
+	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		render.Error(w, r, &errors.JSONDecode)
 		return
 	}
 
-	opts := &repository.ReversalUpdateOptions{}
-	if req.SteamID != nil {
-		opts.SteamID = req.SteamID
-	}
-	if req.MarketplaceSlug != nil {
-		opts.MarketplaceSlug = req.MarketplaceSlug
-	}
-	if req.Source != nil {
-		opts.Source = req.Source
-	}
-	if req.RelatedSteamID != nil {
-		opts.RelatedSteamID = req.RelatedSteamID
-	}
-	if req.ReversedAt != nil {
-		opts.ReversedAt = req.ReversedAt
-	}
-	if req.ExpungedAt != nil {
-		opts.ExpungedAt = req.ExpungedAt
-	}
-
-	if err := h.reversalSvc.UpdateReversal(snowflake, opts); err != nil {
-		render.Errorf(w, r, errors.DBUpdate, "failed to update reversal with id %q", snowflake.String())
+	if err := h.reversalSvc.UpdateReversal(snowflake, &opts); err != nil {
+		render.Errorf(w, r, errors.DBUpdate, "failed to update reversal with id %q: %v", snowflake.String(), err)
 		return
 	}
 
