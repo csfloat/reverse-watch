@@ -19,7 +19,7 @@ var (
 type Snowflake uint64
 
 func (s *Snowflake) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatUint(uint64(*s), 10))
+	return json.Marshal(s.String())
 }
 
 func (s *Snowflake) UnmarshalJSON(data []byte) error {
@@ -35,6 +35,10 @@ func (s *Snowflake) UnmarshalJSON(data []byte) error {
 
 	*s = Snowflake(n)
 	return nil
+}
+
+func (s *Snowflake) String() string {
+	return strconv.FormatUint(uint64(*s), 10)
 }
 
 type Parts struct {

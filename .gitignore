@@ -3,9 +3,9 @@
 
 config.json
 
-data/*.db
-data/*.db-shm
-data/*.db-wal
+static/*.db
+static/*.db-shm
+static/*.db-wal
 
 *.exe
 *.so
