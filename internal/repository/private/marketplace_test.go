@@ -1,10 +1,15 @@
 package private
 
 import (
+	"errors"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"gorm.io/gorm"
 )
 
 func TestMarketplaceRepository_Create(t *testing.T) {
@@ -77,41 +82,102 @@ func TestMarketplaceRepository_Read(t *testing.T) {
 	}
 }
 
+func TestMarketplaceRepository_Read_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	_, err := marketplaceRepo.Read("not-existent-slug")
+	if err == nil || !errors.Is(gorm.ErrRecordNotFound, err) {
+		t.Fatalf("got nil error, wanted %v error", gorm.ErrRecordNotFound)
+	}
+}
+
 func TestMarketplaceRepository_Update(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewPrivateTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
+	testMarketplace1 := &models.Marketplace{
+		Slug:     "test-marketplace1",
+		Name:     "Test Marketplace 1",
 		IsActive: true,
 	}
-	testutil.Insert(t, db, testMarketplace)
-
-	fieldsToUpdate := map[string]interface{}{
-		"slug":      "updated-test-marketplace",
-		"name":      "Updated Test Marketplace",
-		"is_active": false,
+	testMarketplace2 := &models.Marketplace{
+		Slug:     "test-marketplace2",
+		Name:     "Test Marketplace 2",
+		IsActive: true,
 	}
-	if err := marketplaceRepo.Update(testMarketplace.Slug, fieldsToUpdate); err != nil {
-		t.Fatalf("Update(): %v", err)
-	}
-
-	var updatedMarketplace models.Marketplace
-	if err := db.Where("slug = ?", fieldsToUpdate["slug"]).First(&updatedMarketplace).Error; err != nil {
-		t.Fatalf("First(): %v", err)
+	testMarketplace3 := &models.Marketplace{
+		Slug:     "test-marketplace3",
+		Name:     "Test Marketplace 3",
+		IsActive: false,
 	}
 
-	if updatedMarketplace.Slug != fieldsToUpdate["slug"] {
-		t.Errorf("got slug %q, wanted %q", updatedMarketplace.Slug, fieldsToUpdate["slug"])
+	testCases := []struct {
+		name     string
+		original *models.Marketplace
+		fields   map[string]interface{}
+		want     *models.Marketplace
+	}{
+		{
+			name:     "allFields",
+			original: testMarketplace1,
+			fields: map[string]interface{}{
+				"slug":      "updated-test-marketplace1",
+				"name":      "Updated Test Marketplace 1",
+				"is_active": false,
+			},
+			want: &models.Marketplace{
+				Slug:     "updated-test-marketplace1",
+				Name:     "Updated Test Marketplace 1",
+				IsActive: false,
+			},
+		},
+		{
+			name:     "partialFields",
+			original: testMarketplace2,
+			fields: map[string]interface{}{
+				"name": "Updated Test Marketplace 2",
+			},
+			want: &models.Marketplace{
+				Slug:     "test-marketplace2",
+				Name:     "Updated Test Marketplace 2",
+				IsActive: true,
+			},
+		},
+		{
+			name:     "noFields",
+			original: testMarketplace3,
+			fields:   map[string]interface{}{},
+			want:     testMarketplace3,
+		},
 	}
-	if updatedMarketplace.Name != fieldsToUpdate["name"] {
-		t.Errorf("got name %q, wanted %q", updatedMarketplace.Name, fieldsToUpdate["name"])
-	}
-	if updatedMarketplace.IsActive != fieldsToUpdate["is_active"] {
-		t.Errorf("got isActive %v, wanted %v", updatedMarketplace.IsActive, fieldsToUpdate["is_active"])
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testutil.Insert(t, db, tc.original)
+
+			if err := marketplaceRepo.Update(tc.original.Slug, tc.fields); err != nil {
+				t.Fatalf("Update(): %v", err)
+			}
+
+			slug := tc.original.Slug
+			if updatedSlug, ok := tc.fields["slug"].(string); ok {
+				slug = updatedSlug
+			}
+
+			var gotMarketplace models.Marketplace
+			if err := db.Where("slug = ?", slug).First(&gotMarketplace).Error; err != nil {
+				t.Fatalf("First(): %v", err)
+			}
+
+			if diff := cmp.Diff(gotMarketplace, *tc.want, cmpopts.IgnoreFields(models.Marketplace{}, "CreatedAt", "UpdatedAt")); diff != "" {
+				t.Error(diff)
+			}
+		})
 	}
 }
 
