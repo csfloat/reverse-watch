@@ -34,10 +34,6 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	return &key, nil
 }
 
-func (k *keyRepository) Update(id models.Snowflake, opts *repository.KeyUpdateOptions) error {
-	return nil
-}
-
 func (k *keyRepository) Delete(id models.Snowflake) error {
 	return k.conn.Model(&models.Key{}).Where("id = ?", id).Delete(&models.Key{}).Error
 }

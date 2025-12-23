@@ -58,10 +58,6 @@ func (s *keyService) GetKey(id models.Snowflake) (*models.Key, error) {
 	return s.Key().Read(id)
 }
 
-func (s *keyService) UpdateKey(id models.Snowflake, opts *repository.KeyUpdateOptions) error {
-	return s.Key().Update(id, opts)
-}
-
 func (s *keyService) DeleteKey(id models.Snowflake) error {
 	return s.Key().Delete(id)
 }
