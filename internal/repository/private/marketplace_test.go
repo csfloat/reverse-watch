@@ -53,6 +53,85 @@ func TestMarketplaceRepository_Create_Error(t *testing.T) {
 	}
 }
 
+func TestMarketplaceRepository_BeforeCreate(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testCases := []struct {
+		name        string
+		marketplace *models.Marketplace
+	}{
+		{
+			name: "validMarketplace",
+			marketplace: &models.Marketplace{
+				Slug:     "test-marketplace",
+				Name:     "Test Marketplace",
+				IsActive: true,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := marketplaceRepo.Create(tc.marketplace); err != nil {
+				t.Fatalf("Create(): %v", err)
+			}
+
+			if tc.marketplace.CreatedAt == 0 {
+				t.Errorf("got CreatedAt %d, wanted non-zero value", tc.marketplace.CreatedAt)
+			}
+			if tc.marketplace.UpdatedAt == 0 {
+				t.Errorf("got UpdatedAt %d, wanted non-zero value", tc.marketplace.UpdatedAt)
+			}
+		})
+	}
+}
+
+func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testCases := []struct {
+		name        string
+		marketplace *models.Marketplace
+		wantErr     string
+	}{
+		{
+			name: "emptySlug",
+			marketplace: &models.Marketplace{
+				Slug: "",
+				Name: "Test Marketplace",
+			},
+			wantErr: "slug is required",
+		},
+		{
+			name: "emptyName",
+			marketplace: &models.Marketplace{
+				Slug: "test-marketplace",
+				Name: "",
+			},
+			wantErr: "name is required",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := marketplaceRepo.Create(tc.marketplace)
+			if err == nil {
+				t.Fatalf("Create(): expected error")
+			}
+
+			if err.Error() != tc.wantErr {
+				t.Errorf("got error %v, wanted %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestMarketplaceRepository_Read(t *testing.T) {
 	t.Parallel()
 
@@ -169,12 +248,12 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 				slug = updatedSlug
 			}
 
-			var gotMarketplace models.Marketplace
+			var gotMarketplace *models.Marketplace
 			if err := db.Where("slug = ?", slug).First(&gotMarketplace).Error; err != nil {
 				t.Fatalf("First(): %v", err)
 			}
 
-			if diff := cmp.Diff(gotMarketplace, *tc.want, cmpopts.IgnoreFields(models.Marketplace{}, "CreatedAt", "UpdatedAt")); diff != "" {
+			if diff := cmp.Diff(gotMarketplace, tc.want, cmpopts.IgnoreFields(models.Marketplace{}, "CreatedAt", "UpdatedAt")); diff != "" {
 				t.Error(diff)
 			}
 		})
