@@ -273,23 +273,74 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 	db := testutil.NewPrivateTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
-		IsActive: true,
+	testMarketplaces := []*models.Marketplace{
+		{
+			Slug:     "test-marketplace-1",
+			Name:     "Test Marketplace 1",
+			IsActive: true,
+		},
+		{
+			Slug:     "test-marketplace-2",
+			Name:     "Test Marketplace 2",
+			IsActive: true,
+		},
 	}
-	testutil.Insert(t, db, testMarketplace)
+	testutil.Insert(t, db, testMarketplaces...)
 
-	if err := marketplaceRepo.Delete(testMarketplace.Slug); err != nil {
+	testKeys := []*models.Key{
+		{
+			KeyHash:         "test-key-hash-1",
+			Salt:            "test-salt-1",
+			MarketplaceSlug: testMarketplaces[0].Slug,
+		},
+		{
+			KeyHash:         "test-key-hash-2",
+			Salt:            "test-salt-2",
+			MarketplaceSlug: testMarketplaces[1].Slug,
+		},
+	}
+	testutil.Insert(t, db, testKeys...)
+
+	if err := marketplaceRepo.Delete(testMarketplaces[0].Slug); err != nil {
 		t.Fatalf("Delete(): %v", err)
 	}
 
 	var deletedMarketplace models.Marketplace
-	err := db.Where("slug = ?", testMarketplace.Slug).First(&deletedMarketplace).Error
+	err := db.Where("slug = ?", testMarketplaces[0].Slug).First(&deletedMarketplace).Error
 	if err == nil {
 		t.Fatalf("got nil error, wanted error")
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("got %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+
+	// Ensure corresponding keys were deleted
+	var deletedKey models.Key
+	err = db.Where("marketplace_slug = ?", testMarketplaces[0].Slug).First(&deletedKey).Error
+	if err == nil {
+		t.Fatalf("got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("got %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+
+	// Ensure other marketplace remains
+	var otherMarketplace models.Marketplace
+	if err := db.Where("slug = ?", testMarketplaces[1].Slug).First(&otherMarketplace).Error; err != nil {
+		t.Fatalf("First(): failed to fetch remaining marketplace %v", err)
+	}
+
+	if diff := cmp.Diff(&otherMarketplace, testMarketplaces[1]); diff != "" {
+		t.Error(diff)
+	}
+
+	// Ensure other marketplace's keys remain
+	var otherKey models.Key
+	if err := db.Where("marketplace_slug = ?", testMarketplaces[1].Slug).First(&otherKey).Error; err != nil {
+		t.Fatalf("First(): failed to fetch remaining marketplace's keys %v", err)
+	}
+
+	if diff := cmp.Diff(&otherKey, testKeys[1]); diff != "" {
+		t.Error(diff)
 	}
 }
