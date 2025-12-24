@@ -12,47 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestMarketplaceRepository_Create(t *testing.T) {
-	t.Parallel()
-
-	db := testutil.NewPrivateTestDB(t)
-	marketplaceRepo := NewMarketplaceRepository(db)
-
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
-		IsActive: true,
-	}
-
-	if err := marketplaceRepo.Create(testMarketplace); err != nil {
-		t.Fatalf("Create(): %v", err)
-	}
-
-	var createdMarketplace models.Marketplace
-	if err := db.Where("slug = ?", testMarketplace.Slug).First(&createdMarketplace).Error; err != nil {
-		t.Errorf("First(): %v", err)
-	}
-}
-
-func TestMarketplaceRepository_Create_Error(t *testing.T) {
-	t.Parallel()
-
-	db := testutil.NewPrivateTestDB(t)
-	marketplaceRepo := NewMarketplaceRepository(db)
-
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
-		IsActive: true,
-	}
-	testutil.Insert(t, db, testMarketplace)
-
-	// Attempt to create the same marketplace again
-	if err := marketplaceRepo.Create(testMarketplace); err == nil {
-		t.Fatalf("Create(): expected error")
-	}
-}
-
 func TestMarketplaceRepository_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
@@ -132,6 +91,51 @@ func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
 	}
 }
 
+func TestMarketplaceRepository_Create(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+
+	if err := marketplaceRepo.Create(testMarketplace); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	var createdMarketplace models.Marketplace
+	if err := db.Where("slug = ?", testMarketplace.Slug).First(&createdMarketplace).Error; err != nil {
+		t.Errorf("First(): %v", err)
+	}
+}
+
+func TestMarketplaceRepository_Create_DuplicatePrimaryKey(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+	testutil.Insert(t, db, testMarketplace)
+
+	// Attempt to create the same marketplace again
+	err := marketplaceRepo.Create(testMarketplace)
+	if err == nil {
+		t.Fatalf("Create(): got nil error, wanted error")
+	}
+	if err.Error() != "UNIQUE constraint failed: marketplaces.slug" {
+		t.Fatalf("Create(): got error %v, wanted %v", err, "UNIQUE constraint failed: marketplaces.slug")
+	}
+}
+
 func TestMarketplaceRepository_Read(t *testing.T) {
 	t.Parallel()
 
@@ -168,8 +172,11 @@ func TestMarketplaceRepository_Read_NotFound(t *testing.T) {
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	_, err := marketplaceRepo.Read("not-existent-slug")
-	if err == nil || !errors.Is(gorm.ErrRecordNotFound, err) {
-		t.Fatalf("got nil error, wanted %v error", gorm.ErrRecordNotFound)
+	if err == nil {
+		t.Fatalf("Read(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("Read(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
 	}
 }
 
@@ -278,7 +285,11 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 	}
 
 	var deletedMarketplace models.Marketplace
-	if err := db.Where("slug = ?", testMarketplace.Slug).First(&deletedMarketplace).Error; err == nil {
+	err := db.Where("slug = ?", testMarketplace.Slug).First(&deletedMarketplace).Error
+	if err == nil {
 		t.Fatalf("got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("got %v, wanted %v", err, gorm.ErrRecordNotFound)
 	}
 }
