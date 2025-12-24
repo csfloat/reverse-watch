@@ -171,7 +171,7 @@ func TestMarketplaceRepository_Read_NotFound(t *testing.T) {
 	db := testutil.NewPrivateTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
-	_, err := marketplaceRepo.Read("not-existent-slug")
+	_, err := marketplaceRepo.Read("non-existent-slug")
 	if err == nil {
 		t.Fatalf("Read(): got nil error, wanted error")
 	}
