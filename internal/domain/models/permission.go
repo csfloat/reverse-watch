@@ -33,7 +33,7 @@ func (p *Permissions) AddPermission(permission Permissions) {
 }
 
 func (p *Permissions) AddAllPermissions() {
-	*p = PermissionAdmin | PermissionDelete | PermissionManage | PermissionWrite | PermissionRead | PermissionExport
+	*p = Permissions(^uint32(0))
 }
 
 func (p *Permissions) RemovePermission(permission Permissions) {
