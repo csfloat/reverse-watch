@@ -11,6 +11,7 @@ import (
 type Key struct {
 	KeyHash         string             `gorm:"primaryKey" json:"-"`
 	CreatedAt       uint64             `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt       uint64             `gorm:"autoUpdateTime:milli" json:"updated_at"`
 	Environment     config.Environment `json:"-"`
 	MarketplaceSlug string             `json:"marketplace_slug"`
 	Marketplace     *Marketplace       `json:"-"`
