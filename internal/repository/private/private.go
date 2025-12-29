@@ -107,7 +107,7 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 		return nil
 	}
 
-	secretKey, err := keygen.Generate()
+	secretKey, err := keygen.GenerateSecretKey()
 	if err != nil {
 		return err
 	}
