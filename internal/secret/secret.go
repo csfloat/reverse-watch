@@ -51,7 +51,7 @@ func (s *secretKey) Format() string {
 	return fmt.Sprintf("%s%s", prefix, s.secret)
 }
 
-func (s *secretKey) Hash() string {
+func (s *secretKey) ID() string {
 	hash := sha256.Sum256([]byte(s.Format()))
 	return hex.EncodeToString(hash[:])
 }

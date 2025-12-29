@@ -121,7 +121,7 @@ func seedAdminAPIKey(tx *gorm.DB, cfg config.Config, keygen secret.KeyGenerator)
 	permissions.AddAllPermissions()
 
 	adminKey := &models.Key{
-		KeyHash:         secretKey.Hash(),
+		ID:              secretKey.ID(),
 		Environment:     cfg.Environment,
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,

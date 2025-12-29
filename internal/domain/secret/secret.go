@@ -2,7 +2,7 @@ package secret
 
 type SecretKey interface {
 	Format() string
-	Hash() string
+	ID() string
 }
 
 type KeyGenerator interface {
