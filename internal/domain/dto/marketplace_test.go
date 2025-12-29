@@ -41,6 +41,7 @@ func TestMarketplaceUpdateOptions_FieldCoverage(t *testing.T) {
 		marketplaceField, ok := marketplaceFields[optsField.Name]
 		if !ok {
 			t.Errorf("MarketplaceUpdateOptions contains non-existent Marketplace field: %s", optsField.Name)
+			continue
 		}
 
 		if optsField.Type.Kind() != reflect.Ptr {
