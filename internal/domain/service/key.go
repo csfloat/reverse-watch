@@ -7,9 +7,9 @@ import (
 
 type KeyService interface {
 	CreateKey(marketplaceSlug string, permissions models.Permissions) (*models.RawKey, error)
-	GetKey(id models.Snowflake) (*models.Key, error)
-	UpdateKey(id models.Snowflake, opts *repository.UpdateKeyOptions) error
-	DeleteKey(id models.Snowflake) error
+	GetKey(id string) (*models.Key, error)
+	UpdateKey(id string, opts *repository.UpdateKeyOptions) error
+	DeleteKey(id string) error
 	ListKeys(opts *repository.KeyListOptions) ([]*models.Key, error)
 	ValidateKey(secretKey string) (*models.Key, error)
 }
