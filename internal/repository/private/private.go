@@ -100,7 +100,7 @@ func seedMarketplaces(tx *gorm.DB) error {
 
 func seedAdminAPIKey(tx *gorm.DB, env config.Environment, keygen secret.KeyGenerator) error {
 	var exists bool
-	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ? AND environment = ?)`, models.PermissionAdmin, models.PermissionAdmin, cfg.Environment).
+	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ? AND environment = ?)`, models.PermissionAdmin, models.PermissionAdmin, env).
 		Row().Scan(&exists)
 	if err != nil {
 		return err
@@ -115,13 +115,22 @@ func seedAdminAPIKey(tx *gorm.DB, env config.Environment, keygen secret.KeyGener
 		return err
 	}
 
-	logging.Log.Infof("GENERATED ADMIN SECRET KEY: %s\n\nSAVE THIS FOR FUTURE PURPOSES, WON'T BE SHOWN AGAIN!", secretKey.Format())
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		return err
+	}
+	logging.Log.Infof("GENERATED ADMIN SECRET KEY: %s\n\nSAVE THIS FOR FUTURE PURPOSES, WON'T BE SHOWN AGAIN!", formattedKey)
+
+	id, err := secretKey.ID()
+	if err != nil {
+		return err
+	}
 
 	permissions := models.PermissionAdmin
 	permissions.AddAllPermissions()
 
 	adminKey := &models.Key{
-		ID:              secretKey.ID(),
+		ID:              id,
 		Environment:     env,
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,

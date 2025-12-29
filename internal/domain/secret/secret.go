@@ -1,8 +1,8 @@
 package secret
 
 type SecretKey interface {
-	Format() string
-	ID() string
+	Format() (string, error)
+	ID() (string, error)
 }
 
 type KeyGenerator interface {

@@ -12,8 +12,8 @@ import (
 )
 
 var keyPrefixes = map[config.Environment]string{
-	config.Development: "sk_test_",
-	config.Production:  "sk_live_",
+	config.Development: "reversewatch_test_",
+	config.Production:  "reversewatch_live_",
 }
 
 func generateRandomBytes(length uint) ([]byte, error) {
@@ -46,14 +46,21 @@ func newSecretKey(env config.Environment) (secret.SecretKey, error) {
 	}, nil
 }
 
-func (s *secretKey) Format() string {
-	prefix := keyPrefixes[s.env]
-	return fmt.Sprintf("%s%s", prefix, s.secret)
+func (s *secretKey) Format() (string, error) {
+	prefix, ok := keyPrefixes[s.env]
+	if !ok {
+		return "", fmt.Errorf("prefix doesn't exist for the given environment")
+	}
+	return fmt.Sprintf("%s%s", prefix, s.secret), nil
 }
 
-func (s *secretKey) ID() string {
-	hash := sha256.Sum256([]byte(s.Format()))
-	return hex.EncodeToString(hash[:])
+func (s *secretKey) ID() (string, error) {
+	key, err := s.Format()
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(hash[:]), nil
 }
 
 type keyGenerator struct {
