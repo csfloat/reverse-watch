@@ -1,13 +1,12 @@
 package private
 
 import (
-	"encoding/base64"
 	"path/filepath"
 
 	"reverse-watch/internal/config"
-	"reverse-watch/internal/crypto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
+	"reverse-watch/internal/domain/secret"
 	"reverse-watch/internal/logging"
 
 	"gorm.io/driver/sqlite"
@@ -22,7 +21,7 @@ type privateRepository struct {
 
 var _ repository.PrivateRepository = (*privateRepository)(nil)
 
-func NewPrivateRepository(cfg config.Config) (repository.PrivateRepository, error) {
+func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
 	rootDir, err := config.GetProjectRootDir()
 	if err != nil {
 		return nil, err
@@ -48,7 +47,7 @@ func NewPrivateRepository(cfg config.Config) (repository.PrivateRepository, erro
 		return nil, err
 	}
 
-	if err := seedAdminAPIKey(conn); err != nil {
+	if err := seedAdminAPIKey(conn, keygen); err != nil {
 		return nil, err
 	}
 
@@ -96,7 +95,7 @@ func seedMarketplaces(tx *gorm.DB) error {
 	}).Create(marketplace).Error
 }
 
-func seedAdminAPIKey(tx *gorm.DB) error {
+func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 	var exists bool
 	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ?)`, models.PermissionAdmin, models.PermissionAdmin).
 		Row().Scan(&exists)
@@ -108,30 +107,18 @@ func seedAdminAPIKey(tx *gorm.DB) error {
 		return nil
 	}
 
-	id, secret, salt, err := crypto.GenerateSecretKey()
+	secretKey, err := keygen.Generate()
 	if err != nil {
 		return err
 	}
 
-	encodedSecret := base64.RawURLEncoding.EncodeToString(secret)
-	encodedSalt := base64.RawURLEncoding.EncodeToString(salt)
-
-	secretKey := crypto.FormatAPIKey(uint64(id), encodedSecret)
-	logging.Log.Infof("Generated admin secret key: %s", secretKey)
+	logging.Log.Infof("GENERATED ADMIN SECRET KEY: %s\n\nSAVE THIS FOR FUTURE PURPOSES, WON'T BE SHOWN AGAIN!", secretKey.Format())
 
 	permissions := models.PermissionAdmin
-	permissions.AddPermission(models.PermissionDelete)
-	permissions.AddPermission(models.PermissionManage)
-	permissions.AddPermission(models.PermissionWrite)
-	permissions.AddPermission(models.PermissionRead)
-	permissions.AddPermission(models.PermissionExport)
+	permissions.AddAllPermissions()
 
 	adminKey := &models.Key{
-		Model: models.Model{
-			ID: id,
-		},
-		KeyHash:         crypto.HashSecret(encodedSecret, encodedSalt),
-		Salt:            encodedSalt,
+		KeyHash:         secretKey.Hash(),
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,
 	}
