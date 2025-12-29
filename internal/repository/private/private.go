@@ -57,14 +57,17 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 }
 
 func (p *privateRepository) Key() repository.KeyRepository {
+	// STUB
 	return nil
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
+	// STUB
 	return nil
 }
 
 func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
+	// STUB
 	return nil
 }
 
