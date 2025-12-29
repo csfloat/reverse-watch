@@ -14,9 +14,9 @@ type KeyListOptions struct {
 
 type KeyRepository interface {
 	Create(key *models.Key) error
-	Read(id models.Snowflake) (*models.Key, error)
-	Update(id models.Snowflake, opts *UpdateKeyOptions) error
-	Delete(id models.Snowflake) error
+	Read(id string) (*models.Key, error)
+	Update(id string, opts *UpdateKeyOptions) error
+	Delete(id string) error
 	List(opts *KeyListOptions) ([]*models.Key, error)
 }
 
