@@ -98,9 +98,9 @@ func seedMarketplaces(tx *gorm.DB) error {
 	}).Create(marketplace).Error
 }
 
-func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
+func seedAdminAPIKey(tx *gorm.DB, cfg config.Config, keygen secret.KeyGenerator) error {
 	var exists bool
-	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ?)`, models.PermissionAdmin, models.PermissionAdmin).
+	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ? AND environment = ?)`, models.PermissionAdmin, models.PermissionAdmin, cfg.Environment).
 		Row().Scan(&exists)
 	if err != nil {
 		return err
@@ -122,6 +122,7 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 
 	adminKey := &models.Key{
 		KeyHash:         secretKey.Hash(),
+		Environment:     cfg.Environment,
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,
 	}
