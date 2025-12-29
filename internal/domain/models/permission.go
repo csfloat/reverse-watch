@@ -32,6 +32,10 @@ func (p *Permissions) AddPermission(permission Permissions) {
 	*p = Permissions(uint32(*p) | uint32(permission))
 }
 
+func (p *Permissions) AddAllPermissions() {
+	*p = Permissions(^uint32(0))
+}
+
 func (p *Permissions) RemovePermission(permission Permissions) {
 	*p = Permissions(uint32(*p) & ^uint32(permission))
 }
