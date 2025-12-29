@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"reverse-watch/internal/config"
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
 
@@ -205,16 +207,16 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 	testCases := []struct {
 		name     string
 		original *models.Marketplace
-		fields   map[string]interface{}
+		opts     *dto.MarketplaceUpdateOptions
 		want     *models.Marketplace
 	}{
 		{
 			name:     "allFields",
 			original: testMarketplace1,
-			fields: map[string]interface{}{
-				"slug":      "updated-test-marketplace1",
-				"name":      "Updated Test Marketplace 1",
-				"is_active": false,
+			opts: &dto.MarketplaceUpdateOptions{
+				Slug:     testutil.Ptr("updated-test-marketplace1"),
+				Name:     testutil.Ptr("Updated Test Marketplace 1"),
+				IsActive: testutil.Ptr(false),
 			},
 			want: &models.Marketplace{
 				Slug:     "updated-test-marketplace1",
@@ -225,8 +227,8 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 		{
 			name:     "partialFields",
 			original: testMarketplace2,
-			fields: map[string]interface{}{
-				"name": "Updated Test Marketplace 2",
+			opts: &dto.MarketplaceUpdateOptions{
+				Name: testutil.Ptr("Updated Test Marketplace 2"),
 			},
 			want: &models.Marketplace{
 				Slug:     "test-marketplace2",
@@ -237,7 +239,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 		{
 			name:     "noFields",
 			original: testMarketplace3,
-			fields:   map[string]interface{}{},
+			opts:     &dto.MarketplaceUpdateOptions{},
 			want:     testMarketplace3,
 		},
 	}
@@ -246,13 +248,13 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testutil.Insert(t, db, tc.original)
 
-			if err := marketplaceRepo.Update(tc.original.Slug, tc.fields); err != nil {
+			if err := marketplaceRepo.Update(tc.original.Slug, tc.opts); err != nil {
 				t.Fatalf("Update(): %v", err)
 			}
 
 			slug := tc.original.Slug
-			if updatedSlug, ok := tc.fields["slug"].(string); ok {
-				slug = updatedSlug
+			if tc.opts.Slug != nil {
+				slug = *tc.opts.Slug
 			}
 
 			var gotMarketplace *models.Marketplace
@@ -290,12 +292,12 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 	testKeys := []*models.Key{
 		{
 			KeyHash:         "test-key-hash-1",
-			Salt:            "test-salt-1",
+			Environment:     config.Production,
 			MarketplaceSlug: testMarketplaces[0].Slug,
 		},
 		{
 			KeyHash:         "test-key-hash-2",
-			Salt:            "test-salt-2",
+			Environment:     config.Development,
 			MarketplaceSlug: testMarketplaces[1].Slug,
 		},
 	}
