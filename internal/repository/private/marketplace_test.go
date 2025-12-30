@@ -214,12 +214,11 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 			name:     "allFields",
 			original: testMarketplace1,
 			opts: &dto.MarketplaceUpdateOptions{
-				Slug:     testutil.Ptr("updated-test-marketplace1"),
 				Name:     testutil.Ptr("Updated Test Marketplace 1"),
 				IsActive: testutil.Ptr(false),
 			},
 			want: &models.Marketplace{
-				Slug:     "updated-test-marketplace1",
+				Slug:     "test-marketplace1",
 				Name:     "Updated Test Marketplace 1",
 				IsActive: false,
 			},
@@ -252,13 +251,8 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 				t.Fatalf("Update(): %v", err)
 			}
 
-			slug := tc.original.Slug
-			if tc.opts.Slug != nil {
-				slug = *tc.opts.Slug
-			}
-
 			var gotMarketplace *models.Marketplace
-			if err := db.Where("slug = ?", slug).First(&gotMarketplace).Error; err != nil {
+			if err := db.Where("slug = ?", tc.original.Slug).First(&gotMarketplace).Error; err != nil {
 				t.Fatalf("First(): %v", err)
 			}
 
@@ -291,12 +285,12 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 
 	testKeys := []*models.Key{
 		{
-			KeyHash:         "test-key-hash-1",
+			ID:              "test-key-hash-1",
 			Environment:     config.Production,
 			MarketplaceSlug: testMarketplaces[0].Slug,
 		},
 		{
-			KeyHash:         "test-key-hash-2",
+			ID:              "test-key-hash-2",
 			Environment:     config.Development,
 			MarketplaceSlug: testMarketplaces[1].Slug,
 		},
