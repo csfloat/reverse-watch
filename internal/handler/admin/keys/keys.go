@@ -34,14 +34,12 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction:   models.TargetActionAddKey,
-		TargetResource: &rawKey.ID,
-		Details: &models.Jsonb{
-			"marketplace_slug": req.MarketplaceSlug,
-			"permissions":      req.Permissions,
-		},
-	}); err != nil {
+	audit := models.NewKeyAdminAudit(models.TargetActionAddKey, rawKey.ID, &models.Jsonb{
+		"marketplace_slug": req.MarketplaceSlug,
+		"permissions":      req.Permissions,
+	})
+
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to create admin audit")
 		return
 	}
@@ -56,32 +54,23 @@ func (h *Handler) adminDeleteKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	snowflake, err := models.ToSnowflake(id)
-	if err != nil {
-		render.Error(w, r, &errors.InternalServerError)
-		return
-	}
-
 	// Fetch key and add details to admin audit
-	key, err := h.keySvc.GetKey(snowflake)
+	key, err := h.keySvc.GetKey(id)
 	if err != nil {
 		render.Error(w, r, &errors.DBRead)
 		return
 	}
 
-	if err := h.keySvc.DeleteKey(snowflake); err != nil {
+	if err := h.keySvc.DeleteKey(id); err != nil {
 		render.Error(w, r, &errors.DBDelete)
 		return
 	}
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction:   models.TargetActionRemoveKey,
-		TargetResource: &snowflake,
-		Details: &models.Jsonb{
-			"marketplace_slug": key.MarketplaceSlug,
-			"permissions":      key.Permissions,
-		},
-	}); err != nil {
+	audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, &models.Jsonb{
+		"marketplace_slug": key.MarketplaceSlug,
+		"permissions":      key.Permissions,
+	})
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}

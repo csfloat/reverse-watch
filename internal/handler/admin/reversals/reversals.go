@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/render"
 
@@ -25,7 +25,9 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var opts repository.ReversalUpdateOptions
+	var opts dto.ReversalUpdateOptions
+
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		render.Error(w, r, &errors.JSONDecode)
 		return
@@ -39,9 +41,10 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 	details := models.Jsonb(opts.ToFields())
 
 	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction:   models.TargetActionUpdateReversal,
-		TargetResource: &snowflake,
-		Details:        &details,
+		TargetAction:       models.TargetActionUpdateReversal,
+		TargetResourceType: models.TargetResourceTypeReversal,
+		TargetResource:     snowflake.String(),
+		Details:            &details,
 	}); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
@@ -75,8 +78,9 @@ func (h *Handler) deleteReversalHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction:   models.TargetActionRemoveReversal,
-		TargetResource: &snowflake,
+		TargetAction:       models.TargetActionRemoveReversal,
+		TargetResourceType: models.TargetResourceTypeReversal,
+		TargetResource:     snowflake.String(),
 	}); err != nil {
 		render.Errorf(w, r, errors.DBDelete, "failed to create admin audit")
 		return

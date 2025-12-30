@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/render"
@@ -51,19 +52,15 @@ func (h *Handler) createMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction: models.TargetActionAddMarketplace,
-		Details: &models.Jsonb{
-			"slug": storedMarketplace.Slug,
-		},
-	}); err != nil {
+	audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, storedMarketplace.Slug, nil)
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return
 	}
 
 	render.JSON(w, r, struct {
 		Marketplace *models.Marketplace `json:"marketplace"`
-		Key         *models.RawKey      `json:"key"`
+		Key         *dto.RawKey         `json:"key"`
 	}{
 		Marketplace: storedMarketplace,
 		Key:         rawKey,
@@ -77,43 +74,22 @@ func (h *Handler) patchMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req struct {
-		Name     *string `json:"name"`
-		IsActive *bool   `json:"is_active"`
-	}
+	var opts dto.MarketplaceUpdateOptions
 
 	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
 		render.Error(w, r, &errors.JSONDecode)
 		return
 	}
 
-	if req.IsActive == nil && req.Name == nil {
-		render.Error(w, r, &errors.BadRequest)
-		return
-	}
-
-	fields := make(map[string]interface{})
-	if req.Name != nil && *req.Name != "" {
-		fields["name"] = *req.Name
-	}
-	if req.IsActive != nil {
-		fields["is_active"] = *req.IsActive
-	}
-
-	if err := h.marketplaceSvc.UpdateMarketplace(slug, fields); err != nil {
+	if err := h.marketplaceSvc.UpdateMarketplace(slug, &opts); err != nil {
 		render.Errorf(w, r, errors.DBUpdate, "failed to update marketplace")
 		return
 	}
-	
-	// Construct details for admin audit
-	details := models.Jsonb(fields)
-	details["slug"] = slug
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction: models.TargetActionUpdateMarketplace,
-		Details:      &details,
-	}); err != nil {
+	details := models.Jsonb(opts.ToFields())
+	audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, &details)
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
 	}
@@ -139,12 +115,8 @@ func (h *Handler) deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction: models.TargetActionRemoveMarketplace,
-		Details: &models.Jsonb{
-			"slug": slug,
-		},
-	}); err != nil {
+	audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, nil)
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
 	}

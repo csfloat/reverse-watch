@@ -15,6 +15,7 @@ import (
 	rwmiddleware "reverse-watch/internal/middleware"
 	"reverse-watch/internal/repository/private"
 	"reverse-watch/internal/repository/public"
+	"reverse-watch/internal/secret"
 	"reverse-watch/internal/service/adminaudit"
 	"reverse-watch/internal/service/key"
 	"reverse-watch/internal/service/marketplace"
@@ -33,7 +34,10 @@ type Server struct {
 }
 
 func New(cfg config.Config) *Server {
-	privateRepo, err := private.NewPrivateRepository(cfg)
+	keygen := secret.NewKeyGenerator(cfg.Environment)
+
+	// Create repositories
+	privateRepo, err := private.NewPrivateRepository(cfg, keygen)
 	if err != nil {
 		panic(err)
 	}
@@ -42,8 +46,8 @@ func New(cfg config.Config) *Server {
 		panic(err)
 	}
 
-	// Create Services
-	keySvc := key.NewKeyService(privateRepo)
+	// Create services
+	keySvc := key.NewKeyService(privateRepo, keygen)
 	marketplaceSvc := marketplace.NewMarketplaceService(privateRepo)
 	adminAuditSvc := adminaudit.NewAdminAuditService(privateRepo)
 	reversalSvc := reversal.NewReversalService(privateRepo, publicRepo)
