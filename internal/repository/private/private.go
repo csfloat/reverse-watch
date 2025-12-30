@@ -119,7 +119,6 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 	if err != nil {
 		return err
 	}
-	logging.Log.Infof("GENERATED ADMIN SECRET KEY: %s\n\nSAVE THIS FOR FUTURE PURPOSES, WON'T BE SHOWN AGAIN!", formattedKey)
 
 	id, err := secretKey.ID()
 	if err != nil {
@@ -136,7 +135,10 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 		Permissions:     permissions,
 	}
 
-	return tx.Clauses(clause.OnConflict{
-		DoNothing: true,
-	}).Create(adminKey).Error
+	if err := tx.Create(adminKey).Error; err != nil {
+		return err
+	}
+
+	logging.Log.Infof("GENERATED ADMIN SECRET KEY: %s\n\nSAVE THIS FOR FUTURE PURPOSES, WON'T BE SHOWN AGAIN!", formattedKey)
+	return nil
 }
