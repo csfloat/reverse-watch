@@ -15,12 +15,12 @@ type ReversalListOptions struct {
 }
 
 type ReversalUpdateOptions struct {
-	SteamID         *models.SteamID
-	MarketplaceSlug *string
-	Source          *models.Source
-	RelatedSteamID  *models.SteamID
-	ReversedAt      *uint64
-	ExpungedAt      *uint64
+	SteamID         *models.SteamID `json:"steam_id"`
+	MarketplaceSlug *string         `json:"marketplace_slug"`
+	Source          *models.Source  `json:"source"`
+	RelatedSteamID  *models.SteamID `json:"related_steam_id"`
+	ReversedAt      *uint64         `json:"reversed_at"`
+	ExpungedAt      *uint64         `json:"expunged_at"`
 }
 
 func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {

@@ -8,7 +8,7 @@ import (
 
 type Key struct {
 	// ID is the hash of the secret key
-	ID              string       `gorm:"primaryKey" json:"-"`
+	ID              string       `gorm:"primaryKey" json:"id"`
 	CreatedAt       uint64       `gorm:"autoCreateTime:milli" json:"created_at"`
 	UpdatedAt       uint64       `gorm:"autoUpdateTime:milli" json:"updated_at"`
 	Environment     Environment  `json:"-"`

@@ -286,7 +286,7 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 			name:    "noOptions",
 			slug:    testMarketplace1.Slug,
 			opts:    &dto.MarketplaceUpdateOptions{},
-			wantErr: "marketplace update options is empty",
+			wantErr: "no fields to update",
 		},
 		{
 			name:    "nilOptions",
