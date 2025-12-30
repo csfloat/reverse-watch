@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strconv"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
@@ -88,8 +88,8 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *models.Cursor, error) {
-	listOpts := &repository.ReversalListOptions{
+func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
+	listOpts := &dto.ReversalListOptions{
 		Limit: &defaultLimit,
 	}
 
@@ -118,7 +118,7 @@ func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit u
 	}
 
 	if cursorStr := queryValues.Get("cursor"); cursorStr != "" {
-		cursor, err := models.DecodeCursor(cursorStr)
+		cursor, err := dto.DecodeCursor(cursorStr)
 		if err != nil {
 			return nil, nil, errors.New(errors.BadRequest, "invalid cursor")
 		}
@@ -130,11 +130,11 @@ func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit u
 		return nil, nil, errors.New(errors.InternalServerError, "failed to list reversals")
 	}
 
-	var nextCursor *models.Cursor
+	var nextCursor *dto.Cursor
 	if len(reversals) != 0 {
 		// Omit cursor on last page
 		if len(reversals) == int(*listOpts.Limit) {
-			nextCursor = &models.Cursor{
+			nextCursor = &dto.Cursor{
 				ID:         reversals[len(reversals)-1].ID,
 				ReversedAt: reversals[len(reversals)-1].ReversedAt,
 			}
@@ -155,8 +155,8 @@ func (h *Handler) listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type metadata struct {
-		Count      uint           `json:"count"`
-		NextCursor *models.Cursor `json:"next_cursor,omitempty"`
+		Count      uint        `json:"count"`
+		NextCursor *dto.Cursor `json:"next_cursor,omitempty"`
 	}
 
 	type resp struct {

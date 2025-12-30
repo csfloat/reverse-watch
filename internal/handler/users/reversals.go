@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"sort"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/render"
 
@@ -25,7 +25,7 @@ func (h *Handler) getReversalStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reversals, err := h.reversalSvc.ListReversals(&repository.ReversalListOptions{
+	reversals, err := h.reversalSvc.ListReversals(&dto.ReversalListOptions{
 		SteamID: steamID,
 	})
 	if err != nil {

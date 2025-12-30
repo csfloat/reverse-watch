@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/errors"
 	"reverse-watch/internal/middleware"
 	"reverse-watch/internal/render"
@@ -43,7 +43,7 @@ func (h *Handler) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listKeysHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
-	keysList, err := h.keySvc.ListKeys(&repository.KeyListOptions{
+	keysList, err := h.keySvc.ListKeys(&dto.KeyListOptions{
 		MarketplaceSlug: &key.MarketplaceSlug,
 	})
 	if err != nil {
@@ -57,12 +57,7 @@ func (h *Handler) listKeysHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) deleteKeyHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
-	idStr := chi.URLParam(r, "id")
-	id, err := models.ToSnowflake(idStr)
-	if err != nil {
-		render.Error(w, r, &errors.BadRequest)
-		return
-	}
+	id := chi.URLParam(r, "id")
 
 	keyToDelete, err := h.keySvc.GetKey(id)
 	if err != nil {
