@@ -1,6 +1,9 @@
 package private
 
 import (
+	"fmt"
+
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 
@@ -31,21 +34,33 @@ func (m *marketplaceRepository) Read(slug string) (*models.Marketplace, error) {
 	return &marketplace, nil
 }
 
-func (m *marketplaceRepository) Update(slug string, fields map[string]interface{}) error {
-	return m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields).Error
+func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateOptions) error {
+	if opts == nil {
+		return fmt.Errorf("marketplace update options cannot be nil")
+	}
+
+	fields, err := opts.ToFields()
+	if err != nil {
+		return err
+	}
+
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (m *marketplaceRepository) Delete(slug string) error {
-	return m.conn.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Key{}).Where("marketplace_slug = ?", slug).Delete(&models.Key{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Commit().Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

@@ -1,8 +1,8 @@
 package service
 
 import (
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
 )
 
 type ReversalService interface {
@@ -12,5 +12,5 @@ type ReversalService interface {
 	UpdateReversal(id models.Snowflake, opts *repository.ReversalUpdateOptions) error
 	DeleteReversal(id models.Snowflake) error
 	ExpungeReversal(id models.Snowflake) error
-	ListReversals(opts *repository.ReversalListOptions) ([]*models.Reversal, error)
+	ListReversals(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }

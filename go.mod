@@ -8,6 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/render v1.0.3
 	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/google/go-cmp v0.7.0
 	github.com/spf13/viper v1.21.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.36.11
