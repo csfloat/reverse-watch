@@ -9,7 +9,7 @@ type MarketplaceUpdateOptions struct {
 	IsActive *bool
 }
 
-func (o *MarketplaceUpdateOptions) ToFields() map[string]interface{} {
+func (o *MarketplaceUpdateOptions) ToFields() (map[string]interface{}, error) {
 	fields := make(map[string]interface{})
 	if o.Name != nil {
 		fields["name"] = *o.Name
@@ -17,7 +17,10 @@ func (o *MarketplaceUpdateOptions) ToFields() map[string]interface{} {
 	if o.IsActive != nil {
 		fields["is_active"] = *o.IsActive
 	}
-	return fields
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("marketplace update options is empty")
+	}
+	return fields, nil
 }
 
 func (o *MarketplaceUpdateOptions) Validate() error {

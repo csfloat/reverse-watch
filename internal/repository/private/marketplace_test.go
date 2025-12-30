@@ -67,7 +67,15 @@ func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
 				Slug: "",
 				Name: "Test Marketplace",
 			},
-			wantErr: "slug is required",
+			wantErr: "slug must be between 1 and 25 characters long",
+		},
+		{
+			name: "invalidSlug",
+			marketplace: &models.Marketplace{
+				Slug: "slug with spaces",
+				Name: "Test Marketplace",
+			},
+			wantErr: "slug must contain only letters, numbers, and hyphens",
 		},
 		{
 			name: "emptyName",
@@ -75,7 +83,7 @@ func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
 				Slug: "test-marketplace",
 				Name: "",
 			},
-			wantErr: "name is required",
+			wantErr: "name must be between 1 and 50 characters long",
 		},
 	}
 
@@ -198,11 +206,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 		Name:     "Test Marketplace 2",
 		IsActive: true,
 	}
-	testMarketplace3 := &models.Marketplace{
-		Slug:     "test-marketplace3",
-		Name:     "Test Marketplace 3",
-		IsActive: false,
-	}
+	testutil.Insert(t, db, testMarketplace1, testMarketplace2)
 
 	testCases := []struct {
 		name     string
@@ -235,18 +239,10 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 				IsActive: true,
 			},
 		},
-		{
-			name:     "noFields",
-			original: testMarketplace3,
-			opts:     &dto.MarketplaceUpdateOptions{},
-			want:     testMarketplace3,
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testutil.Insert(t, db, tc.original)
-
 			if err := marketplaceRepo.Update(tc.original.Slug, tc.opts); err != nil {
 				t.Fatalf("Update(): %v", err)
 			}
@@ -258,6 +254,66 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 
 			if diff := cmp.Diff(gotMarketplace, tc.want, cmpopts.IgnoreFields(models.Marketplace{}, "CreatedAt", "UpdatedAt")); diff != "" {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestMarketplaceRepository_Update_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testMarketplace1 := &models.Marketplace{
+		Slug:     "test-marketplace1",
+		Name:     "Test Marketplace 1",
+		IsActive: true,
+	}
+	testMarketplace2 := &models.Marketplace{
+		Slug:     "test-marketplace2",
+		Name:     "Test Marketplace 2",
+		IsActive: true,
+	}
+	testutil.Insert(t, db, testMarketplace1, testMarketplace2)
+
+	testCases := []struct {
+		name    string
+		slug    string
+		opts    *dto.MarketplaceUpdateOptions
+		wantErr string
+	}{
+		{
+			name:    "noOptions",
+			slug:    testMarketplace1.Slug,
+			opts:    &dto.MarketplaceUpdateOptions{},
+			wantErr: "marketplace update options is empty",
+		},
+		{
+			name:    "nilOptions",
+			slug:    testMarketplace2.Slug,
+			opts:    nil,
+			wantErr: "marketplace update options cannot be nil",
+		},
+		{
+			name: "recordNotFound",
+			slug: "test-marketplace3",
+			opts: &dto.MarketplaceUpdateOptions{
+				Name:     testutil.Ptr("Updated Test Marketplace 3"),
+				IsActive: testutil.Ptr(false),
+			},
+			wantErr: "record not found",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := marketplaceRepo.Update(tc.slug, tc.opts)
+			if err == nil {
+				t.Fatalf("Update(): got nil error, wanted error")
+			}
+			if err.Error() != tc.wantErr {
+				t.Fatalf("got error: %v, wanted error: %v", err, tc.wantErr)
 			}
 		})
 	}

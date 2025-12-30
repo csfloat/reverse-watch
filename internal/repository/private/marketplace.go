@@ -38,14 +38,18 @@ func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateO
 	if opts == nil {
 		return fmt.Errorf("marketplace update options cannot be nil")
 	}
-	fields := opts.ToFields()
-	err := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields).Error
+
+	fields, err := opts.ToFields()
 	if err != nil {
 		return err
 	}
 
-	if m.conn.RowsAffected == 0 {
-		return fmt.Errorf("marketplace %q not found", slug)
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
 	}
 	return nil
 }
