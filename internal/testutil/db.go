@@ -16,8 +16,8 @@ func NewPrivateTestDB(t *testing.T) *gorm.DB {
 	db := newTestDB(t)
 
 	privateModels := []interface{}{
-		(*models.Key)(nil),
 		(*models.Marketplace)(nil),
+		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
 	}
 
