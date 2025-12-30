@@ -7,13 +7,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"reverse-watch/internal/config"
+	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/secret"
 )
 
-var keyPrefixes = map[config.Environment]string{
-	config.Development: "reversewatch_test_",
-	config.Production:  "reversewatch_live_",
+var keyPrefixes = map[models.Environment]string{
+	models.EnvironmentDevelopment: "reversewatch_test_",
+	models.EnvironmentProduction:  "reversewatch_live_",
 }
 
 func generateRandomBytes(length uint) ([]byte, error) {
@@ -30,12 +30,12 @@ func generateRandomBytes(length uint) ([]byte, error) {
 
 type secretKey struct {
 	secret string
-	env    config.Environment
+	env    models.Environment
 }
 
 var _ secret.SecretKey = (*secretKey)(nil)
 
-func newSecretKey(env config.Environment) (secret.SecretKey, error) {
+func newSecretKey(env models.Environment) (secret.SecretKey, error) {
 	bytes, err := generateRandomBytes(32)
 	if err != nil {
 		return nil, err
@@ -64,12 +64,12 @@ func (s *secretKey) ID() (string, error) {
 }
 
 type keyGenerator struct {
-	env config.Environment
+	env models.Environment
 }
 
 var _ secret.KeyGenerator = (*keyGenerator)(nil)
 
-func NewKeyGenerator(env config.Environment) secret.KeyGenerator {
+func NewKeyGenerator(env models.Environment) secret.KeyGenerator {
 	return &keyGenerator{
 		env: env,
 	}
@@ -79,6 +79,6 @@ func (g *keyGenerator) GenerateSecretKey() (secret.SecretKey, error) {
 	return newSecretKey(g.env)
 }
 
-func (g *keyGenerator) Environment() config.Environment {
+func (g *keyGenerator) Environment() models.Environment {
 	return g.env
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"reverse-watch/internal/config"
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
@@ -342,12 +341,12 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 	testKeys := []*models.Key{
 		{
 			ID:              "test-key-hash-1",
-			Environment:     config.Production,
+			Environment:     models.EnvironmentProduction,
 			MarketplaceSlug: testMarketplaces[0].Slug,
 		},
 		{
 			ID:              "test-key-hash-2",
-			Environment:     config.Development,
+			Environment:     models.EnvironmentDevelopment,
 			MarketplaceSlug: testMarketplaces[1].Slug,
 		},
 	}

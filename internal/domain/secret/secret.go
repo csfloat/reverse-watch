@@ -1,6 +1,8 @@
 package secret
 
-import "reverse-watch/internal/config"
+import (
+	"reverse-watch/internal/domain/models"
+)
 
 type SecretKey interface {
 	Format() (string, error)
@@ -9,5 +11,5 @@ type SecretKey interface {
 
 type KeyGenerator interface {
 	GenerateSecretKey() (SecretKey, error)
-	Environment() config.Environment
+	Environment() models.Environment
 }
