@@ -17,17 +17,15 @@ import (
 )
 
 var (
-	once sync.Once
+	once        sync.Once
+	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
 )
 
 type privateRepository struct {
 	conn *gorm.DB
 }
 
-var _ repository.PrivateRepository = (*privateRepository)(nil)
-
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
-	var privateRepo *privateRepository
 	var error error
 
 	once.Do(func() {
