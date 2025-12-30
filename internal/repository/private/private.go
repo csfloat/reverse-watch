@@ -47,7 +47,7 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 		return nil, err
 	}
 
-	if err := seedAdminAPIKey(conn, cfg.Environment, keygen); err != nil {
+	if err := seedAdminAPIKey(conn, keygen); err != nil {
 		return nil, err
 	}
 
@@ -98,9 +98,9 @@ func seedMarketplaces(tx *gorm.DB) error {
 	}).Create(marketplace).Error
 }
 
-func seedAdminAPIKey(tx *gorm.DB, env config.Environment, keygen secret.KeyGenerator) error {
+func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 	var exists bool
-	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ? AND environment = ?)`, models.PermissionAdmin, models.PermissionAdmin, env).
+	err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM keys WHERE permissions & ? = ? AND environment = ?)`, models.PermissionAdmin, models.PermissionAdmin, keygen.Environment()).
 		Row().Scan(&exists)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func seedAdminAPIKey(tx *gorm.DB, env config.Environment, keygen secret.KeyGener
 
 	adminKey := &models.Key{
 		ID:              id,
-		Environment:     env,
+		Environment:     keygen.Environment(),
 		MarketplaceSlug: "csfloat",
 		Permissions:     permissions,
 	}

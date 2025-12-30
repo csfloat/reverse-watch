@@ -78,3 +78,7 @@ func NewKeyGenerator(env config.Environment) secret.KeyGenerator {
 func (g *keyGenerator) GenerateSecretKey() (secret.SecretKey, error) {
 	return newSecretKey(g.env)
 }
+
+func (g *keyGenerator) Environment() config.Environment {
+	return g.env
+}
