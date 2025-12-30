@@ -8,7 +8,6 @@ import (
 type KeyRepository interface {
 	Create(key *models.Key) error
 	Read(id string) (*models.Key, error)
-	Update(id string, opts *dto.KeyUpdateOptions) error
 	Delete(id string) error
 	List(opts *dto.KeyListOptions) ([]*models.Key, error)
 }

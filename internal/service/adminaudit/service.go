@@ -1,6 +1,7 @@
 package adminaudit
 
 import (
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
@@ -30,6 +31,6 @@ func (a *adminAuditService) DeleteAdminAudit(id models.Snowflake) error {
 	return a.AdminAudit().Delete(id)
 }
 
-func (a *adminAuditService) ListAdminAudits(opts *repository.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+func (a *adminAuditService) ListAdminAudits(opts *dto.AdminAuditListOptions) ([]*models.AdminAudit, error) {
 	return a.AdminAudit().List(opts)
 }

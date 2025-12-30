@@ -1,6 +1,7 @@
 package private
 
 import (
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 
@@ -23,7 +24,7 @@ func (k *keyRepository) Create(key *models.Key) error {
 	return k.conn.Model(&models.Key{}).Create(key).Error
 }
 
-func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
+func (k *keyRepository) Read(id string) (*models.Key, error) {
 	var key models.Key
 	err := k.conn.Model(&models.Key{}).
 		Preload("Marketplace").
@@ -34,11 +35,18 @@ func (k *keyRepository) Read(id models.Snowflake) (*models.Key, error) {
 	return &key, nil
 }
 
-func (k *keyRepository) Delete(id models.Snowflake) error {
-	return k.conn.Model(&models.Key{}).Where("id = ?", id).Delete(&models.Key{}).Error
+func (k *keyRepository) Delete(id string) error {
+	tx := k.conn.Model(&models.Key{}).Where("id = ?", id).Delete(&models.Key{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
-func (k *keyRepository) buildListQuery(opts *repository.KeyListOptions) *gorm.DB {
+func (k *keyRepository) buildListQuery(opts *dto.KeyListOptions) *gorm.DB {
 	query := k.conn.Model(&models.Key{})
 	if opts == nil {
 		return query
@@ -49,7 +57,7 @@ func (k *keyRepository) buildListQuery(opts *repository.KeyListOptions) *gorm.DB
 	return query
 }
 
-func (k *keyRepository) List(opts *repository.KeyListOptions) ([]*models.Key, error) {
+func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 	query := k.buildListQuery(opts)
 
 	var keys []*models.Key

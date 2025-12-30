@@ -1,6 +1,7 @@
 package private
 
 import (
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 
@@ -35,7 +36,7 @@ func (a *adminAuditRepository) Delete(id models.Snowflake) error {
 	return a.conn.Model(&models.AdminAudit{}).Where("id = ?", id).Delete(&models.AdminAudit{}).Error
 }
 
-func (a *adminAuditRepository) List(opts *repository.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+func (a *adminAuditRepository) List(opts *dto.AdminAuditListOptions) ([]*models.AdminAudit, error) {
 	query := a.conn.Model(&models.AdminAudit{})
 
 	if opts.TargetResource != nil {

@@ -1,6 +1,8 @@
 package marketplace
 
 import (
+	"fmt"
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 	"reverse-watch/internal/domain/service"
@@ -26,8 +28,11 @@ func (m *marketplaceService) GetMarketplace(slug string) (*models.Marketplace, e
 	return m.Marketplace().Read(slug)
 }
 
-func (m *marketplaceService) UpdateMarketplace(slug string, fields map[string]interface{}) error {
-	return m.Marketplace().Update(slug, fields)
+func (m *marketplaceService) UpdateMarketplace(slug string, opts *dto.MarketplaceUpdateOptions) error {
+	if err := opts.Validate(); err != nil {
+		return fmt.Errorf("invalid marketplace update options: %w", err)
+	}
+	return m.Marketplace().Update(slug, opts)
 }
 
 func (m *marketplaceService) DeleteMarketplace(slug string) error {

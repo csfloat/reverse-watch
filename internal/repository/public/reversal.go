@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
 
@@ -38,15 +39,15 @@ func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error)
 	return &reversal, nil
 }
 
-func (r *reversalRepository) Update(id models.Snowflake, opts *repository.ReversalUpdateOptions) error {
+func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdateOptions) error {
 	if opts == nil {
 		return fmt.Errorf("opts cannot be nil")
 	}
-	if err := opts.Validate(); err != nil {
-		return err
-	}
 
 	fields := opts.ToFields()
+	if len(fields) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
 	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields).Error
 }
 
@@ -58,7 +59,7 @@ func (r *reversalRepository) Expunge(id models.Snowflake) error {
 	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Update("expunged_at", time.Now().UnixMilli()).Error
 }
 
-func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions) *gorm.DB {
+func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
 	query := r.conn.Model(&models.Reversal{}).Order("reversed_at DESC")
 	if opts == nil {
 		return query
@@ -78,7 +79,7 @@ func (r *reversalRepository) buildListQuery(opts *repository.ReversalListOptions
 	return query
 }
 
-func (r *reversalRepository) List(opts *repository.ReversalListOptions) ([]*models.Reversal, error) {
+func (r *reversalRepository) List(opts *dto.ReversalListOptions) ([]*models.Reversal, error) {
 	query := r.buildListQuery(opts)
 	var reversals []*models.Reversal
 	if err := query.Find(&reversals).Error; err != nil {

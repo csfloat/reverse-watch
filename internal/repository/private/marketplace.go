@@ -39,9 +39,9 @@ func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateO
 		return fmt.Errorf("marketplace update options cannot be nil")
 	}
 
-	fields, err := opts.ToFields()
-	if err != nil {
-		return err
+	fields := opts.ToFields()
+	if len(fields) == 0 {
+		return fmt.Errorf("no fields to update")
 	}
 
 	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields)

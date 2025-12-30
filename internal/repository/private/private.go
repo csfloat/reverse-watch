@@ -131,11 +131,6 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 		return err
 	}
 
-	formattedKey, err := secretKey.Format()
-	if err != nil {
-		return err
-	}
-
 	id, err := secretKey.ID()
 	if err != nil {
 		return err
@@ -152,6 +147,11 @@ func seedAdminAPIKey(tx *gorm.DB, keygen secret.KeyGenerator) error {
 	}
 
 	if err := tx.Create(adminKey).Error; err != nil {
+		return err
+	}
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
 		return err
 	}
 
