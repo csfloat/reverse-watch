@@ -13,7 +13,7 @@ type Key struct {
 	UpdatedAt       uint64       `gorm:"autoUpdateTime:milli" json:"updated_at"`
 	Environment     Environment  `json:"-"`
 	MarketplaceSlug string       `json:"marketplace_slug"`
-	Marketplace     *Marketplace `json:"-"`
+	Marketplace     *Marketplace `gorm:"foreignKey:MarketplaceSlug;references:Slug;constraint:OnDelete:CASCADE" json:"-"`
 	Permissions     Permissions  `json:"permissions"`
 }
 

@@ -91,8 +91,8 @@ func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
 
 func migratePrivateModels(tx *gorm.DB) error {
 	privateModels := []interface{}{
-		(*models.Key)(nil),
 		(*models.Marketplace)(nil),
+		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
 	}
 

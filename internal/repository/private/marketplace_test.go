@@ -395,3 +395,34 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+func TestMarketplaceRepository_Delete_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	marketplaceRepo := NewMarketplaceRepository(db)
+
+	testCases := []struct {
+		name    string
+		slug    string
+		wantErr string
+	}{
+		{
+			name:    "recordNotFound",
+			slug:    "non-existent-marketplace",
+			wantErr: "record not found",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := marketplaceRepo.Delete(tc.slug)
+			if err == nil {
+				t.Fatalf("Delete(): got nil error, wanted error")
+			}
+			if err.Error() != tc.wantErr {
+				t.Fatalf("got error: %v, wanted error: %v", err, tc.wantErr)
+			}
+		})
+	}
+}

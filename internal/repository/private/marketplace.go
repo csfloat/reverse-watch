@@ -55,13 +55,12 @@ func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateO
 }
 
 func (m *marketplaceRepository) Delete(slug string) error {
-	return m.conn.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Key{}).Where("marketplace_slug = ?", slug).Delete(&models.Key{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
