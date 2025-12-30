@@ -3,25 +3,28 @@ package models
 import (
 	"fmt"
 
+	"reverse-watch/internal/config"
+
 	"gorm.io/gorm"
 )
 
 type Key struct {
-	Model
-	KeyHash         string       `gorm:"unique" json:"-"`
-	Salt            string       `gorm:"unique" json:"-"`
-	MarketplaceSlug string       `json:"marketplace_slug"`
-	Marketplace     *Marketplace `json:"-"`
-	Permissions     Permissions  `json:"permissions"`
+	// ID is the hash of the secret key
+	ID              string             `gorm:"primaryKey" json:"-"`
+	CreatedAt       uint64             `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt       uint64             `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	Environment     config.Environment `json:"-"`
+	MarketplaceSlug string             `json:"marketplace_slug"`
+	Marketplace     *Marketplace       `json:"-"`
+	Permissions     Permissions        `json:"permissions"`
 }
 
 func (k *Key) BeforeCreate(tx *gorm.DB) error {
-	if err := k.Model.BeforeCreate(tx); err != nil {
-		return err
-	}
-
-	if k.KeyHash == "" {
+	if k.ID == "" {
 		return fmt.Errorf("key hash is required")
+	}
+	if k.Environment == "" {
+		return fmt.Errorf("environment is required")
 	}
 
 	if k.HasPermissions(PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
