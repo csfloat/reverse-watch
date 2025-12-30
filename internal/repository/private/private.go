@@ -2,6 +2,7 @@ package private
 
 import (
 	"path/filepath"
+	"sync"
 
 	"reverse-watch/internal/config"
 	"reverse-watch/internal/domain/models"
@@ -15,6 +16,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+var (
+	once sync.Once
+)
+
 type privateRepository struct {
 	conn *gorm.DB
 }
@@ -22,38 +27,54 @@ type privateRepository struct {
 var _ repository.PrivateRepository = (*privateRepository)(nil)
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
-	rootDir, err := config.GetProjectRootDir()
-	if err != nil {
-		return nil, err
-	}
+	var privateRepo *privateRepository
+	var error error
 
-	dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
-	conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+	once.Do(func() {
+		rootDir, err := config.GetProjectRootDir()
+		if err != nil {
+			error = err
+			return
+		}
+
+		dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
+		conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err != nil {
+			error = err
+			return
+		}
+
+		if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
+			error = err
+			return
+		}
+
+		if err := migratePrivateModels(conn); err != nil {
+			error = err
+			return
+		}
+
+		if err := seedMarketplaces(conn); err != nil {
+			error = err
+			return
+		}
+
+		if err := seedAdminAPIKey(conn, keygen); err != nil {
+			error = err
+			return
+		}
+
+		privateRepo = &privateRepository{
+			conn: conn,
+		}
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-		return nil, err
+	if error != nil {
+		return nil, error
 	}
-
-	if err := migratePrivateModels(conn); err != nil {
-		return nil, err
-	}
-
-	if err := seedMarketplaces(conn); err != nil {
-		return nil, err
-	}
-
-	if err := seedAdminAPIKey(conn, keygen); err != nil {
-		return nil, err
-	}
-
-	return &privateRepository{
-		conn: conn,
-	}, nil
+	return privateRepo, nil
 }
 
 func (p *privateRepository) Key() repository.KeyRepository {
