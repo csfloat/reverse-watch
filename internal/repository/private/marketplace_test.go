@@ -6,6 +6,7 @@ import (
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
+	"reverse-watch/internal/domain/models/constants"
 	"reverse-watch/internal/testutil"
 
 	"github.com/google/go-cmp/cmp"
@@ -341,12 +342,12 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 	testKeys := []*models.Key{
 		{
 			ID:              "test-key-hash-1",
-			Environment:     models.EnvironmentProduction,
+			Environment:     constants.EnvironmentProduction,
 			MarketplaceSlug: testMarketplaces[0].Slug,
 		},
 		{
 			ID:              "test-key-hash-2",
-			Environment:     models.EnvironmentDevelopment,
+			Environment:     constants.EnvironmentDevelopment,
 			MarketplaceSlug: testMarketplaces[1].Slug,
 		},
 	}

@@ -1,11 +1,11 @@
 package dto
 
 import (
-	"reverse-watch/internal/domain/models/types"
+	"reverse-watch/internal/domain/models"
 )
 
 type ReversalListOptions struct {
-	SteamID         *types.SteamID
+	SteamID         *models.SteamID
 	MarketplaceSlug *string
 	Cursor          *Cursor
 	Limit           *uint

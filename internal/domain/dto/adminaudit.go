@@ -1,10 +1,11 @@
 package dto
 
 import (
-	"reverse-watch/internal/domain/models/types"
+	"reverse-watch/internal/domain/models"
+	"reverse-watch/internal/domain/models/constants"
 )
 
 type AdminAuditListOptions struct {
-	TargetActions  []types.TargetAction
-	TargetResource *types.Snowflake
+	TargetActions  []constants.TargetAction
+	TargetResource *models.Snowflake
 }

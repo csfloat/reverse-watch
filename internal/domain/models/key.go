@@ -3,20 +3,20 @@ package models
 import (
 	"fmt"
 
-	"reverse-watch/internal/domain/models/types"
+	"reverse-watch/internal/domain/models/constants"
 
 	"gorm.io/gorm"
 )
 
 type Key struct {
 	// ID is the hash of the secret key
-	ID              string            `gorm:"primaryKey" json:"-"`
-	CreatedAt       uint64            `gorm:"autoCreateTime:milli" json:"created_at"`
-	UpdatedAt       uint64            `gorm:"autoUpdateTime:milli" json:"updated_at"`
-	Environment     types.Environment `json:"-"`
-	MarketplaceSlug string            `json:"marketplace_slug"`
-	Marketplace     *Marketplace      `gorm:"foreignKey:MarketplaceSlug;references:Slug" json:"-"`
-	Permissions     types.Permissions `json:"permissions"`
+	ID              string                `gorm:"primaryKey" json:"id"`
+	CreatedAt       uint64                `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt       uint64                `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	Environment     constants.Environment `json:"-"`
+	MarketplaceSlug string                `json:"marketplace_slug"`
+	Marketplace     *Marketplace          `gorm:"foreignKey:MarketplaceSlug;references:Slug" json:"-"`
+	Permissions     Permissions           `json:"permissions"`
 }
 
 func (k *Key) BeforeCreate(tx *gorm.DB) error {
@@ -27,12 +27,12 @@ func (k *Key) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("environment is required")
 	}
 
-	if k.HasPermissions(types.PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
+	if k.HasPermissions(PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
 		return fmt.Errorf("admin scoped keys can only be created for CSFloat")
 	}
 	return nil
 }
 
-func (k *Key) HasPermissions(permissions ...types.Permissions) bool {
+func (k *Key) HasPermissions(permissions ...Permissions) bool {
 	return k.Permissions.HasPermissions(permissions...)
 }

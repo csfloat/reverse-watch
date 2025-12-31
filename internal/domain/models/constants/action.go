@@ -1,4 +1,4 @@
-package types
+package constants
 
 type TargetAction uint
 

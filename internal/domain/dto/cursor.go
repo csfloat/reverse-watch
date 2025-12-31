@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	cpb "reverse-watch/internal/domain/dto/cursorpb"
-	"reverse-watch/internal/domain/models/types"
+	"reverse-watch/internal/domain/models"
 
 	"google.golang.org/protobuf/proto"
 )
 
 type Cursor struct {
-	ID         types.Snowflake
+	ID         models.Snowflake
 	ReversedAt uint64
 }
 
@@ -65,7 +65,7 @@ func DecodeCursor(encoded string) (*Cursor, error) {
 	}
 
 	return &Cursor{
-		ID:         types.Snowflake(cursorpb.Id),
+		ID:         models.Snowflake(cursorpb.Id),
 		ReversedAt: cursorpb.ReversedAt,
 	}, nil
 }

@@ -5,19 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"reverse-watch/internal/domain/models/types"
-
 	"gorm.io/gorm"
 )
 
 type Reversal struct {
-	types.Model
-	SteamID         types.SteamID  `json:"steam_id"`
-	MarketplaceSlug string         `json:"marketplace_slug"`
-	Source          *Source        `json:"source,omitempty"`
-	RelatedSteamID  *types.SteamID `json:"related_steam_id,omitempty"`
-	ReversedAt      uint64         `json:"reversed_at"`
-	ExpungedAt      *uint64        `json:"expunged_at,omitempty"`
+	Model
+	SteamID         SteamID  `json:"steam_id"`
+	MarketplaceSlug string   `json:"marketplace_slug"`
+	Source          *Source  `json:"source,omitempty"`
+	RelatedSteamID  *SteamID `json:"related_steam_id,omitempty"`
+	ReversedAt      uint64   `json:"reversed_at"`
+	ExpungedAt      *uint64  `json:"expunged_at,omitempty"`
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
