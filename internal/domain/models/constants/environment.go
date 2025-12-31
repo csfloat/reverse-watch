@@ -1,4 +1,4 @@
-package models
+package constants
 
 type Environment string
 

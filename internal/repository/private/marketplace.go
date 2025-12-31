@@ -39,12 +39,11 @@ func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateO
 		return fmt.Errorf("marketplace update options cannot be nil")
 	}
 
-	fields := opts.ToFields()
-	if len(fields) == 0 {
-		return fmt.Errorf("no fields to update")
+	if len(opts.ToFields()) == 0 {
+		return fmt.Errorf("marketplace update options is empty")
 	}
 
-	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(fields)
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(opts)
 	if tx.Error != nil {
 		return tx.Error
 	}
@@ -55,12 +54,18 @@ func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateO
 }
 
 func (m *marketplaceRepository) Delete(slug string) error {
-	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{})
-	if tx.Error != nil {
-		return tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return m.conn.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Key{}).Where("marketplace_slug = ?", slug).Delete(&models.Key{}).Error; err != nil {
+			return err
+		}
+
+		result := tx.Model(&models.Marketplace{}).Where("slug = ?", slug).Delete(&models.Marketplace{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
 }

@@ -3,7 +3,8 @@ package secret
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"reverse-watch/internal/domain/models"
+
+	"reverse-watch/internal/domain/models/constants"
 )
 
 type SecretKey interface {
@@ -13,7 +14,7 @@ type SecretKey interface {
 
 type KeyGenerator interface {
 	GenerateSecretKey() (SecretKey, error)
-	Environment() models.Environment
+	Environment() constants.Environment
 }
 
 func Hash(value string) string {
