@@ -81,8 +81,7 @@ func (p *privateRepository) Key() repository.KeyRepository {
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
-	// STUB
-	return nil
+	return NewMarketplaceRepository(p.conn)
 }
 
 func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
@@ -92,8 +91,8 @@ func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
 
 func migratePrivateModels(tx *gorm.DB) error {
 	privateModels := []interface{}{
-		(*models.Key)(nil),
 		(*models.Marketplace)(nil),
+		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
 	}
 

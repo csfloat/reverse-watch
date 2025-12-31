@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"regexp"
 
 	"gorm.io/gorm"
 )
@@ -15,11 +16,19 @@ type Marketplace struct {
 }
 
 func (m *Marketplace) BeforeCreate(tx *gorm.DB) error {
-	if m.Slug == "" {
-		return fmt.Errorf("slug is required")
+	return m.Validate()
+}
+
+func (m *Marketplace) Validate() error {
+	if len(m.Slug) == 0 || len(m.Slug) > 25 {
+		return fmt.Errorf("slug must be between 1 and 25 characters long")
 	}
-	if m.Name == "" {
-		return fmt.Errorf("name is required")
+	if !regexp.MustCompile(`^[a-zA-Z0-9-]+$`).MatchString(m.Slug) {
+		return fmt.Errorf("slug must contain only letters, numbers, and hyphens")
+	}
+
+	if len(m.Name) == 0 || len(m.Name) > 50 {
+		return fmt.Errorf("name must be between 1 and 50 characters long")
 	}
 	return nil
 }

@@ -7,15 +7,10 @@ import (
 	"reflect"
 	"strings"
 
+	"reverse-watch/internal/domain/models/constants"
+
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
-)
-
-type Environment string
-
-const (
-	Development Environment = "development"
-	Production  Environment = "production"
 )
 
 type Config struct {
@@ -27,7 +22,7 @@ type Config struct {
 		Port string
 	}
 
-	Environment Environment
+	Environment constants.Environment
 }
 
 func Load() Config {
@@ -39,13 +34,13 @@ func load() Config {
 
 	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		func(from reflect.Value, to reflect.Value) (interface{}, error) {
-			if from.Kind() != reflect.String || to.Type() != reflect.TypeOf(Environment("")) {
+			if from.Kind() != reflect.String || to.Type() != reflect.TypeOf(constants.Environment("")) {
 				return from.Interface(), nil
 			}
 
-			env := Environment(from.String())
+			env := constants.Environment(from.String())
 			switch env {
-			case Development, Production:
+			case constants.EnvironmentDevelopment, constants.EnvironmentProduction:
 				return env, nil
 			default:
 				return nil, fmt.Errorf("invalid environment")
@@ -55,7 +50,7 @@ func load() Config {
 
 	v.SetDefault("StaticDir", "./static")
 	v.SetDefault("HTTP.Port", "8080")
-	v.SetDefault("Environment", Development)
+	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 
 	dir, err := GetProjectRootDir()
 	if err != nil {
