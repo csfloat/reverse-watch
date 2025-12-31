@@ -15,10 +15,6 @@ type RawKey struct {
 	Permissions     models.Permissions    `json:"permissions"`
 }
 
-type KeyUpdateOptions struct {
-	Permissions *models.Permissions
-}
-
 type KeyListOptions struct {
 	MarketplaceSlug *string
 }
