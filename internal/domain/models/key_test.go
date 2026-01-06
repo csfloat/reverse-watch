@@ -148,6 +148,14 @@ func TestKey_HasPermissions(t *testing.T) {
 			permissions: []Permissions{PermissionRead, PermissionManage},
 			want:        false,
 		},
+		{
+			name: "checkWithNoPermissions",
+			key: &Key{
+				Permissions: PermissionExport,
+			},
+			permissions: []Permissions{},
+			want:        false,
+		},
 	}
 
 	for _, tc := range testCases {
