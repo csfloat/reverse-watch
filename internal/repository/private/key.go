@@ -61,7 +61,7 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 	query := k.buildListQuery(opts)
 
 	var keys []*models.Key
-	if err := query.Order("created_at DESC").Find(&keys).Error; err != nil {
+	if err := query.Preload("Marketplace").Order("id DESC").Find(&keys).Error; err != nil {
 		return nil, err
 	}
 	return keys, nil
