@@ -9,6 +9,7 @@ import (
 type Permissions uint32
 
 const (
+	PermissionNone   Permissions = 0
 	PermissionAdmin  Permissions = 1
 	PermissionDelete Permissions = 1 << 1
 	PermissionManage Permissions = 1 << 2

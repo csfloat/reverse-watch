@@ -344,11 +344,13 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 			ID:              "test-key-hash-1",
 			Environment:     constants.EnvironmentProduction,
 			MarketplaceSlug: testMarketplaces[0].Slug,
+			Permissions:     models.PermissionRead,
 		},
 		{
 			ID:              "test-key-hash-2",
 			Environment:     constants.EnvironmentDevelopment,
 			MarketplaceSlug: testMarketplaces[1].Slug,
+			Permissions:     models.PermissionWrite,
 		},
 	}
 	testutil.Insert(t, db, testKeys...)
