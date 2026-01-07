@@ -6,7 +6,7 @@ import (
 	"reverse-watch/internal/domain/models/constants"
 )
 
-func TestKeyRepository_BeforeCreate(t *testing.T) {
+func TestKey_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -43,7 +43,7 @@ func TestKeyRepository_BeforeCreate(t *testing.T) {
 
 }
 
-func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
+func TestKey_BeforeCreate_Errors(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -59,7 +59,7 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 				MarketplaceSlug: "test-marketplace",
 				Permissions:     PermissionRead,
 			},
-			wantErr: "key hash is required",
+			wantErr: "id is required",
 		},
 		{
 			name: "emptyEnvironment",
@@ -72,9 +72,19 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 			wantErr: "environment is required",
 		},
 		{
-			name: "noPermissions",
+			name: "emptyMarketplaceSlug",
 			key: &Key{
 				ID:              "test-key-id-3",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: "",
+				Permissions:     PermissionExport,
+			},
+			wantErr: "marketplace_slug is required",
+		},
+		{
+			name: "noPermissions",
+			key: &Key{
+				ID:              "test-key-id-4",
 				Environment:     constants.EnvironmentProduction,
 				MarketplaceSlug: "test-marketplace",
 				Permissions:     PermissionNone,
@@ -84,7 +94,7 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 		{
 			name: "adminPermissionNonCSFloat",
 			key: &Key{
-				ID:              "test-key-id-4",
+				ID:              "test-key-id-5",
 				Environment:     constants.EnvironmentProduction,
 				MarketplaceSlug: "test-marketplace",
 				Permissions:     PermissionAdmin,

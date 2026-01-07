@@ -15,6 +15,148 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestKeyRepository_BeforeCreate(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	keyRepo := NewKeyRepository(db)
+
+	testMarketplace := &models.Marketplace{
+		Slug: "test-marketplace",
+		Name: "Test Marketplace",
+	}
+	csfloatTestMarketplace := &models.Marketplace{
+		Slug: "csfloat",
+		Name: "CSFloat",
+	}
+	testutil.Insert(t, db, testMarketplace, csfloatTestMarketplace)
+
+	testCases := []struct {
+		name string
+		key  *models.Key
+	}{
+		{
+			name: "validKey",
+			key: &models.Key{
+				ID:              "test-key-id",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: testMarketplace.Slug,
+				Permissions:     models.PermissionWrite,
+			},
+		},
+		{
+			name: "adminKeyForCSFloat",
+			key: &models.Key{
+				ID:              "admin-key-id",
+				Environment:     constants.EnvironmentDevelopment,
+				MarketplaceSlug: csfloatTestMarketplace.Slug,
+				Permissions:     models.PermissionAdmin,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := keyRepo.Create(tc.key); err != nil {
+				t.Fatalf("Create(): %v", err)
+			}
+
+			if tc.key.CreatedAt == 0 {
+				t.Errorf("got CreatedAt %d, wanted non-zero value", tc.key.CreatedAt)
+			}
+			if tc.key.UpdatedAt == 0 {
+				t.Errorf("got UpdatedAt %d, wanted non-zero value", tc.key.UpdatedAt)
+			}
+		})
+	}
+}
+
+func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	keyRepo := NewKeyRepository(db)
+
+	testMarketplace := &models.Marketplace{
+		Slug: "test-marketplace",
+		Name: "Test Marketplace",
+	}
+	csfloatTestMarketplace := &models.Marketplace{
+		Slug: "csfloat",
+		Name: "CSFloat",
+	}
+	testutil.Insert(t, db, testMarketplace, csfloatTestMarketplace)
+
+	testCases := []struct {
+		name    string
+		key     *models.Key
+		wantErr string
+	}{
+		{
+			name: "emptyID",
+			key: &models.Key{
+				ID:              "",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: testMarketplace.Slug,
+				Permissions:     models.PermissionRead,
+			},
+			wantErr: "id is required",
+		},
+		{
+			name: "emptyEnvironment",
+			key: &models.Key{
+				ID:              "test-key-id-2",
+				Environment:     "",
+				MarketplaceSlug: testMarketplace.Slug,
+				Permissions:     models.PermissionExport | models.PermissionRead,
+			},
+			wantErr: "environment is required",
+		},
+		{
+			name: "emptyMarketplaceSlug",
+			key: &models.Key{
+				ID:              "test-key-id-3",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: "",
+				Permissions:     models.PermissionExport,
+			},
+			wantErr: "marketplace_slug is required",
+		},
+		{
+			name: "noPermissions",
+			key: &models.Key{
+				ID:              "test-key-id-4",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: testMarketplace.Slug,
+				Permissions:     models.PermissionNone,
+			},
+			wantErr: "at least one permission is required",
+		},
+		{
+			name: "adminPermissionNonCSFloat",
+			key: &models.Key{
+				ID:              "test-key-id-5",
+				Environment:     constants.EnvironmentProduction,
+				MarketplaceSlug: "test-marketplace",
+				Permissions:     models.PermissionAdmin,
+			},
+			wantErr: "admin scoped keys can only be created for CSFloat",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := keyRepo.Create(tc.key)
+			if err == nil {
+				t.Fatal("Create(): got nil error, wanted error from BeforeCreate")
+			}
+			if err.Error() != tc.wantErr {
+				t.Errorf("Create(): got error %v, wanted %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestKeyRepository_Create(t *testing.T) {
 	t.Parallel()
 
