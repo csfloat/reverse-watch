@@ -33,12 +33,21 @@ func (a *adminAuditRepository) Read(id models.Snowflake) (*models.AdminAudit, er
 }
 
 func (a *adminAuditRepository) Delete(id models.Snowflake) error {
-	return a.conn.Model(&models.AdminAudit{}).Where("id = ?", id).Delete(&models.AdminAudit{}).Error
+	tx := a.conn.Model(&models.AdminAudit{}).Where("id = ?", id).Delete(&models.AdminAudit{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
-func (a *adminAuditRepository) List(opts *dto.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+func (a *adminAuditRepository) buildListQuery(opts *dto.AdminAuditListOptions) *gorm.DB {
 	query := a.conn.Model(&models.AdminAudit{})
-
+	if opts == nil {
+		return query
+	}
 	if opts.TargetResource != nil {
 		query = query.Where("target_resource = ?", opts.TargetResource)
 	}
@@ -46,6 +55,11 @@ func (a *adminAuditRepository) List(opts *dto.AdminAuditListOptions) ([]*models.
 	if len(opts.TargetActions) > 0 {
 		query = query.Where("target_action IN (?)", opts.TargetActions)
 	}
+	return query
+}
+
+func (a *adminAuditRepository) List(opts *dto.AdminAuditListOptions) ([]*models.AdminAudit, error) {
+	query := a.buildListQuery(opts)
 
 	var audits []*models.AdminAudit
 	if err := query.Find(&audits).Error; err != nil {

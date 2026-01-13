@@ -179,6 +179,21 @@ func TestAdminAuditRepository_Delete(t *testing.T) {
 	}
 }
 
+func TestAdminAuditRepository_Delete_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPrivateTestDB(t)
+	adminAuditRepo := NewAdminAuditRepository(db)
+
+	err := adminAuditRepo.Delete(models.Snowflake(1))
+	if err == nil {
+		t.Fatalf("Delete(): got nil error, wanted %v", gorm.ErrRecordNotFound)
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("Delete(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
 func TestAdminAuditRepository_List(t *testing.T) {
 	t.Parallel()
 
@@ -346,6 +361,11 @@ func TestAdminAuditRepository_List(t *testing.T) {
 				TargetActions: []models.TargetAction{models.TargetActionDeleteUserData},
 			},
 			want: testAudits[11:12],
+		},
+		{
+			name: "nilOptions",
+			opts: nil,
+			want: testAudits,
 		},
 	}
 
