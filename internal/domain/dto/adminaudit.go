@@ -8,7 +8,3 @@ type AdminAuditListOptions struct {
 	TargetActions  []models.TargetAction
 	TargetResource *string
 }
-
-type MarketplaceAuditDetails struct {
-	MarketplaceUpdateOptions
-}

@@ -27,44 +27,32 @@ type AdminAudit struct {
 	TargetAction       TargetAction       `json:"target_action"`
 	TargetResourceType TargetResourceType `json:"resource_type"`
 	TargetResource     string             `json:"target_resource"`
-	Details            *RawJsonb          `gorm:"type:jsonb" json:"details"`
+	Details            *RawJsonb          `json:"details"`
 }
 
-func NewMarketplaceAdminAudit(action TargetAction, slug string, details interface{}) (*AdminAudit, error) {
-	rawDetails, err := toRawJsonb(details)
-	if err != nil {
-		return nil, err
-	}
+func NewMarketplaceAdminAudit(action TargetAction, slug string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeMarketplace,
 		TargetResource:     slug,
-		Details:            rawDetails,
-	}, nil
+		Details:            details,
+	}
 }
 
-func NewKeyAdminAudit(action TargetAction, id string, details interface{}) (*AdminAudit, error) {
-	rawDetails, err := toRawJsonb(details)
-	if err != nil {
-		return nil, err
-	}
+func NewKeyAdminAudit(action TargetAction, id string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeKey,
 		TargetResource:     id,
-		Details:            rawDetails,
-	}, nil
+		Details:            details,
+	}
 }
 
-func NewReversalAdminAudit(action TargetAction, id Snowflake, details interface{}) (*AdminAudit, error) {
-	rawDetails, err := toRawJsonb(details)
-	if err != nil {
-		return nil, err
-	}
+func NewReversalAdminAudit(action TargetAction, id Snowflake, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeReversal,
 		TargetResource:     id.String(),
-		Details:            rawDetails,
-	}, nil
+		Details:            details,
+	}
 }

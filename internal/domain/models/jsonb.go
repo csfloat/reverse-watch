@@ -32,7 +32,7 @@ func (j *RawJsonb) Scan(value interface{}) error {
 	return nil
 }
 
-func toRawJsonb(value interface{}) (*RawJsonb, error) {
+func ToRawJsonb(value interface{}) (*RawJsonb, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot convert nil to RawJsonb")
 	}
