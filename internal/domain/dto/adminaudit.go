@@ -6,5 +6,9 @@ import (
 
 type AdminAuditListOptions struct {
 	TargetActions  []models.TargetAction
-	TargetResource *models.Snowflake
+	TargetResource *string
+}
+
+type MarketplaceAuditDetails struct {
+	MarketplaceUpdateOptions
 }
