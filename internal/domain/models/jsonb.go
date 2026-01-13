@@ -11,7 +11,7 @@ type RawJsonb struct {
 }
 
 func (j *RawJsonb) Value() (driver.Value, error) {
-	if j == nil {
+	if j == nil || j.Raw == nil {
 		return nil, nil
 	}
 	return []byte(j.Raw), nil
