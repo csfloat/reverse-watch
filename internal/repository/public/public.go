@@ -50,8 +50,7 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 }
 
 func (p *publicRepository) Reversal() repository.ReversalRepository {
-	// STUB
-	return nil
+	return NewReversalRepository(p.conn)
 }
 
 func migratePublicModels(tx *gorm.DB) error {
