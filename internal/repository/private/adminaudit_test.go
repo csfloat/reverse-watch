@@ -311,98 +311,98 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionAddMarketplace},
 			},
-			want: testAudits[0:2],
+			want: []*models.AdminAudit{testAudits[1], testAudits[0]},
 		},
 		{
 			name: "updateMarketplace",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionUpdateMarketplace},
 			},
-			want: testAudits[2:4],
+			want: []*models.AdminAudit{testAudits[3], testAudits[2]},
 		},
 		{
 			name: "removeMarketplace",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionRemoveMarketplace},
 			},
-			want: testAudits[4:6],
+			want: []*models.AdminAudit{testAudits[5], testAudits[4]},
 		},
 		{
 			name: "addKey",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionAddKey},
 			},
-			want: testAudits[6:8],
+			want: []*models.AdminAudit{testAudits[7], testAudits[6]},
 		},
 		{
 			name: "removeKey",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionRemoveKey},
 			},
-			want: testAudits[8:9],
+			want: []*models.AdminAudit{testAudits[8]},
 		},
 		{
 			name: "updateReversal",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionUpdateReversal},
 			},
-			want: testAudits[9:10],
+			want: []*models.AdminAudit{testAudits[9]},
 		},
 		{
 			name: "removeReversal",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionRemoveReversal},
 			},
-			want: testAudits[10:11],
+			want: []*models.AdminAudit{testAudits[10]},
 		},
 		{
 			name: "deleteUserData",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions: []models.TargetAction{models.TargetActionDeleteUserData},
 			},
-			want: testAudits[11:12],
+			want: []*models.AdminAudit{testAudits[11]},
 		},
 		{
 			name: "allMarketplaceAudits",
 			opts: &dto.AdminAuditListOptions{
 				TargetResourceType: testutil.Ptr(models.TargetResourceTypeMarketplace),
 			},
-			want: testAudits[:6],
+			want: []*models.AdminAudit{testAudits[5], testAudits[4], testAudits[3], testAudits[2], testAudits[1], testAudits[0]},
 		},
 		{
 			name: "allKeyAudits",
 			opts: &dto.AdminAuditListOptions{
 				TargetResourceType: testutil.Ptr(models.TargetResourceTypeKey),
 			},
-			want: testAudits[6:9],
+			want: []*models.AdminAudit{testAudits[8], testAudits[7], testAudits[6]},
 		},
 		{
 			name: "allReversalAudits",
 			opts: &dto.AdminAuditListOptions{
 				TargetResourceType: testutil.Ptr(models.TargetResourceTypeReversal),
 			},
-			want: testAudits[9:],
+			want: []*models.AdminAudit{testAudits[11], testAudits[10], testAudits[9]},
 		},
 		{
 			name: "targetResourceSlug",
 			opts: &dto.AdminAuditListOptions{
 				TargetResource: testutil.Ptr("test-slug-1"),
 			},
-			want: []*models.AdminAudit{testAudits[0], testAudits[2], testAudits[4]},
+			want: []*models.AdminAudit{testAudits[4], testAudits[2], testAudits[0]},
 		},
 		{
 			name: "targetResourceKeyID",
 			opts: &dto.AdminAuditListOptions{
 				TargetResource: testutil.Ptr("test-key-id-1"),
 			},
-			want: []*models.AdminAudit{testAudits[6], testAudits[8]},
+			want: []*models.AdminAudit{testAudits[8], testAudits[6]},
 		},
 		{
 			name: "targetResourceReversalID",
 			opts: &dto.AdminAuditListOptions{
 				TargetResource: testutil.Ptr("1"),
 			},
-			want: testAudits[9:11],
+			want: []*models.AdminAudit{testAudits[10], testAudits[9]},
 		},
 		{
 			name: "multipleFilters",
@@ -410,12 +410,12 @@ func TestAdminAuditRepository_List(t *testing.T) {
 				TargetActions:  []models.TargetAction{models.TargetActionAddMarketplace},
 				TargetResource: testutil.Ptr("test-slug-1"),
 			},
-			want: testAudits[0:1],
+			want: []*models.AdminAudit{testAudits[0]},
 		},
 		{
 			name: "nilOptions",
 			opts: nil,
-			want: testAudits,
+			want: []*models.AdminAudit{testAudits[11], testAudits[10], testAudits[9], testAudits[8], testAudits[7], testAudits[6], testAudits[5], testAudits[4], testAudits[3], testAudits[2], testAudits[1], testAudits[0]},
 		},
 	}
 

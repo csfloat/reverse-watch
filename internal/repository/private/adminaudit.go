@@ -64,7 +64,7 @@ func (a *adminAuditRepository) List(opts *dto.AdminAuditListOptions) ([]*models.
 	query := a.buildListQuery(opts)
 
 	var audits []*models.AdminAudit
-	if err := query.Find(&audits).Error; err != nil {
+	if err := query.Order("id DESC").Find(&audits).Error; err != nil {
 		return nil, err
 	}
 	return audits, nil
