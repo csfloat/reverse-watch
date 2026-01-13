@@ -104,10 +104,9 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 			audit: &models.AdminAudit{
 				TargetAction:       models.TargetActionDeleteUserData,
 				TargetResourceType: models.TargetResourceTypeReversal,
-				TargetResource:     "1",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
-					"steam_id": models.SteamID(76561197960265728),
-					"batch_id": uuid.New().String(),
+					"steam_id":    models.SteamID(76561197960265728),
+					"deleted_ids": []models.Snowflake{1},
 				}),
 			},
 		},
