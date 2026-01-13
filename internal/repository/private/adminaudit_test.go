@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -279,10 +278,9 @@ func TestAdminAuditRepository_List(t *testing.T) {
 		{
 			TargetAction:       models.TargetActionDeleteUserData,
 			TargetResourceType: models.TargetResourceTypeReversal,
-			TargetResource:     "1",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
-				"steam_id": models.SteamID(76561197960265728),
-				"batch_id": uuid.New().String(),
+				"steam_id":    models.SteamID(76561197960265728),
+				"deleted_ids": []models.Snowflake{1},
 			}),
 		},
 	}
