@@ -363,6 +363,56 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			want: testAudits[11:12],
 		},
 		{
+			name: "allMarketplaceAudits",
+			opts: &dto.AdminAuditListOptions{
+				TargetResourceType: testutil.Ptr(models.TargetResourceTypeMarketplace),
+			},
+			want: testAudits[:6],
+		},
+		{
+			name: "allKeyAudits",
+			opts: &dto.AdminAuditListOptions{
+				TargetResourceType: testutil.Ptr(models.TargetResourceTypeKey),
+			},
+			want: testAudits[6:9],
+		},
+		{
+			name: "allReversalAudits",
+			opts: &dto.AdminAuditListOptions{
+				TargetResourceType: testutil.Ptr(models.TargetResourceTypeReversal),
+			},
+			want: testAudits[9:],
+		},
+		{
+			name: "targetResourceSlug",
+			opts: &dto.AdminAuditListOptions{
+				TargetResource: testutil.Ptr("test-slug-1"),
+			},
+			want: []*models.AdminAudit{testAudits[0], testAudits[2], testAudits[4]},
+		},
+		{
+			name: "targetResourceKeyID",
+			opts: &dto.AdminAuditListOptions{
+				TargetResource: testutil.Ptr("test-key-id-1"),
+			},
+			want: []*models.AdminAudit{testAudits[6], testAudits[8]},
+		},
+		{
+			name: "targetResourceReversalID",
+			opts: &dto.AdminAuditListOptions{
+				TargetResource: testutil.Ptr("1"),
+			},
+			want: testAudits[9:11],
+		},
+		{
+			name: "multipleFilters",
+			opts: &dto.AdminAuditListOptions{
+				TargetActions:  []models.TargetAction{models.TargetActionAddMarketplace},
+				TargetResource: testutil.Ptr("test-slug-1"),
+			},
+			want: testAudits[0:1],
+		},
+		{
 			name: "nilOptions",
 			opts: nil,
 			want: testAudits,

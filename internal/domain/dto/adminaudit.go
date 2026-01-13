@@ -5,6 +5,7 @@ import (
 )
 
 type AdminAuditListOptions struct {
-	TargetActions  []models.TargetAction
-	TargetResource *string
+	TargetActions      []models.TargetAction
+	TargetResourceType *models.TargetResourceType
+	TargetResource     *string
 }

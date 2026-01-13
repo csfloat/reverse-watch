@@ -48,10 +48,12 @@ func (a *adminAuditRepository) buildListQuery(opts *dto.AdminAuditListOptions) *
 	if opts == nil {
 		return query
 	}
+	if opts.TargetResourceType != nil {
+		query = query.Where("target_resource_type = ?", opts.TargetResourceType)
+	}
 	if opts.TargetResource != nil {
 		query = query.Where("target_resource = ?", opts.TargetResource)
 	}
-
 	if len(opts.TargetActions) > 0 {
 		query = query.Where("target_action IN (?)", opts.TargetActions)
 	}
