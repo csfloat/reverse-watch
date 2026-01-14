@@ -1,6 +1,7 @@
 package public
 
 import (
+	"errors"
 	"path/filepath"
 
 	"reverse-watch/internal/config"
@@ -32,27 +33,25 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 		return nil, err
 	}
 
-	onErr := func() {
-		sqlDB, err := conn.DB()
-		if err != nil {
-			panic(err)
+	onErr := func(err error) error {
+		sqlDB, innerErr := conn.DB()
+		if innerErr != nil {
+			return errors.Join(err, innerErr)
 		}
 		sqlDB.Close()
+		return err
 	}
 
 	if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-		onErr()
-		return nil, err
+		return nil, onErr(err)
 	}
 
 	if err := migratePublicModels(conn); err != nil {
-		onErr()
-		return nil, err
+		return nil, onErr(err)
 	}
 
 	if err := createIndexes(conn); err != nil {
-		onErr()
-		return nil, err
+		return nil, onErr(err)
 	}
 
 	return &publicRepository{
