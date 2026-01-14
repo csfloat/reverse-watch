@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"encoding/json"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
@@ -59,4 +60,14 @@ func Insert[T any](t *testing.T, db *gorm.DB, values ...T) {
 
 func Ptr[T any](v T) *T {
 	return &v
+}
+
+func MustRawJsonb(value interface{}) *models.RawJsonb {
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return &models.RawJsonb{
+		Raw: bytes,
+	}
 }
