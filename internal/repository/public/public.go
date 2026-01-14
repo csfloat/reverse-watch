@@ -42,12 +42,14 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 			return
 		}
 
+		repo := &publicRepository{
+			conn: conn,
+		}
+
 		onErr := func(err error) error {
-			sqlDB, innerErr := conn.DB()
-			if innerErr != nil {
+			if innerErr := repo.Close(); innerErr != nil {
 				return errors.Join(err, innerErr)
 			}
-			sqlDB.Close()
 			return err
 		}
 
@@ -66,14 +68,20 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 			return
 		}
 
-		publicRepo = &publicRepository{
-			conn: conn,
-		}
+		publicRepo = repo
 	})
 	if err != nil {
 		return nil, err
 	}
 	return publicRepo, nil
+}
+
+func (p *publicRepository) Close() error {
+	db, err := p.conn.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
 }
 
 func (p *publicRepository) Reversal() repository.ReversalRepository {
