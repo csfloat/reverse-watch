@@ -37,8 +37,7 @@ func (j *RawJsonb) MarshalJSON() ([]byte, error) {
 }
 
 func (j *RawJsonb) UnmarshalJSON(data []byte) error {
-	j.Raw = data
-	return nil
+	return json.Unmarshal(data, &j.Raw)
 }
 
 func ToRawJsonb(value interface{}) (*RawJsonb, error) {
