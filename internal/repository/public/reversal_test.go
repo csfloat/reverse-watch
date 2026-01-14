@@ -168,6 +168,37 @@ func TestReversalRepository_Create(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "validSourceAndRelatedSteamID",
+			reversals: []*models.Reversal{
+				{
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: "test-slug-1",
+					Source:          testutil.Ptr(models.SourceRelatedUser),
+					RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
+				},
+			},
+		},
+		{
+			name: "sourceDirect",
+			reversals: []*models.Reversal{
+				{
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: "test-slug-1",
+					Source:          testutil.Ptr(models.SourceDirect),
+				},
+			},
+		},
+		{
+			name: "sourceUserReport",
+			reversals: []*models.Reversal{
+				{
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: "test-slug-1",
+					Source:          testutil.Ptr(models.SourceUserReport),
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
