@@ -28,7 +28,7 @@ func (j *RawJsonb) Scan(value interface{}) error {
 		return fmt.Errorf("type assertion as []byte failed")
 	}
 
-	j.Raw = bytes
+	j.Raw = append([]byte(nil), bytes...)
 	return nil
 }
 
