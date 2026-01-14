@@ -2,6 +2,8 @@ package dto
 
 import (
 	"fmt"
+
+	"reverse-watch/internal/domain/models"
 )
 
 type MarketplaceUpdateOptions struct {
@@ -27,4 +29,8 @@ func (o *MarketplaceUpdateOptions) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (o *MarketplaceUpdateOptions) AuditDetails() (*models.RawJsonb, error) {
+	return models.ToRawJsonb(o.ToFields())
 }
