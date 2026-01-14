@@ -60,13 +60,9 @@ func ValidateSourceAndRelatedID(source *Source, relatedSteamID *SteamID) error {
 		}
 	}
 
-	if source != nil {
-		if *source == SourceRelatedUser {
-			if relatedSteamID == nil || !relatedSteamID.IsValid() {
-				return fmt.Errorf("invalid related_steam_id and source combination")
-			}
-		} else if relatedSteamID != nil {
-			return fmt.Errorf("invalid related_steam_id and source combination")
+	if source != nil && *source == SourceRelatedUser {
+		if relatedSteamID == nil {
+			return fmt.Errorf("related_steam_id is required when source is %q", "related_user")
 		}
 	}
 	return nil
