@@ -3,7 +3,7 @@ package models
 type TargetAction uint
 
 const (
-	TargetActionNone              TargetAction = 0
+	TargetActionUnknown           TargetAction = 0
 	TargetActionAddMarketplace    TargetAction = 1
 	TargetActionUpdateMarketplace TargetAction = 2
 	TargetActionRemoveMarketplace TargetAction = 3
@@ -17,9 +17,10 @@ const (
 type TargetResourceType uint
 
 const (
-	TargetResourceTypeMarketplace TargetResourceType = 0
-	TargetResourceTypeKey         TargetResourceType = 1
-	TargetResourceTypeReversal    TargetResourceType = 2
+	TargetResourceTypeUnknown     TargetResourceType = 0
+	TargetResourceTypeMarketplace TargetResourceType = 1
+	TargetResourceTypeKey         TargetResourceType = 2
+	TargetResourceTypeReversal    TargetResourceType = 3
 )
 
 type AdminAudit struct {
