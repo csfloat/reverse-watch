@@ -1,6 +1,7 @@
 package public
 
 import (
+	"errors"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"gorm.io/gorm"
 )
 
 func TestReversalRepository_BeforeCreate(t *testing.T) {
@@ -219,6 +221,37 @@ func TestReversalRepository_Create(t *testing.T) {
 
 			if diff := cmp.Diff(storedReversals, tc.reversals, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt")); diff != "" {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_Create_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testCases := []struct {
+		name     string
+		reversal *models.Reversal
+		wantErr  error
+	}{
+		{
+			name:     "nilReversal",
+			reversal: nil,
+			wantErr:  gorm.ErrInvalidValue,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := reversalRepo.Create(tc.reversal)
+			if err == nil {
+				t.Fatalf("Create(): got nil error, wanted error")
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Create(): got error %v, wanted %v", err, tc.wantErr)
 			}
 		})
 	}
