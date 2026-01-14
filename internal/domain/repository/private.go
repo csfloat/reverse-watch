@@ -30,4 +30,5 @@ type PrivateRepository interface {
 	Key() KeyRepository
 	Marketplace() MarketplaceRepository
 	AdminAudit() AdminAuditRepository
+	Close() error
 }
