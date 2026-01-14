@@ -32,6 +32,15 @@ func (j *RawJsonb) Scan(value interface{}) error {
 	return nil
 }
 
+func (j *RawJsonb) MarshalJSON() ([]byte, error) {
+	return json.Marshal(j.Raw)
+}
+
+func (j *RawJsonb) UnmarshalJSON(data []byte) error {
+	j.Raw = data
+	return nil
+}
+
 func ToRawJsonb(value interface{}) (*RawJsonb, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot convert nil to RawJsonb")
