@@ -32,15 +32,26 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 		return nil, err
 	}
 
+	onErr := func() {
+		sqlDB, err := conn.DB()
+		if err != nil {
+			panic(err)
+		}
+		sqlDB.Close()
+	}
+
 	if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
+		onErr()
 		return nil, err
 	}
 
 	if err := migratePublicModels(conn); err != nil {
+		onErr()
 		return nil, err
 	}
 
 	if err := createIndexes(conn); err != nil {
+		onErr()
 		return nil, err
 	}
 
