@@ -33,7 +33,7 @@ func (a *adminAuditRepository) Read(id models.Snowflake) (*models.AdminAudit, er
 }
 
 func (a *adminAuditRepository) Delete(id models.Snowflake) error {
-	tx := a.conn.Model(&models.AdminAudit{}).Where("id = ?", id).Delete(&models.AdminAudit{})
+	tx := a.conn.Where("id = ?", id).Delete(&models.AdminAudit{})
 	if tx.Error != nil {
 		return tx.Error
 	}
