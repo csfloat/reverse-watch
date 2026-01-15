@@ -19,6 +19,7 @@ import (
 
 var (
 	once        sync.Once
+	err         error
 	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
 )
 
@@ -27,8 +28,6 @@ type privateRepository struct {
 }
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
-	var err error
-
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -94,8 +93,7 @@ func (p *privateRepository) Close() error {
 }
 
 func (p *privateRepository) Key() repository.KeyRepository {
-	// STUB
-	return nil
+	return NewKeyRepository(p.conn)
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
