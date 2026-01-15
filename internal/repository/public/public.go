@@ -20,12 +20,11 @@ type publicRepository struct {
 
 var (
 	once       sync.Once
+	err        error
 	publicRepo repository.PublicRepository = (*publicRepository)(nil)
 )
 
 func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
-	var err error
-
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -104,9 +103,8 @@ func migratePublicModels(tx *gorm.DB) error {
 
 func createIndexes(tx *gorm.DB) error {
 	indexes := []string{
-		`CREATE INDEX IF NOT EXISTS idx_reversals_reversed_at_desc ON reversals(reversed_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_reversals_steam_id_reversed_at_desc ON reversals(steam_id, reversed_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug_reversed_at_desc ON reversals(marketplace_slug, reversed_at DESC, id DESC)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_reversals_steam_id_marketplace_slug ON reversals(steam_id, marketplace_slug)`,
+		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug ON reversals(marketplace_slug)`,
 	}
 
 	for _, index := range indexes {
