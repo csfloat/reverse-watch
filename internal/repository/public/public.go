@@ -1,7 +1,9 @@
 package public
 
 import (
+	"errors"
 	"path/filepath"
+	"sync"
 
 	"reverse-watch/internal/config"
 	"reverse-watch/internal/domain/models"
@@ -16,37 +18,70 @@ type publicRepository struct {
 	conn *gorm.DB
 }
 
-var _ repository.PublicRepository = (*publicRepository)(nil)
+var (
+	once       sync.Once
+	publicRepo repository.PublicRepository = (*publicRepository)(nil)
+)
 
 func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
-	rootDir, err := config.GetProjectRootDir()
-	if err != nil {
-		return nil, err
-	}
+	var err error
 
-	dsn := filepath.Join(rootDir, cfg.StaticDir, "public.db")
-	conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+	once.Do(func() {
+		rootDir, innerErr := config.GetProjectRootDir()
+		if innerErr != nil {
+			err = innerErr
+			return
+		}
+
+		dsn := filepath.Join(rootDir, cfg.StaticDir, "public.db")
+		conn, innerErr := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if innerErr != nil {
+			err = innerErr
+			return
+		}
+
+		repo := &publicRepository{
+			conn: conn,
+		}
+
+		onErr := func(err error) error {
+			if innerErr := repo.Close(); innerErr != nil {
+				return errors.Join(err, innerErr)
+			}
+			return err
+		}
+
+		if innerErr := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		if innerErr := migratePublicModels(conn); innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		if innerErr := createIndexes(conn); innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		publicRepo = repo
 	})
 	if err != nil {
 		return nil, err
 	}
+	return publicRepo, nil
+}
 
-	if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-		return nil, err
+func (p *publicRepository) Close() error {
+	db, err := p.conn.DB()
+	if err != nil {
+		return err
 	}
-
-	if err := migratePublicModels(conn); err != nil {
-		return nil, err
-	}
-
-	if err := createIndexes(conn); err != nil {
-		return nil, err
-	}
-
-	return &publicRepository{
-		conn: conn,
-	}, nil
+	return db.Close()
 }
 
 func (p *publicRepository) Reversal() repository.ReversalRepository {
