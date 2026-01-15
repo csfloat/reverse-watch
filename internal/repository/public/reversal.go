@@ -48,7 +48,7 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Delete(&models.Reversal{}).Error
+	return r.conn.Where("id = ?", id).Delete(&models.Reversal{}).Error
 }
 
 func (r *reversalRepository) Expunge(id models.Snowflake) error {
