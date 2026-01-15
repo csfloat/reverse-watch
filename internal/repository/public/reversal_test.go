@@ -428,3 +428,71 @@ func TestReversalRepository_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestReversalRepository_Update_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversal := &models.Reversal{
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-slug",
+	}
+	testutil.Insert(t, db, testReversal)
+
+	testCases := []struct {
+		name    string
+		opts    *dto.ReversalUpdateOptions
+		wantErr string
+	}{
+		{
+			name:    "nilOptions",
+			opts:    nil,
+			wantErr: "opts cannot be nil",
+		},
+		{
+			name:    "emptyOptions",
+			opts:    &dto.ReversalUpdateOptions{},
+			wantErr: "no fields to update",
+		},
+		{
+			name: "emptyMarketplaceSlug",
+			opts: &dto.ReversalUpdateOptions{
+				MarketplaceSlug: testutil.Ptr(""),
+			},
+			wantErr: "cannot set an empty marketplace_slug",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := reversalRepo.Update(testReversal.ID, tc.opts)
+			if err == nil {
+				t.Fatalf("Update(): got nil error, wanted error")
+			}
+			if err.Error() != tc.wantErr {
+				t.Errorf("Update(): got error %s, wanted %s", err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_Update_Error_InvalidSourceAndRelatedSteamId(t *testing.T) {
+	t.Parallel()
+
+	opts := &dto.ReversalUpdateOptions{
+		Source:         testutil.Ptr(models.SourceDirect),
+		RelatedSteamID: testutil.Ptr(models.SteamID(76561197960287931)),
+	}
+
+	wantErr := "invalid related_steam_id and source combination"
+
+	err := opts.Validate()
+	if err == nil {
+		t.Fatalf("Validate(): got nil error, wanted error")
+	}
+	if err.Error() != wantErr {
+		t.Errorf("Validate(): got error %s, wanted %s", err.Error(), wantErr)
+	}
+}

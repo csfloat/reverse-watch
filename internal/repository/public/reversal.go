@@ -40,6 +40,10 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 		return fmt.Errorf("opts cannot be nil")
 	}
 
+	if err := opts.Validate(); err != nil {
+		return err
+	}
+
 	fields := opts.ToFields()
 	if len(fields) == 0 {
 		return fmt.Errorf("no fields to update")
