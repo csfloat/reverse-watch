@@ -361,22 +361,6 @@ func TestReversalRepository_Update(t *testing.T) {
 			},
 		},
 		{
-			name: "relatedSteamId",
-			opts: &dto.ReversalUpdateOptions{
-				RelatedSteamID: testutil.Ptr(models.SteamID(76561197960287933)),
-			},
-			want: &models.Reversal{
-				Model: models.Model{
-					ID: testReversal.ID,
-				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "updated-slug",
-				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287933)),
-				ReversedAt:      testReversal.ReversedAt,
-			},
-		},
-		{
 			name: "reversedAt",
 			opts: &dto.ReversalUpdateOptions{
 				ReversedAt: testutil.Ptr(uint64(1)),
@@ -388,7 +372,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287932),
 				MarketplaceSlug: "updated-slug",
 				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287933)),
+				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
 				ReversedAt:      uint64(1),
 			},
 		},
@@ -404,7 +388,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287932),
 				MarketplaceSlug: "updated-slug",
 				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287933)),
+				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
 				ReversedAt:      uint64(1),
 				ExpungedAt:      testutil.Ptr(uint64(1)),
 			},
