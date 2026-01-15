@@ -52,7 +52,14 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
-	return r.conn.Where("id = ?", id).Delete(&models.Reversal{}).Error
+	tx := r.conn.Where("id = ?", id).Delete(&models.Reversal{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *reversalRepository) Expunge(id models.Snowflake) error {

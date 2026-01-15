@@ -496,3 +496,44 @@ func TestReversalRepository_Update_Error_InvalidSourceAndRelatedSteamId(t *testi
 		t.Errorf("Validate(): got error %s, wanted %s", err.Error(), wantErr)
 	}
 }
+
+func TestReversalRepository_Delete(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversal := &models.Reversal{
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-slug",
+	}
+	testutil.Insert(t, db, testReversal)
+
+	if err := reversalRepo.Delete(testReversal.ID); err != nil {
+		t.Fatalf("Delete(): %v", err)
+	}
+
+	var deletedReversal models.Reversal
+	err := db.Where("id = ?", testReversal.ID).First(&deletedReversal).Error
+	if err == nil {
+		t.Fatalf("First(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("First(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
+func TestReversalRepository_Delete_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	err := reversalRepo.Delete(models.Snowflake(1))
+	if err == nil {
+		t.Fatalf("Delete(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("Delete(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
