@@ -17,4 +17,5 @@ type ReversalRepository interface {
 
 type PublicRepository interface {
 	Reversal() ReversalRepository
+	Close() error
 }
