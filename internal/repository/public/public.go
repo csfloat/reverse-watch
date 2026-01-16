@@ -20,17 +20,15 @@ type publicRepository struct {
 }
 
 var (
-	once       sync.Once
-	err        error
-	closed     bool
+	mu     sync.RWMutex
+	once   sync.Once
+	closed bool
+	err    error
+
 	publicRepo repository.PublicRepository = (*publicRepository)(nil)
 )
 
 func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
-	if closed {
-		return nil, fmt.Errorf("repository already closed")
-	}
-
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -55,6 +53,10 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 			if innerErr := repo.Close(); innerErr != nil {
 				return errors.Join(err, innerErr)
 			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
 			closed = true
 			return err
 		}
@@ -79,6 +81,13 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 	if err != nil {
 		return nil, err
 	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
+	}
 	return publicRepo, nil
 }
 
@@ -87,6 +96,10 @@ func (p *publicRepository) Close() error {
 	if err != nil {
 		return err
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
 	closed = true
 	return db.Close()
 }
