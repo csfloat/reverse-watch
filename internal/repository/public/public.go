@@ -20,8 +20,8 @@ type publicRepository struct {
 }
 
 var (
-	mu     sync.RWMutex
 	once   sync.Once
+	mu     sync.RWMutex
 	closed bool
 	err    error
 
