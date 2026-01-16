@@ -2,6 +2,7 @@ package private
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -20,6 +21,7 @@ import (
 var (
 	once        sync.Once
 	err         error
+	closed      bool
 	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
 )
 
@@ -28,6 +30,10 @@ type privateRepository struct {
 }
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
+	}
+
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -52,6 +58,7 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 			if innerErr := repo.Close(); innerErr != nil {
 				return errors.Join(err, innerErr)
 			}
+
 			return err
 		}
 
@@ -89,6 +96,7 @@ func (p *privateRepository) Close() error {
 	if err != nil {
 		return err
 	}
+	closed = true
 	return db.Close()
 }
 
