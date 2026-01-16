@@ -55,6 +55,7 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 			if innerErr := repo.Close(); innerErr != nil {
 				return errors.Join(err, innerErr)
 			}
+			closed = true
 			return err
 		}
 
@@ -86,6 +87,7 @@ func (p *publicRepository) Close() error {
 	if err != nil {
 		return err
 	}
+	closed = true
 	return db.Close()
 }
 
