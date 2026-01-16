@@ -2,6 +2,7 @@ package public
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -21,10 +22,15 @@ type publicRepository struct {
 var (
 	once       sync.Once
 	err        error
+	closed     bool
 	publicRepo repository.PublicRepository = (*publicRepository)(nil)
 )
 
 func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
+	}
+
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
