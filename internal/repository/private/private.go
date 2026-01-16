@@ -19,9 +19,11 @@ import (
 )
 
 var (
-	once        sync.Once
-	err         error
-	closed      bool
+	once   sync.Once
+	mu     sync.RWMutex
+	closed bool
+	err    error
+
 	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
 )
 
@@ -30,10 +32,6 @@ type privateRepository struct {
 }
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
-	if closed {
-		return nil, fmt.Errorf("repository already closed")
-	}
-
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -59,6 +57,10 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 				return errors.Join(err, innerErr)
 			}
 
+			mu.Lock()
+			defer mu.Unlock()
+
+			closed = true
 			return err
 		}
 
@@ -88,6 +90,13 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 	if err != nil {
 		return nil, err
 	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
+	}
 	return privateRepo, nil
 }
 
@@ -96,6 +105,10 @@ func (p *privateRepository) Close() error {
 	if err != nil {
 		return err
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
 	closed = true
 	return db.Close()
 }
