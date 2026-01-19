@@ -2,6 +2,7 @@ package public
 
 import (
 	"errors"
+	"sort"
 	"testing"
 
 	"reverse-watch/internal/domain/dto"
@@ -558,5 +559,115 @@ func TestReversalRepository_Delete_NotFound(t *testing.T) {
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("Delete(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
+func TestReversalRepository_Expunge(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversal := &models.Reversal{
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-slug",
+	}
+	testutil.Insert(t, db, testReversal)
+
+	if err := reversalRepo.Expunge(testReversal.ID); err != nil {
+		t.Fatalf("Expunge(): %v", err)
+	}
+
+	var got models.Reversal
+	if err := db.Where("id = ?", testReversal.ID).First(&got).Error; err != nil {
+		t.Fatalf("First(): %v", err)
+	}
+
+	if got.ExpungedAt == nil || *got.ExpungedAt == 0 {
+		t.Fatalf("got expunged_at %v, wanted %v", got.ExpungedAt, testReversal.ExpungedAt)
+	}
+}
+
+func TestReversalRepository_List(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversals := []*models.Reversal{
+		{
+			Model: models.Model{
+				ID: 1,
+			},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "test-slug",
+			ReversedAt:      1,
+		},
+		{
+			Model: models.Model{
+				ID: 2,
+			},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "another-test-slug",
+		},
+		{
+			Model: models.Model{
+				ID: 3,
+			},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "test-slug",
+		},
+	}
+	testutil.Insert(t, db, testReversals...)
+
+	testCases := []struct {
+		name string
+		opts *dto.ReversalListOptions
+		want []*models.Reversal
+	}{
+		{
+			name: "nilOptions",
+			opts: nil,
+			want: testReversals,
+		},
+		{
+			name: "emptyOptions",
+			opts: &dto.ReversalListOptions{},
+			want: testReversals,
+		},
+		{
+			name: "bySteamID",
+			opts: &dto.ReversalListOptions{
+				SteamID: testutil.Ptr(models.SteamID(76561197960287930)),
+			},
+			want: testReversals[0:2],
+		},
+		{
+			name: "byMarketplaceSlug",
+			opts: &dto.ReversalListOptions{
+				MarketplaceSlug: testutil.Ptr("test-slug"),
+			},
+			want: []*models.Reversal{
+				testReversals[0],
+				testReversals[2],
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := reversalRepo.List(tc.opts)
+			if err != nil {
+				t.Fatalf("List(): %v", err)
+			}
+
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].ID < got[j].ID
+			})
+
+			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
+				t.Error(diff)
+			}
+		})
 	}
 }
