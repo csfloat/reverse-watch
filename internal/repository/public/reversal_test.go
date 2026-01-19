@@ -609,6 +609,7 @@ func TestReversalRepository_List(t *testing.T) {
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "another-test-slug",
+			ReversedAt:      2,
 		},
 		{
 			Model: models.Model{
@@ -616,6 +617,7 @@ func TestReversalRepository_List(t *testing.T) {
 			},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "test-slug",
+			ReversedAt:      3,
 		},
 	}
 	testutil.Insert(t, db, testReversals...)
@@ -640,7 +642,10 @@ func TestReversalRepository_List(t *testing.T) {
 			opts: &dto.ReversalListOptions{
 				SteamID: testutil.Ptr(models.SteamID(76561197960287930)),
 			},
-			want: testReversals[0:2],
+			want: []*models.Reversal{
+				testReversals[0],
+				testReversals[1],
+			},
 		},
 		{
 			name: "byMarketplaceSlug",
@@ -649,6 +654,28 @@ func TestReversalRepository_List(t *testing.T) {
 			},
 			want: []*models.Reversal{
 				testReversals[0],
+				testReversals[2],
+			},
+		},
+		{
+			name: "withCursor",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID:         3,
+					ReversedAt: 3,
+				},
+			},
+			want: []*models.Reversal{
+				testReversals[0],
+				testReversals[1],
+			},
+		},
+		{
+			name: "withLimit",
+			opts: &dto.ReversalListOptions{
+				Limit: testutil.Ptr(uint(1)),
+			},
+			want: []*models.Reversal{
 				testReversals[2],
 			},
 		},
