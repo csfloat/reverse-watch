@@ -286,127 +286,166 @@ func TestReversalRepository_Read(t *testing.T) {
 func TestReversalRepository_Update(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
-	reversalRepo := NewReversalRepository(db)
-
-	testReversal := &models.Reversal{
-		SteamID:         models.SteamID(76561197960287930),
-		MarketplaceSlug: "test-slug",
-	}
-	testutil.Insert(t, db, testReversal)
-
 	testCases := []struct {
-		name string
-		opts *dto.ReversalUpdateOptions
-		want *models.Reversal
+		name         string
+		initial      *models.Reversal
+		opts         *dto.ReversalUpdateOptions
+		want         *models.Reversal
+		ignoreFields []string
 	}{
 		{
 			name: "steamId",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				SteamID: testutil.Ptr(models.SteamID(76561197960287932)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
 				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: testReversal.MarketplaceSlug,
-				ReversedAt:      testReversal.ReversedAt,
+				MarketplaceSlug: "test-slug",
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 		{
 			name: "marketplaceSlug",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				MarketplaceSlug: testutil.Ptr("updated-slug"),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
-				SteamID:         models.SteamID(76561197960287932),
+				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "updated-slug",
-				ReversedAt:      testReversal.ReversedAt,
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 		{
 			name: "source",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				Source: testutil.Ptr(models.SourceDirect),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "updated-slug",
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
 				Source:          testutil.Ptr(models.SourceDirect),
-				ReversedAt:      testReversal.ReversedAt,
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 		{
 			name: "relatedUser",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				Source:         testutil.Ptr(models.SourceRelatedUser),
 				RelatedSteamID: testutil.Ptr(models.SteamID(76561197960287931)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "updated-slug",
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
 				Source:          testutil.Ptr(models.SourceRelatedUser),
 				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
-				ReversedAt:      testReversal.ReversedAt,
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 		{
 			name: "reversedAt",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				ReversedAt: testutil.Ptr(uint64(1)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "updated-slug",
-				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
 				ReversedAt:      uint64(1),
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt"},
 		},
 		{
 			name: "expungedAt",
+			initial: &models.Reversal{
+				Model: models.Model{
+					ID: models.Snowflake(1),
+				},
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
+			},
 			opts: &dto.ReversalUpdateOptions{
 				ExpungedAt: testutil.Ptr(uint64(1)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
-					ID: testReversal.ID,
+					ID: models.Snowflake(1),
 				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "updated-slug",
-				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
-				ReversedAt:      uint64(1),
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
 				ExpungedAt:      testutil.Ptr(uint64(1)),
 			},
+			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := reversalRepo.Update(testReversal.ID, tc.opts); err != nil {
+			t.Parallel()
+
+			db := testutil.NewPublicTestDB(t)
+			reversalRepo := NewReversalRepository(db)
+
+			testutil.Insert(t, db, tc.initial)
+
+			if err := reversalRepo.Update(tc.initial.ID, tc.opts); err != nil {
 				t.Fatalf("Update(): %v", err)
 			}
 
 			var got models.Reversal
-			if err := db.Where("id = ?", testReversal.ID).First(&got).Error; err != nil {
+			if err := db.Where("id = ?", tc.initial.ID).First(&got).Error; err != nil {
 				t.Fatalf("First(): %v", err)
 			}
 
-			if diff := cmp.Diff(tc.want, &got, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt")); diff != "" {
+			if diff := cmp.Diff(tc.want, &got, cmpopts.IgnoreFields(models.Reversal{}, tc.ignoreFields...)); diff != "" {
 				t.Error(diff)
 			}
 		})
