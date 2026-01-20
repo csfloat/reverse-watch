@@ -27,9 +27,9 @@ type Cursor struct {
 	// ID of the last reversal from the query that generated this cursor
 	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// REQUIRED
-	// The timestamp of the last reversal from the query that generated this cursor
+	// The created_at timestamp of the last reversal from the query that generated this cursor
 	// Specified in unix milliseconds
-	ReversedAt    uint64 `protobuf:"varint,2,opt,name=reversed_at,json=reversedAt,proto3" json:"reversed_at,omitempty"`
+	CreatedAt     uint64 `protobuf:"varint,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,9 +71,9 @@ func (x *Cursor) GetId() uint64 {
 	return 0
 }
 
-func (x *Cursor) GetReversedAt() uint64 {
+func (x *Cursor) GetCreatedAt() uint64 {
 	if x != nil {
-		return x.ReversedAt
+		return x.CreatedAt
 	}
 	return 0
 }
@@ -82,11 +82,11 @@ var File_cursor_proto protoreflect.FileDescriptor
 
 const file_cursor_proto_rawDesc = "" +
 	"\n" +
-	"\fcursor.proto\x12\x06cursor\"9\n" +
+	"\fcursor.proto\x12\x06cursor\"7\n" +
 	"\x06Cursor\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1f\n" +
-	"\vreversed_at\x18\x02 \x01(\x04R\n" +
-	"reversedAtB\rZ\v../cursorpbb\x06proto3"
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x02 \x01(\x04R\tcreatedAtB\rZ\v../cursorpbb\x06proto3"
 
 var (
 	file_cursor_proto_rawDescOnce sync.Once

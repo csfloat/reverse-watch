@@ -10,7 +10,7 @@ message Cursor {
   uint64 id = 1;
 
   // REQUIRED
-  // The timestamp of the last reversal from the query that generated this cursor
+  // The created_at timestamp of the last reversal from the query that generated this cursor
   // Specified in unix milliseconds
-  uint64 reversed_at = 2;
+  uint64 created_at = 2;
 }
