@@ -88,3 +88,84 @@ func TestReversal_BeforeCreate_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSourceAndRelatedID(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		source         *Source
+		relatedSteamID *SteamID
+	}{
+		{
+			name:           "bothNil",
+			source:         nil,
+			relatedSteamID: nil,
+		},
+		{
+			name:           "validSource",
+			source:         util.Ptr(SourceDirect),
+			relatedSteamID: nil,
+		},
+		{
+			name:           "validSourceAndRelatedSteamID",
+			source:         util.Ptr(SourceRelatedUser),
+			relatedSteamID: util.Ptr(SteamID(76561197960287930)),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateSourceAndRelatedID(tc.source, tc.relatedSteamID); err != nil {
+				t.Fatalf("got error %v, wanted nil", err)
+			}
+		})
+	}
+}
+
+func TestValidateSourceAndRelatedID_Errors(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		source         *Source
+		relatedSteamID *SteamID
+		wantErr        string
+	}{
+		{
+			name:           "invalidRelatedSteamID",
+			relatedSteamID: util.Ptr(SteamID(0)),
+			wantErr:        "related_steam_id is invalid",
+		},
+		{
+			name:           "validRelatedSteamIDWithNilSource",
+			source:         nil,
+			relatedSteamID: util.Ptr(SteamID(76561197960287931)),
+			wantErr:        "invalid related_steam_id and source combination",
+		},
+		{
+			name:           "invalidSourceAndRelatedSteamID",
+			source:         util.Ptr(SourceDirect),
+			relatedSteamID: util.Ptr(SteamID(76561197960287931)),
+			wantErr:        "invalid related_steam_id and source combination",
+		},
+		{
+			name:           "validSourceWithNilRelatedSteamID",
+			source:         util.Ptr(SourceRelatedUser),
+			relatedSteamID: nil,
+			wantErr:        "related_steam_id is required when source is \"related_user\"",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateSourceAndRelatedID(tc.source, tc.relatedSteamID)
+			if err == nil {
+				t.Fatalf("got nil error, wanted %v", tc.wantErr)
+			}
+			if err.Error() != tc.wantErr {
+				t.Fatalf("got %v, wanted %v", err, tc.wantErr)
+			}
+		})
+	}
+}
