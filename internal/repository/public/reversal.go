@@ -47,7 +47,15 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 	if len(fields) == 0 {
 		return fmt.Errorf("no fields to update")
 	}
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields).Error
+
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {

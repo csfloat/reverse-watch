@@ -468,21 +468,33 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 
 	testCases := []struct {
 		name    string
+		id      models.Snowflake
 		opts    *dto.ReversalUpdateOptions
 		wantErr string
 	}{
 		{
+			name: "notFound",
+			id:   models.Snowflake(0),
+			opts: &dto.ReversalUpdateOptions{
+				Source: util.Ptr(models.SourceDirect),
+			},
+			wantErr: gorm.ErrRecordNotFound.Error(),
+		},
+		{
 			name:    "nilOptions",
+			id:      models.Snowflake(1),
 			opts:    nil,
 			wantErr: "opts cannot be nil",
 		},
 		{
 			name:    "emptyOptions",
+			id:      models.Snowflake(1),
 			opts:    &dto.ReversalUpdateOptions{},
 			wantErr: "no fields to update",
 		},
 		{
 			name: "emptyMarketplaceSlug",
+			id:   models.Snowflake(1),
 			opts: &dto.ReversalUpdateOptions{
 				MarketplaceSlug: util.Ptr(""),
 			},
@@ -492,7 +504,7 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := reversalRepo.Update(testReversal.ID, tc.opts)
+			err := reversalRepo.Update(tc.id, tc.opts)
 			if err == nil {
 				t.Fatalf("Update(): got nil error, wanted error")
 			}
