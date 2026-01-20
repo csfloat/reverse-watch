@@ -74,8 +74,10 @@ func (o *ReversalUpdateOptions) Validate() error {
 		}
 	}
 
-	if o.ExpungedAt != nil && *o.ExpungedAt > now {
-		return fmt.Errorf("expunged_at cannot be in the future")
+	if o.ExpungedAt != nil {
+		if *o.ExpungedAt == 0 || *o.ExpungedAt > now {
+			return fmt.Errorf("expunged_at is invalid")
+		}
 	}
 	return nil
 }

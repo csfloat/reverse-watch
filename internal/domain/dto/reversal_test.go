@@ -140,11 +140,18 @@ func TestReversalUpdateOptions_Validate_Errors(t *testing.T) {
 			wantErr: "reversed_at is invalid",
 		},
 		{
+			name: "invalidExpungedAt",
+			opts: &ReversalUpdateOptions{
+				ExpungedAt: util.Ptr(uint64(0)),
+			},
+			wantErr: "expunged_at is invalid",
+		},
+		{
 			name: "expungedAtInFuture",
 			opts: &ReversalUpdateOptions{
 				ExpungedAt: util.Ptr(uint64(99999999999999999)),
 			},
-			wantErr: "expunged_at cannot be in the future",
+			wantErr: "expunged_at is invalid",
 		},
 	}
 
