@@ -40,8 +40,10 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("reversed_at cannot be in the future")
 	}
 
-	if r.ExpungedAt != nil && *r.ExpungedAt > now {
-		return fmt.Errorf("expunged_at cannot be in the future")
+	if r.ExpungedAt != nil {
+		if *r.ExpungedAt == 0 || *r.ExpungedAt > now {
+			return fmt.Errorf("expunged_at is invalid")
+		}
 	}
 
 	if r.ReversedAt == 0 {

@@ -122,9 +122,18 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 			reversal: &models.Reversal{
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
+				ExpungedAt:      util.Ptr(uint64(0)),
+			},
+			wantErr: "expunged_at is invalid",
+		},
+		{
+			name: "expungedAtInFuture",
+			reversal: &models.Reversal{
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug",
 				ExpungedAt:      util.Ptr(uint64(99999999999999999)),
 			},
-			wantErr: "expunged_at cannot be in the future",
+			wantErr: "expunged_at is invalid",
 		},
 	}
 
