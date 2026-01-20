@@ -1,9 +1,10 @@
 package dto
 
 import (
+	"testing"
+
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -83,7 +84,7 @@ func TestReversalUpdateOptions_Validate(t *testing.T) {
 	opts := &ReversalUpdateOptions{
 		SteamID:         testutil.Ptr(models.SteamID(76561197960287930)),
 		MarketplaceSlug: testutil.Ptr("test-slug"),
-		Source:          testutil.Ptr(models.SourceUserReport),
+		Source:          testutil.Ptr(models.SourceRelatedUser),
 		RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
 		ReversedAt:      testutil.Ptr(uint64(1)),
 		ExpungedAt:      testutil.Ptr(uint64(1)),
