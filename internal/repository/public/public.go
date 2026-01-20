@@ -2,6 +2,7 @@ package public
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -19,13 +20,15 @@ type publicRepository struct {
 }
 
 var (
-	once       sync.Once
+	once   sync.Once
+	mu     sync.RWMutex
+	closed bool
+	err    error
+
 	publicRepo repository.PublicRepository = (*publicRepository)(nil)
 )
 
 func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
-	var err error
-
 	once.Do(func() {
 		rootDir, innerErr := config.GetProjectRootDir()
 		if innerErr != nil {
@@ -50,6 +53,11 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 			if innerErr := repo.Close(); innerErr != nil {
 				return errors.Join(err, innerErr)
 			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			closed = true
 			return err
 		}
 
@@ -73,6 +81,13 @@ func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error)
 	if err != nil {
 		return nil, err
 	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
+	}
 	return publicRepo, nil
 }
 
@@ -81,6 +96,11 @@ func (p *publicRepository) Close() error {
 	if err != nil {
 		return err
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	closed = true
 	return db.Close()
 }
 
@@ -103,9 +123,8 @@ func migratePublicModels(tx *gorm.DB) error {
 
 func createIndexes(tx *gorm.DB) error {
 	indexes := []string{
-		`CREATE INDEX IF NOT EXISTS idx_reversals_reversed_at_desc ON reversals(reversed_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_reversals_steam_id_reversed_at_desc ON reversals(steam_id, reversed_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug_reversed_at_desc ON reversals(marketplace_slug, reversed_at DESC, id DESC)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_reversals_steam_id_marketplace_slug ON reversals(steam_id, marketplace_slug)`,
+		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug ON reversals(marketplace_slug)`,
 	}
 
 	for _, index := range indexes {

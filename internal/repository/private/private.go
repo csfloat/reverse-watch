@@ -1,6 +1,8 @@
 package private
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -17,7 +19,11 @@ import (
 )
 
 var (
-	once        sync.Once
+	once   sync.Once
+	mu     sync.RWMutex
+	closed bool
+	err    error
+
 	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
 )
 
@@ -26,58 +32,89 @@ type privateRepository struct {
 }
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
-	var error error
-
 	once.Do(func() {
-		rootDir, err := config.GetProjectRootDir()
-		if err != nil {
-			error = err
+		rootDir, innerErr := config.GetProjectRootDir()
+		if innerErr != nil {
+			err = innerErr
 			return
 		}
 
 		dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
-		conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		conn, innerErr := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
-		if err != nil {
-			error = err
+		if innerErr != nil {
+			err = innerErr
 			return
 		}
 
-		if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-			error = err
-			return
-		}
-
-		if err := migratePrivateModels(conn); err != nil {
-			error = err
-			return
-		}
-
-		if err := seedMarketplaces(conn); err != nil {
-			error = err
-			return
-		}
-
-		if err := seedAdminAPIKey(conn, keygen); err != nil {
-			error = err
-			return
-		}
-
-		privateRepo = &privateRepository{
+		repo := &privateRepository{
 			conn: conn,
 		}
+
+		onErr := func(err error) error {
+			if innerErr := repo.Close(); innerErr != nil {
+				return errors.Join(err, innerErr)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			closed = true
+			return err
+		}
+
+		if innerErr := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		if innerErr := migratePrivateModels(conn); innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		if innerErr := seedMarketplaces(conn); innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		if innerErr := seedAdminAPIKey(conn, keygen); innerErr != nil {
+			err = onErr(innerErr)
+			return
+		}
+
+		privateRepo = repo
 	})
 
-	if error != nil {
-		return nil, error
+	if err != nil {
+		return nil, err
+	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if closed {
+		return nil, fmt.Errorf("repository already closed")
 	}
 	return privateRepo, nil
 }
 
+func (p *privateRepository) Close() error {
+	db, err := p.conn.DB()
+	if err != nil {
+		return err
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	closed = true
+	return db.Close()
+}
+
 func (p *privateRepository) Key() repository.KeyRepository {
-	// STUB
-	return nil
+	return NewKeyRepository(p.conn)
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
