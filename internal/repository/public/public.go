@@ -125,6 +125,7 @@ func createIndexes(tx *gorm.DB) error {
 	indexes := []string{
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_reversals_steam_id_marketplace_slug ON reversals(steam_id, marketplace_slug)`,
 		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug ON reversals(marketplace_slug)`,
+		`CREATE INDEX IF NOT EXISTS idx_reversals_created_at_desc ON reversals(created_at DESC, id DESC)`,
 	}
 
 	for _, index := range indexes {
