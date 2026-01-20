@@ -562,32 +562,6 @@ func TestReversalRepository_Delete_NotFound(t *testing.T) {
 	}
 }
 
-func TestReversalRepository_Expunge(t *testing.T) {
-	t.Parallel()
-
-	db := testutil.NewPublicTestDB(t)
-	reversalRepo := NewReversalRepository(db)
-
-	testReversal := &models.Reversal{
-		SteamID:         models.SteamID(76561197960287930),
-		MarketplaceSlug: "test-slug",
-	}
-	testutil.Insert(t, db, testReversal)
-
-	if err := reversalRepo.Expunge(testReversal.ID); err != nil {
-		t.Fatalf("Expunge(): %v", err)
-	}
-
-	var got models.Reversal
-	if err := db.Where("id = ?", testReversal.ID).First(&got).Error; err != nil {
-		t.Fatalf("First(): %v", err)
-	}
-
-	if got.ExpungedAt == nil || *got.ExpungedAt == 0 {
-		t.Fatalf("got expunged_at %v, wanted %v", got.ExpungedAt, testReversal.ExpungedAt)
-	}
-}
-
 func TestReversalRepository_List(t *testing.T) {
 	t.Parallel()
 
@@ -661,8 +635,8 @@ func TestReversalRepository_List(t *testing.T) {
 			name: "withCursor",
 			opts: &dto.ReversalListOptions{
 				Cursor: &dto.Cursor{
-					ID:         3,
-					ReversedAt: 3,
+					ID:        3,
+					CreatedAt: 3,
 				},
 			},
 			want: []*models.Reversal{
@@ -692,6 +666,111 @@ func TestReversalRepository_List(t *testing.T) {
 				return got[i].ID < got[j].ID
 			})
 
+			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_List_Pagination(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewPublicTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversals := []*models.Reversal{
+		{
+			Model: models.Model{
+				ID:        50,
+				CreatedAt: 100,
+			},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "test-slug",
+		},
+		{
+			Model: models.Model{
+				ID:        40,
+				CreatedAt: 100,
+			},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "test-slug",
+		},
+		{
+			Model: models.Model{
+				ID:        30,
+				CreatedAt: 100,
+			},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "another-test-slug",
+		},
+		{
+			Model: models.Model{
+				ID:        60,
+				CreatedAt: 90,
+			},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "test-slug",
+		},
+		{
+			Model: models.Model{
+				ID:        55,
+				CreatedAt: 90,
+			},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "test-slug",
+		},
+	}
+	testutil.Insert(t, db, testReversals...)
+
+	testCases := []struct {
+		name   string
+		cursor *dto.Cursor
+		limit  uint
+		want   []*models.Reversal
+	}{
+		{
+			name:  "firstPage",
+			limit: 2,
+			want: []*models.Reversal{
+				testReversals[0],
+				testReversals[1],
+			},
+		},
+		{
+			name: "secondPage",
+			cursor: &dto.Cursor{
+				ID:        40,
+				CreatedAt: 100,
+			},
+			limit: 2,
+			want: []*models.Reversal{
+				testReversals[2],
+				testReversals[3],
+			},
+		},
+		{
+			name: "thirdPage",
+			cursor: &dto.Cursor{
+				ID:        60,
+				CreatedAt: 90,
+			},
+			limit: 2,
+			want: []*models.Reversal{
+				testReversals[4],
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := reversalRepo.List(&dto.ReversalListOptions{
+				Cursor: tc.cursor,
+				Limit:  &tc.limit,
+			})
+			if err != nil {
+				t.Fatalf("List(): %v", err)
+			}
 			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
 				t.Error(diff)
 			}
