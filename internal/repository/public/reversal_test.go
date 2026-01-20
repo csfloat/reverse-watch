@@ -8,6 +8,7 @@ import (
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/internal/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -83,7 +84,7 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 			reversal: &models.Reversal{
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				RelatedSteamID:  testutil.Ptr(models.SteamID(0)),
+				RelatedSteamID:  util.Ptr(models.SteamID(0)),
 			},
 			wantErr: "related_steam_id is invalid",
 		},
@@ -92,8 +93,8 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 			reversal: &models.Reversal{
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				Source:          testutil.Ptr(models.SourceDirect),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
+				Source:          util.Ptr(models.SourceDirect),
+				RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
 			},
 			wantErr: "invalid related_steam_id and source combination",
 		},
@@ -102,7 +103,7 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 			reversal: &models.Reversal{
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				Source:          testutil.Ptr(models.SourceRelatedUser),
+				Source:          util.Ptr(models.SourceRelatedUser),
 				RelatedSteamID:  nil,
 			},
 			wantErr: "related_steam_id is required when source is \"related_user\"",
@@ -121,7 +122,7 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 			reversal: &models.Reversal{
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				ExpungedAt:      testutil.Ptr(uint64(99999999999999999)),
+				ExpungedAt:      util.Ptr(uint64(99999999999999999)),
 			},
 			wantErr: "expunged_at cannot be in the future",
 		},
@@ -178,8 +179,8 @@ func TestReversalRepository_Create(t *testing.T) {
 				{
 					SteamID:         models.SteamID(76561197960287930),
 					MarketplaceSlug: "test-slug-1",
-					Source:          testutil.Ptr(models.SourceRelatedUser),
-					RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
+					Source:          util.Ptr(models.SourceRelatedUser),
+					RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
 				},
 			},
 		},
@@ -189,7 +190,7 @@ func TestReversalRepository_Create(t *testing.T) {
 				{
 					SteamID:         models.SteamID(76561197960287930),
 					MarketplaceSlug: "test-slug-1",
-					Source:          testutil.Ptr(models.SourceDirect),
+					Source:          util.Ptr(models.SourceDirect),
 				},
 			},
 		},
@@ -199,7 +200,7 @@ func TestReversalRepository_Create(t *testing.T) {
 				{
 					SteamID:         models.SteamID(76561197960287930),
 					MarketplaceSlug: "test-slug-1",
-					Source:          testutil.Ptr(models.SourceUserReport),
+					Source:          util.Ptr(models.SourceUserReport),
 				},
 			},
 		},
@@ -268,9 +269,9 @@ func TestReversalRepository_Read(t *testing.T) {
 	testReversal := &models.Reversal{
 		SteamID:         models.SteamID(76561197960287930),
 		MarketplaceSlug: "test-slug",
-		Source:          testutil.Ptr(models.SourceRelatedUser),
-		RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
-		ExpungedAt:      testutil.Ptr(uint64(1)),
+		Source:          util.Ptr(models.SourceRelatedUser),
+		RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
+		ExpungedAt:      util.Ptr(uint64(1)),
 	}
 	testutil.Insert(t, db, testReversal)
 
@@ -304,7 +305,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				SteamID: testutil.Ptr(models.SteamID(76561197960287932)),
+				SteamID: util.Ptr(models.SteamID(76561197960287932)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -325,7 +326,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				MarketplaceSlug: testutil.Ptr("updated-slug"),
+				MarketplaceSlug: util.Ptr("updated-slug"),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -346,7 +347,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				Source: testutil.Ptr(models.SourceDirect),
+				Source: util.Ptr(models.SourceDirect),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -354,7 +355,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				},
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				Source:          testutil.Ptr(models.SourceDirect),
+				Source:          util.Ptr(models.SourceDirect),
 			},
 			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
@@ -368,8 +369,8 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				Source:         testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID: testutil.Ptr(models.SteamID(76561197960287931)),
+				Source:         util.Ptr(models.SourceRelatedUser),
+				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -377,8 +378,8 @@ func TestReversalRepository_Update(t *testing.T) {
 				},
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				Source:          testutil.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  testutil.Ptr(models.SteamID(76561197960287931)),
+				Source:          util.Ptr(models.SourceRelatedUser),
+				RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
 			},
 			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
@@ -392,7 +393,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				ReversedAt: testutil.Ptr(uint64(1)),
+				ReversedAt: util.Ptr(uint64(1)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -414,7 +415,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				ExpungedAt: testutil.Ptr(uint64(1)),
+				ExpungedAt: util.Ptr(uint64(1)),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -422,7 +423,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				},
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				ExpungedAt:      testutil.Ptr(uint64(1)),
+				ExpungedAt:      util.Ptr(uint64(1)),
 			},
 			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
@@ -483,7 +484,7 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 		{
 			name: "emptyMarketplaceSlug",
 			opts: &dto.ReversalUpdateOptions{
-				MarketplaceSlug: testutil.Ptr(""),
+				MarketplaceSlug: util.Ptr(""),
 			},
 			wantErr: "cannot set an empty marketplace_slug",
 		},
@@ -506,8 +507,8 @@ func TestReversalRepository_Update_Error_InvalidSourceAndRelatedSteamId(t *testi
 	t.Parallel()
 
 	opts := &dto.ReversalUpdateOptions{
-		Source:         testutil.Ptr(models.SourceDirect),
-		RelatedSteamID: testutil.Ptr(models.SteamID(76561197960287931)),
+		Source:         util.Ptr(models.SourceDirect),
+		RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 	}
 
 	wantErr := "invalid related_steam_id and source combination"
@@ -614,7 +615,7 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "bySteamID",
 			opts: &dto.ReversalListOptions{
-				SteamID: testutil.Ptr(models.SteamID(76561197960287930)),
+				SteamID: util.Ptr(models.SteamID(76561197960287930)),
 			},
 			want: []*models.Reversal{
 				testReversals[0],
@@ -624,7 +625,7 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "byMarketplaceSlug",
 			opts: &dto.ReversalListOptions{
-				MarketplaceSlug: testutil.Ptr("test-slug"),
+				MarketplaceSlug: util.Ptr("test-slug"),
 			},
 			want: []*models.Reversal{
 				testReversals[0],
@@ -647,7 +648,7 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "withLimit",
 			opts: &dto.ReversalListOptions{
-				Limit: testutil.Ptr(uint(1)),
+				Limit: util.Ptr(uint(1)),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
