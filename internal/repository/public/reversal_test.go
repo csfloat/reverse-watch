@@ -571,27 +571,27 @@ func TestReversalRepository_List(t *testing.T) {
 	testReversals := []*models.Reversal{
 		{
 			Model: models.Model{
-				ID: 1,
+				ID:        1,
+				CreatedAt: 1,
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "test-slug",
-			ReversedAt:      1,
 		},
 		{
 			Model: models.Model{
-				ID: 2,
+				ID:        2,
+				CreatedAt: 2,
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "another-test-slug",
-			ReversedAt:      2,
 		},
 		{
 			Model: models.Model{
-				ID: 3,
+				ID:        3,
+				CreatedAt: 3,
 			},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "test-slug",
-			ReversedAt:      3,
 		},
 	}
 	testutil.Insert(t, db, testReversals...)
