@@ -10,7 +10,6 @@ type ReversalRepository interface {
 	Read(id models.Snowflake) (*models.Reversal, error)
 	Update(id models.Snowflake, opts *dto.ReversalUpdateOptions) error
 	Delete(id models.Snowflake) error
-	Expunge(id models.Snowflake) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }
 
