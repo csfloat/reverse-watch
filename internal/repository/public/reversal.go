@@ -2,7 +2,6 @@ package public
 
 import (
 	"fmt"
-	"time"
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
@@ -62,12 +61,8 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 	return nil
 }
 
-func (r *reversalRepository) Expunge(id models.Snowflake) error {
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Update("expunged_at", time.Now().UnixMilli()).Error
-}
-
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{}).Order("reversed_at DESC")
+	query := r.conn.Model(&models.Reversal{}).Order("created_at DESC, id DESC")
 	if opts == nil {
 		return query
 	}
@@ -78,7 +73,7 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("reversed_at <= ? AND id < ?", opts.Cursor.ReversedAt, opts.Cursor.ID)
+		query = query.Where("(created_at, id) < (?, ?)", opts.Cursor.CreatedAt, opts.Cursor.ID)
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))
