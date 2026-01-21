@@ -8,6 +8,7 @@ import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/models/constants"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/internal/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -218,8 +219,8 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 			name:     "allFields",
 			original: testMarketplace1,
 			opts: &dto.MarketplaceUpdateOptions{
-				Name:     testutil.Ptr("Updated Test Marketplace 1"),
-				IsActive: testutil.Ptr(false),
+				Name:     util.Ptr("Updated Test Marketplace 1"),
+				IsActive: util.Ptr(false),
 			},
 			want: &models.Marketplace{
 				Slug:     "test-marketplace1",
@@ -231,7 +232,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 			name:     "partialFields",
 			original: testMarketplace2,
 			opts: &dto.MarketplaceUpdateOptions{
-				Name: testutil.Ptr("Updated Test Marketplace 2"),
+				Name: util.Ptr("Updated Test Marketplace 2"),
 			},
 			want: &models.Marketplace{
 				Slug:     "test-marketplace2",
@@ -299,8 +300,8 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 			name: "recordNotFound",
 			slug: "test-marketplace3",
 			opts: &dto.MarketplaceUpdateOptions{
-				Name:     testutil.Ptr("Updated Test Marketplace 3"),
-				IsActive: testutil.Ptr(false),
+				Name:     util.Ptr("Updated Test Marketplace 3"),
+				IsActive: util.Ptr(false),
 			},
 			wantErr: "record not found",
 		},

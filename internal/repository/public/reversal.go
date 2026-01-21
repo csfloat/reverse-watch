@@ -2,7 +2,6 @@ package public
 
 import (
 	"fmt"
-	"time"
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
@@ -23,11 +22,7 @@ func NewReversalRepository(conn *gorm.DB) repository.ReversalRepository {
 	}
 }
 
-func (r *reversalRepository) Create(reversal *models.Reversal) error {
-	return r.conn.Model(&models.Reversal{}).Create(reversal).Error
-}
-
-func (r *reversalRepository) BulkCreate(reversals []*models.Reversal) error {
+func (r *reversalRepository) Create(reversals ...*models.Reversal) error {
 	return r.conn.Model(&models.Reversal{}).Create(reversals).Error
 }
 
@@ -44,23 +39,38 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 		return fmt.Errorf("opts cannot be nil")
 	}
 
+	if err := opts.Validate(); err != nil {
+		return err
+	}
+
 	fields := opts.ToFields()
 	if len(fields) == 0 {
 		return fmt.Errorf("no fields to update")
 	}
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields).Error
+
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *reversalRepository) Delete(id models.Snowflake) error {
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Delete(&models.Reversal{}).Error
-}
-
-func (r *reversalRepository) Expunge(id models.Snowflake) error {
-	return r.conn.Model(&models.Reversal{}).Where("id = ?", id).Update("expunged_at", time.Now().UnixMilli()).Error
+	tx := r.conn.Where("id = ?", id).Delete(&models.Reversal{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{}).Order("reversed_at DESC")
+	query := r.conn.Model(&models.Reversal{}).Order("created_at DESC, id DESC")
 	if opts == nil {
 		return query
 	}
@@ -71,7 +81,7 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("reversed_at <= ? AND id < ?", opts.Cursor.ReversedAt, opts.Cursor.ID)
+		query = query.Where("(created_at, id) < (?, ?)", opts.Cursor.CreatedAt, opts.Cursor.ID)
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))

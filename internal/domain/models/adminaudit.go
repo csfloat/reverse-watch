@@ -3,22 +3,24 @@ package models
 type TargetAction uint
 
 const (
-	TargetActionAddMarketplace    TargetAction = 0
-	TargetActionUpdateMarketplace TargetAction = 1
-	TargetActionRemoveMarketplace TargetAction = 2
-	TargetActionAddKey            TargetAction = 3
-	TargetActionRemoveKey         TargetAction = 4
-	TargetActionUpdateReversal    TargetAction = 5
-	TargetActionRemoveReversal    TargetAction = 6
-	TargetActionDeleteUserData    TargetAction = 7
+	TargetActionUnknown           TargetAction = 0
+	TargetActionAddMarketplace    TargetAction = 1
+	TargetActionUpdateMarketplace TargetAction = 2
+	TargetActionRemoveMarketplace TargetAction = 3
+	TargetActionAddKey            TargetAction = 4
+	TargetActionRemoveKey         TargetAction = 5
+	TargetActionUpdateReversal    TargetAction = 6
+	TargetActionRemoveReversal    TargetAction = 7
+	TargetActionDeleteUserData    TargetAction = 8
 )
 
 type TargetResourceType uint
 
 const (
-	TargetResourceTypeMarketplace TargetResourceType = 0
-	TargetResourceTypeKey         TargetResourceType = 1
-	TargetResourceTypeReversal    TargetResourceType = 2
+	TargetResourceTypeUnknown     TargetResourceType = 0
+	TargetResourceTypeMarketplace TargetResourceType = 1
+	TargetResourceTypeKey         TargetResourceType = 2
+	TargetResourceTypeReversal    TargetResourceType = 3
 )
 
 type AdminAudit struct {
@@ -26,10 +28,10 @@ type AdminAudit struct {
 	TargetAction       TargetAction       `json:"target_action"`
 	TargetResourceType TargetResourceType `json:"resource_type"`
 	TargetResource     string             `json:"target_resource"`
-	Details            *Jsonb             `gorm:"type:jsonb" json:"details"`
+	Details            *RawJsonb          `json:"details"`
 }
 
-func NewMarketplaceAdminAudit(action TargetAction, slug string, details *Jsonb) *AdminAudit {
+func NewMarketplaceAdminAudit(action TargetAction, slug string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeMarketplace,
@@ -38,7 +40,7 @@ func NewMarketplaceAdminAudit(action TargetAction, slug string, details *Jsonb) 
 	}
 }
 
-func NewKeyAdminAudit(action TargetAction, id string, details *Jsonb) *AdminAudit {
+func NewKeyAdminAudit(action TargetAction, id string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeKey,
@@ -47,7 +49,7 @@ func NewKeyAdminAudit(action TargetAction, id string, details *Jsonb) *AdminAudi
 	}
 }
 
-func NewReversalAdminAudit(action TargetAction, id Snowflake, details *Jsonb) *AdminAudit {
+func NewReversalAdminAudit(action TargetAction, id Snowflake, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeReversal,

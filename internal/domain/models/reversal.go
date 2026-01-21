@@ -40,8 +40,10 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("reversed_at cannot be in the future")
 	}
 
-	if r.ExpungedAt != nil && *r.ExpungedAt > now {
-		return fmt.Errorf("expunged_at cannot be in the future")
+	if r.ExpungedAt != nil {
+		if *r.ExpungedAt == 0 || *r.ExpungedAt > now {
+			return fmt.Errorf("expunged_at is invalid")
+		}
 	}
 
 	if r.ReversedAt == 0 {
@@ -60,13 +62,9 @@ func ValidateSourceAndRelatedID(source *Source, relatedSteamID *SteamID) error {
 		}
 	}
 
-	if source != nil {
-		if *source == SourceRelatedUser {
-			if relatedSteamID == nil || !relatedSteamID.IsValid() {
-				return fmt.Errorf("invalid related_steam_id and source combination")
-			}
-		} else if relatedSteamID != nil {
-			return fmt.Errorf("invalid related_steam_id and source combination")
+	if source != nil && *source == SourceRelatedUser {
+		if relatedSteamID == nil {
+			return fmt.Errorf("related_steam_id is required when source is %q", "related_user")
 		}
 	}
 	return nil
@@ -94,15 +92,8 @@ func (s *Source) String() string {
 }
 
 func (s *Source) MarshalJSON() ([]byte, error) {
-	var source string
-	switch *s {
-	case SourceDirect:
-		source = "direct"
-	case SourceRelatedUser:
-		source = "related_user"
-	case SourceUserReport:
-		source = "user_report"
-	default:
+	source := s.String()
+	if source == "" {
 		return nil, fmt.Errorf("invalid source value")
 	}
 	return json.Marshal(source)

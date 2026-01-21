@@ -11,6 +11,5 @@ type ReversalService interface {
 	GetReversal(id models.Snowflake) (*models.Reversal, error)
 	UpdateReversal(id models.Snowflake, opts *dto.ReversalUpdateOptions) error
 	DeleteReversal(id models.Snowflake) error
-	ExpungeReversal(id models.Snowflake) error
 	ListReversals(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }

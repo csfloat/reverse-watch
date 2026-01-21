@@ -68,12 +68,16 @@ func (o *ReversalUpdateOptions) Validate() error {
 	}
 
 	now := uint64(time.Now().UnixMilli())
-	if o.ReversedAt != nil && *o.ReversedAt > now {
-		return fmt.Errorf("reversed_at cannot be in the future")
+	if o.ReversedAt != nil {
+		if *o.ReversedAt == 0 || *o.ReversedAt > now {
+			return fmt.Errorf("reversed_at is invalid")
+		}
 	}
 
-	if o.ExpungedAt != nil && *o.ExpungedAt > now {
-		return fmt.Errorf("expunged_at cannot be in the future")
+	if o.ExpungedAt != nil {
+		if *o.ExpungedAt == 0 || *o.ExpungedAt > now {
+			return fmt.Errorf("expunged_at is invalid")
+		}
 	}
 	return nil
 }

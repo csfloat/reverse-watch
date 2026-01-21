@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"encoding/json"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
@@ -14,7 +15,6 @@ func NewPrivateTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db := newTestDB(t)
-
 	privateModels := []interface{}{
 		(*models.Marketplace)(nil),
 		(*models.Key)(nil),
@@ -22,6 +22,22 @@ func NewPrivateTestDB(t *testing.T) *gorm.DB {
 	}
 
 	for _, model := range privateModels {
+		if err := db.AutoMigrate(model); err != nil {
+			t.Fatalf("failed to migrate model %T: %v", model, err)
+		}
+	}
+	return db
+}
+
+func NewPublicTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	db := newTestDB(t)
+	publicModels := []interface{}{
+		(*models.Reversal)(nil),
+	}
+
+	for _, model := range publicModels {
 		if err := db.AutoMigrate(model); err != nil {
 			t.Fatalf("failed to migrate model %T: %v", model, err)
 		}
@@ -57,6 +73,12 @@ func Insert[T any](t *testing.T, db *gorm.DB, values ...T) {
 	}
 }
 
-func Ptr[T any](v T) *T {
-	return &v
+func MustRawJsonb(value interface{}) *models.RawJsonb {
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return &models.RawJsonb{
+		Raw: bytes,
+	}
 }
