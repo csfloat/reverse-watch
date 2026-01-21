@@ -6,7 +6,7 @@ import (
 )
 
 type ReversalService interface {
-	CreateReversal(reversals ...*models.Reversal) error
+	CreateReversals(reversals ...*models.Reversal) error
 	GetReversal(id models.Snowflake) (*models.Reversal, error)
 	UpdateReversal(id models.Snowflake, opts *dto.ReversalUpdateOptions) error
 	DeleteReversal(id models.Snowflake) error

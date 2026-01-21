@@ -49,7 +49,7 @@ func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	if err := h.reversalSvc.CreateReversal(reversals...); err != nil {
+	if err := h.reversalSvc.CreateReversals(reversals...); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create reversals")
 		return
 	}

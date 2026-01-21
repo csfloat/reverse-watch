@@ -23,7 +23,7 @@ func NewReversalService(privateRepo repository.PrivateRepository, publicRepo rep
 	}
 }
 
-func (s *reversalService) CreateReversal(reversals ...*models.Reversal) error {
+func (s *reversalService) CreateReversals(reversals ...*models.Reversal) error {
 	return s.Reversal().Create(reversals...)
 }
 
