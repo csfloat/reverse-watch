@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
@@ -48,8 +49,8 @@ func (h *Handler) createReversalsHandler(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	if err := h.reversalSvc.BulkCreateReversals(reversals); err != nil {
-		render.Errorf(w, r, errors.DBCreate, "failed to create bulk reversals")
+	if err := h.reversalSvc.CreateReversal(reversals...); err != nil {
+		render.Errorf(w, r, errors.DBCreate, "failed to create reversals")
 		return
 	}
 
@@ -81,8 +82,11 @@ func (h *Handler) expungeReversalHandler(w http.ResponseWriter, r *http.Request)
 		render.Errorf(w, r, errors.NotAuthorized, "marketplace mismatch")
 	}
 
-	if err := h.reversalSvc.ExpungeReversal(snowflake); err != nil {
-		render.Errorf(w, r, errors.DBCreate, "failed to expunge reversal")
+	now := uint64(time.Now().UnixMilli())
+	if err := h.reversalSvc.UpdateReversal(snowflake, &dto.ReversalUpdateOptions{
+		ExpungedAt: &now,
+	}); err != nil {
+		render.Errorf(w, r, errors.DBUpdate, "failed to expunge reversal")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -135,8 +139,8 @@ func (h *Handler) listReversals(queryValues url.Values, defaultLimit, maxLimit u
 		// Omit cursor on last page
 		if len(reversals) == int(*listOpts.Limit) {
 			nextCursor = &dto.Cursor{
-				ID:         reversals[len(reversals)-1].ID,
-				ReversedAt: reversals[len(reversals)-1].ReversedAt,
+				ID:        reversals[len(reversals)-1].ID,
+				CreatedAt: reversals[len(reversals)-1].CreatedAt,
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package reversal
 
 import (
 	"fmt"
+
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
@@ -22,12 +23,8 @@ func NewReversalService(privateRepo repository.PrivateRepository, publicRepo rep
 	}
 }
 
-func (s *reversalService) CreateReversal(reversal *models.Reversal) error {
-	return s.Reversal().Create(reversal)
-}
-
-func (s *reversalService) BulkCreateReversals(reversals []*models.Reversal) error {
-	return s.Reversal().BulkCreate(reversals)
+func (s *reversalService) CreateReversal(reversals ...*models.Reversal) error {
+	return s.Reversal().Create(reversals...)
 }
 
 func (s *reversalService) GetReversal(id models.Snowflake) (*models.Reversal, error) {
@@ -43,10 +40,6 @@ func (s *reversalService) UpdateReversal(id models.Snowflake, opts *dto.Reversal
 
 func (s *reversalService) DeleteReversal(id models.Snowflake) error {
 	return s.Reversal().Delete(id)
-}
-
-func (s *reversalService) ExpungeReversal(id models.Snowflake) error {
-	return s.Reversal().Expunge(id)
 }
 
 func (s *reversalService) ListReversals(opts *dto.ReversalListOptions) ([]*models.Reversal, error) {

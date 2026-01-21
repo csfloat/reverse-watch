@@ -87,8 +87,13 @@ func (h *Handler) patchMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	details := models.Jsonb(opts.ToFields())
-	audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, &details)
+	details, err := models.ToRawJsonb(opts)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to convert to raw jsonb")
+		return
+	}
+
+	audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, details)
 	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return

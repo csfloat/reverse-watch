@@ -34,11 +34,13 @@ func (h *Handler) adminCreateKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	audit := models.NewKeyAdminAudit(models.TargetActionAddKey, rawKey.ID, &models.Jsonb{
-		"marketplace_slug": req.MarketplaceSlug,
-		"permissions":      req.Permissions,
-	})
+	jsonb, err := models.ToRawJsonb(req)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to convert to raw jsonb")
+		return
+	}
 
+	audit := models.NewKeyAdminAudit(models.TargetActionAddKey, rawKey.ID, jsonb)
 	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to create admin audit")
 		return
@@ -66,10 +68,18 @@ func (h *Handler) adminDeleteKeyHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, &models.Jsonb{
+	details := map[string]interface{}{
 		"marketplace_slug": key.MarketplaceSlug,
 		"permissions":      key.Permissions,
-	})
+	}
+
+	jsonb, err := models.ToRawJsonb(details)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to convert to raw jsonb")
+		return
+	}
+
+	audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, jsonb)
 	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Error(w, r, &errors.DBCreate)
 		return

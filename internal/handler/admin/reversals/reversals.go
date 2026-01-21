@@ -38,14 +38,14 @@ func (h *Handler) patchReversalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	details := models.Jsonb(opts.ToFields())
+	details, err := models.ToRawJsonb(opts)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to convert to raw jsonb")
+		return
+	}
 
-	if err := h.adminAuditSvc.CreateAdminAudit(&models.AdminAudit{
-		TargetAction:       models.TargetActionUpdateReversal,
-		TargetResourceType: models.TargetResourceTypeReversal,
-		TargetResource:     snowflake.String(),
-		Details:            &details,
-	}); err != nil {
+	audit := models.NewReversalAdminAudit(models.TargetActionUpdateMarketplace, snowflake, details)
+	if err := h.adminAuditSvc.CreateAdminAudit(audit); err != nil {
 		render.Errorf(w, r, errors.DBCreate, "failed to create admin audit")
 		return
 	}
