@@ -41,7 +41,7 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 	}
 
 	if r.ExpungedAt != nil {
-		if *r.ExpungedAt == 0 || *r.ExpungedAt > now {
+		if *r.ExpungedAt == 0 || *r.ExpungedAt < r.CreatedAt || *r.ExpungedAt > now {
 			return fmt.Errorf("expunged_at is invalid")
 		}
 	}

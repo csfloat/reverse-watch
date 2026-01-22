@@ -15,22 +15,14 @@ type ReversalListOptions struct {
 }
 
 type ReversalUpdateOptions struct {
-	SteamID         *models.SteamID `json:"steam_id"`
-	MarketplaceSlug *string         `json:"marketplace_slug"`
-	Source          *models.Source  `json:"source"`
-	RelatedSteamID  *models.SteamID `json:"related_steam_id"`
-	ReversedAt      *uint64         `json:"reversed_at"`
-	ExpungedAt      *uint64         `json:"expunged_at"`
+	Source         *models.Source  `json:"source"`
+	RelatedSteamID *models.SteamID `json:"related_steam_id"`
+	ReversedAt     *uint64         `json:"reversed_at"`
+	ExpungedAt     *uint64         `json:"expunged_at"`
 }
 
 func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {
 	fields := make(map[string]interface{})
-	if o.SteamID != nil {
-		fields["steam_id"] = o.SteamID
-	}
-	if o.MarketplaceSlug != nil {
-		fields["marketplace_slug"] = o.MarketplaceSlug
-	}
 	if o.Source != nil {
 		fields["source"] = o.Source
 	}
@@ -52,24 +44,14 @@ func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {
 }
 
 func (o *ReversalUpdateOptions) Validate() error {
-	if o.SteamID != nil {
-		if !o.SteamID.IsValid() {
-			return fmt.Errorf("steam_id is invalid")
-		}
-	}
-	if o.MarketplaceSlug != nil {
-		if *o.MarketplaceSlug == "" {
-			return fmt.Errorf("cannot set an empty marketplace_slug")
-		}
-	}
-
 	if err := models.ValidateSourceAndRelatedID(o.Source, o.RelatedSteamID); err != nil {
 		return err
 	}
 
+	midnightJan012025 := uint64(1735714800000)
 	now := uint64(time.Now().UnixMilli())
 	if o.ReversedAt != nil {
-		if *o.ReversedAt == 0 || *o.ReversedAt > now {
+		if *o.ReversedAt == 0 || *o.ReversedAt < midnightJan012025 || *o.ReversedAt > now {
 			return fmt.Errorf("reversed_at is invalid")
 		}
 	}
