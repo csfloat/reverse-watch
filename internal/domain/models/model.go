@@ -15,15 +15,17 @@ type Model struct {
 }
 
 func (m *Model) BeforeCreate(tx *gorm.DB) error {
+	now := uint64(time.Now().UnixMilli())
 	if m.CreatedAt == 0 {
-		m.CreatedAt = uint64(time.Now().UnixMilli())
+		m.CreatedAt = now
 	}
 	if m.UpdatedAt == 0 {
-		m.UpdatedAt = uint64(time.Now().UnixMilli())
+		m.UpdatedAt = now
 	}
 
 	if !m.DeletedAt.Time.IsZero() {
-		if uint64(m.DeletedAt.Time.UnixMilli())-Epoch < 0 || m.DeletedAt.Time.After(time.Now()) {
+		deletedAt := uint64(m.DeletedAt.Time.UnixMilli())
+		if deletedAt < Epoch || deletedAt > now {
 			return fmt.Errorf("deleted_at is invalid")
 		}
 	}
