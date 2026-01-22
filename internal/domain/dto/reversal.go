@@ -56,7 +56,7 @@ func (o *ReversalUpdateOptions) Validate() error {
 	}
 
 	if o.ExpungedAt != nil {
-		if *o.ExpungedAt == 0 || *o.ExpungedAt > now {
+		if *o.ExpungedAt == 0 || *o.ExpungedAt < models.Epoch || *o.ExpungedAt > now {
 			return fmt.Errorf("expunged_at is invalid")
 		}
 	}
