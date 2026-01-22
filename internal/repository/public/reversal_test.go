@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"testing"
+	"time"
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
@@ -276,11 +277,16 @@ func TestReversalRepository_Read(t *testing.T) {
 	reversalRepo := NewReversalRepository(db)
 
 	testReversal := &models.Reversal{
+		Model: models.Model{
+			ID:        1,
+			CreatedAt: models.Epoch + 1,
+			UpdatedAt: models.Epoch + 1,
+		},
 		SteamID:         models.SteamID(76561197960287930),
 		MarketplaceSlug: "test-slug",
 		Source:          util.Ptr(models.SourceRelatedUser),
 		RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
-		ExpungedAt:      util.Ptr(models.Epoch + 1),
+		ExpungedAt:      util.Ptr(uint64(time.Now().Add(-24 * time.Hour).UnixMilli())),
 	}
 	testutil.Insert(t, db, testReversal)
 
@@ -453,12 +459,6 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 			opts:    nil,
 			wantErr: "opts cannot be nil",
 		},
-		{
-			name:    "emptyOptions",
-			id:      models.Snowflake(1),
-			opts:    &dto.ReversalUpdateOptions{},
-			wantErr: "no fields to update",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -471,25 +471,6 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 				t.Errorf("Update(): got error %s, wanted %s", err.Error(), tc.wantErr)
 			}
 		})
-	}
-}
-
-func TestReversalRepository_Update_Error_InvalidSourceAndRelatedSteamId(t *testing.T) {
-	t.Parallel()
-
-	opts := &dto.ReversalUpdateOptions{
-		Source:         util.Ptr(models.SourceDirect),
-		RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
-	}
-
-	wantErr := "invalid related_steam_id and source combination"
-
-	err := opts.Validate()
-	if err == nil {
-		t.Fatalf("Validate(): got nil error, wanted error")
-	}
-	if err.Error() != wantErr {
-		t.Errorf("Validate(): got error %s, wanted %s", err.Error(), wantErr)
 	}
 }
 
@@ -510,12 +491,25 @@ func TestReversalRepository_Delete(t *testing.T) {
 	}
 
 	var deletedReversal models.Reversal
+	// Ensure gorm doesn't return the deleted record
 	err := db.Where("id = ?", testReversal.ID).First(&deletedReversal).Error
 	if err == nil {
 		t.Fatalf("First(): got nil error, wanted error")
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("First(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+
+	// Ensure the reversal was soft deleted
+	err = db.Unscoped().Where("id = ?", testReversal.ID).First(&deletedReversal).Error
+	if err != nil {
+		t.Fatalf("Unscoped().First(): %v", err)
+	}
+	if deletedReversal.DeletedAt.Time.IsZero() {
+		t.Fatalf("DeletedAt is zero")
+	}
+	if diff := cmp.Diff(testReversal, &deletedReversal, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "DeletedAt", "ReversedAt")); diff != "" {
+		t.Fatal(diff)
 	}
 }
 
@@ -543,24 +537,21 @@ func TestReversalRepository_List(t *testing.T) {
 	testReversals := []*models.Reversal{
 		{
 			Model: models.Model{
-				ID:        1,
-				CreatedAt: 1,
+				ID: 1,
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        2,
-				CreatedAt: 2,
+				ID: 2,
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "another-test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        3,
-				CreatedAt: 3,
+				ID: 3,
 			},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "test-slug",
@@ -607,8 +598,7 @@ func TestReversalRepository_List(t *testing.T) {
 			name: "withCursor",
 			opts: &dto.ReversalListOptions{
 				Cursor: &dto.Cursor{
-					ID:        3,
-					CreatedAt: 3,
+					ID: 3,
 				},
 			},
 			want: []*models.Reversal{
@@ -654,40 +644,35 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 	testReversals := []*models.Reversal{
 		{
 			Model: models.Model{
-				ID:        50,
-				CreatedAt: 100,
+				ID: 60,
 			},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        40,
-				CreatedAt: 100,
+				ID: 50,
 			},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        30,
-				CreatedAt: 100,
+				ID: 40,
 			},
 			SteamID:         models.SteamID(76561197960287932),
 			MarketplaceSlug: "another-test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        60,
-				CreatedAt: 90,
+				ID: 30,
 			},
 			SteamID:         models.SteamID(76561197960287933),
 			MarketplaceSlug: "test-slug",
 		},
 		{
 			Model: models.Model{
-				ID:        55,
-				CreatedAt: 90,
+				ID: 20,
 			},
 			SteamID:         models.SteamID(76561197960287934),
 			MarketplaceSlug: "test-slug",
@@ -712,8 +697,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "secondPage",
 			cursor: &dto.Cursor{
-				ID:        40,
-				CreatedAt: 100,
+				ID: 50,
 			},
 			limit: 2,
 			want: []*models.Reversal{
@@ -724,8 +708,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "thirdPage",
 			cursor: &dto.Cursor{
-				ID:        60,
-				CreatedAt: 90,
+				ID: 30,
 			},
 			limit: 2,
 			want: []*models.Reversal{

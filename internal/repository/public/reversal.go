@@ -2,7 +2,6 @@ package public
 
 import (
 	"fmt"
-
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
@@ -39,16 +38,7 @@ func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdat
 		return fmt.Errorf("opts cannot be nil")
 	}
 
-	if err := opts.Validate(); err != nil {
-		return err
-	}
-
-	fields := opts.ToFields()
-	if len(fields) == 0 {
-		return fmt.Errorf("no fields to update")
-	}
-
-	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(fields)
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(opts.ToFields())
 	if tx.Error != nil {
 		return tx.Error
 	}
@@ -70,7 +60,7 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 }
 
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{}).Order("created_at DESC, id DESC")
+	query := r.conn.Model(&models.Reversal{}).Order("id DESC")
 	if opts == nil {
 		return query
 	}
@@ -81,7 +71,7 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("(created_at, id) < (?, ?)", opts.Cursor.CreatedAt, opts.Cursor.ID)
+		query = query.Where("id < ?", opts.Cursor.ID)
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))
