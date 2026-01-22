@@ -9,7 +9,7 @@ import (
 )
 
 // January 1, 2025 00:00:0000 in milliseconds
-const epoch uint64 = 1735689600000
+const Epoch uint64 = 1735689600000
 
 var (
 	once             sync.Once
@@ -70,11 +70,11 @@ func InitSnowflakeGenerator(workerID uint8, processID uint8) {
 }
 
 func genSnowflakeWithParts(parts Parts) (Snowflake, error) {
-	if parts.Timestamp < epoch {
+	if parts.Timestamp < Epoch {
 		return 0, fmt.Errorf("snowflake's timestamp cannot be before epoch")
 	}
 
-	timestamp := parts.Timestamp - epoch
+	timestamp := parts.Timestamp - Epoch
 
 	workerId := uint64(parts.WorkerID) & 0x1F
 	processId := uint64(parts.ProcessID) & 0x1F
@@ -124,7 +124,7 @@ func GenSnowflake() (Snowflake, error) {
 
 func ParseSnowflake(snowflake Snowflake) Parts {
 	return Parts{
-		Timestamp: uint64(snowflake>>22) + epoch,
+		Timestamp: uint64(snowflake>>22) + Epoch,
 		WorkerID:  uint8((snowflake >> 17) & 0x1F),
 		ProcessID: uint8((snowflake >> 12) & 0x1F),
 		Sequence:  uint16(snowflake & 0xFFF),

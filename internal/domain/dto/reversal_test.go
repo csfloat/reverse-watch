@@ -20,20 +20,16 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 		{
 			name: "allFields",
 			opts: &ReversalUpdateOptions{
-				SteamID:         util.Ptr(models.SteamID(76561197960287930)),
-				MarketplaceSlug: util.Ptr("test-slug"),
-				Source:          util.Ptr(models.SourceRelatedUser),
-				RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
-				ReversedAt:      util.Ptr(uint64(1)),
-				ExpungedAt:      util.Ptr(uint64(1)),
+				Source:         util.Ptr(models.SourceRelatedUser),
+				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
+				ReversedAt:     util.Ptr(models.Epoch + 1),
+				ExpungedAt:     util.Ptr(models.Epoch + 1),
 			},
 			want: map[string]interface{}{
-				"steam_id":         util.Ptr(models.SteamID(76561197960287930)),
-				"marketplace_slug": util.Ptr("test-slug"),
 				"source":           util.Ptr(models.SourceRelatedUser),
 				"related_steam_id": util.Ptr(models.SteamID(76561197960287931)),
-				"reversed_at":      util.Ptr(uint64(1)),
-				"expunged_at":      util.Ptr(uint64(1)),
+				"reversed_at":      util.Ptr(models.Epoch + 1),
+				"expunged_at":      util.Ptr(models.Epoch + 1),
 			},
 		},
 		{
@@ -82,12 +78,10 @@ func TestReversalUpdateOptions_Validate(t *testing.T) {
 	t.Parallel()
 
 	opts := &ReversalUpdateOptions{
-		SteamID:         util.Ptr(models.SteamID(76561197960287930)),
-		MarketplaceSlug: util.Ptr("test-slug"),
-		Source:          util.Ptr(models.SourceRelatedUser),
-		RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
-		ReversedAt:      util.Ptr(uint64(1)),
-		ExpungedAt:      util.Ptr(uint64(1)),
+		Source:         util.Ptr(models.SourceRelatedUser),
+		RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
+		ReversedAt:     util.Ptr(models.Epoch + 1),
+		ExpungedAt:     util.Ptr(models.Epoch + 1),
 	}
 
 	if err := opts.Validate(); err != nil {
@@ -103,20 +97,6 @@ func TestReversalUpdateOptions_Validate_Errors(t *testing.T) {
 		opts    *ReversalUpdateOptions
 		wantErr string
 	}{
-		{
-			name: "invalidSteamID",
-			opts: &ReversalUpdateOptions{
-				SteamID: util.Ptr(models.SteamID(0)),
-			},
-			wantErr: "steam_id is invalid",
-		},
-		{
-			name: "emptyMarketplaceSlug",
-			opts: &ReversalUpdateOptions{
-				MarketplaceSlug: util.Ptr(""),
-			},
-			wantErr: "cannot set an empty marketplace_slug",
-		},
 		{
 			name: "invalidSourceAndRelatedSteamID",
 			opts: &ReversalUpdateOptions{

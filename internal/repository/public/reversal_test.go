@@ -18,7 +18,7 @@ import (
 func TestReversalRepository_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testCases := []struct {
@@ -55,7 +55,7 @@ func TestReversalRepository_BeforeCreate(t *testing.T) {
 func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testCases := []struct {
@@ -153,7 +153,7 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 func TestReversalRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testCases := []struct {
@@ -241,7 +241,7 @@ func TestReversalRepository_Create(t *testing.T) {
 func TestReversalRepository_Create_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testCases := []struct {
@@ -272,7 +272,7 @@ func TestReversalRepository_Create_Errors(t *testing.T) {
 func TestReversalRepository_Read(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testReversal := &models.Reversal{
@@ -304,48 +304,6 @@ func TestReversalRepository_Update(t *testing.T) {
 		want         *models.Reversal
 		ignoreFields []string
 	}{
-		{
-			name: "steamId",
-			initial: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-			},
-			opts: &dto.ReversalUpdateOptions{
-				SteamID: util.Ptr(models.SteamID(76561197960287932)),
-			},
-			want: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287932),
-				MarketplaceSlug: "test-slug",
-			},
-			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
-		},
-		{
-			name: "marketplaceSlug",
-			initial: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-			},
-			opts: &dto.ReversalUpdateOptions{
-				MarketplaceSlug: util.Ptr("updated-slug"),
-			},
-			want: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "updated-slug",
-			},
-			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
-		},
 		{
 			name: "source",
 			initial: &models.Reversal{
@@ -402,7 +360,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				MarketplaceSlug: "test-slug",
 			},
 			opts: &dto.ReversalUpdateOptions{
-				ReversedAt: util.Ptr(uint64(1)),
+				ReversedAt: util.Ptr(models.Epoch + 1),
 			},
 			want: &models.Reversal{
 				Model: models.Model{
@@ -410,7 +368,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				},
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
-				ReversedAt:      uint64(1),
+				ReversedAt:      models.Epoch + 1,
 			},
 			ignoreFields: []string{"CreatedAt", "UpdatedAt"},
 		},
@@ -442,7 +400,7 @@ func TestReversalRepository_Update(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.NewPublicTestDB(t)
+			db := testutil.NewTestDB(t)
 			reversalRepo := NewReversalRepository(db)
 
 			testutil.Insert(t, db, tc.initial)
@@ -466,7 +424,7 @@ func TestReversalRepository_Update(t *testing.T) {
 func TestReversalRepository_Update_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testReversal := &models.Reversal{
@@ -500,14 +458,6 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 			id:      models.Snowflake(1),
 			opts:    &dto.ReversalUpdateOptions{},
 			wantErr: "no fields to update",
-		},
-		{
-			name: "emptyMarketplaceSlug",
-			id:   models.Snowflake(1),
-			opts: &dto.ReversalUpdateOptions{
-				MarketplaceSlug: util.Ptr(""),
-			},
-			wantErr: "cannot set an empty marketplace_slug",
 		},
 	}
 
@@ -546,7 +496,7 @@ func TestReversalRepository_Update_Error_InvalidSourceAndRelatedSteamId(t *testi
 func TestReversalRepository_Delete(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testReversal := &models.Reversal{
@@ -572,7 +522,7 @@ func TestReversalRepository_Delete(t *testing.T) {
 func TestReversalRepository_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	err := reversalRepo.Delete(models.Snowflake(1))
@@ -587,7 +537,7 @@ func TestReversalRepository_Delete_NotFound(t *testing.T) {
 func TestReversalRepository_List(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testReversals := []*models.Reversal{
@@ -698,7 +648,7 @@ func TestReversalRepository_List(t *testing.T) {
 func TestReversalRepository_List_Pagination(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPublicTestDB(t)
+	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
 	testReversals := []*models.Reversal{

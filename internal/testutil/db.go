@@ -11,33 +11,19 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func NewPrivateTestDB(t *testing.T) *gorm.DB {
+func NewTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db := newTestDB(t)
-	privateModels := []interface{}{
+
+	mods := []interface{}{
 		(*models.Marketplace)(nil),
 		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
-	}
-
-	for _, model := range privateModels {
-		if err := db.AutoMigrate(model); err != nil {
-			t.Fatalf("failed to migrate model %T: %v", model, err)
-		}
-	}
-	return db
-}
-
-func NewPublicTestDB(t *testing.T) *gorm.DB {
-	t.Helper()
-
-	db := newTestDB(t)
-	publicModels := []interface{}{
 		(*models.Reversal)(nil),
 	}
 
-	for _, model := range publicModels {
+	for _, model := range mods {
 		if err := db.AutoMigrate(model); err != nil {
 			t.Fatalf("failed to migrate model %T: %v", model, err)
 		}

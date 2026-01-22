@@ -48,10 +48,9 @@ func (o *ReversalUpdateOptions) Validate() error {
 		return err
 	}
 
-	midnightJan012025 := uint64(1735714800000)
 	now := uint64(time.Now().UnixMilli())
 	if o.ReversedAt != nil {
-		if *o.ReversedAt == 0 || *o.ReversedAt < midnightJan012025 || *o.ReversedAt > now {
+		if *o.ReversedAt == 0 || *o.ReversedAt < models.Epoch || *o.ReversedAt > now {
 			return fmt.Errorf("reversed_at is invalid")
 		}
 	}

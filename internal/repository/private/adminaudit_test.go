@@ -18,7 +18,7 @@ import (
 func TestAdminAuditRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testCases := []struct {
@@ -133,7 +133,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 func TestAdminAuditRepository_Read(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudit := &models.AdminAudit{
@@ -156,7 +156,7 @@ func TestAdminAuditRepository_Read(t *testing.T) {
 func TestAdminAuditRepository_Delete(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudit := &models.AdminAudit{
@@ -183,7 +183,7 @@ func TestAdminAuditRepository_Delete(t *testing.T) {
 func TestAdminAuditRepository_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	err := adminAuditRepo.Delete(models.Snowflake(1))
@@ -198,7 +198,7 @@ func TestAdminAuditRepository_Delete_NotFound(t *testing.T) {
 func TestAdminAuditRepository_List(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudits := []*models.AdminAudit{
