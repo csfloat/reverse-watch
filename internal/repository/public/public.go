@@ -123,7 +123,7 @@ func migratePublicModels(tx *gorm.DB) error {
 
 func createIndexes(tx *gorm.DB) error {
 	indexes := []string{
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_reversals_steam_id_marketplace_slug ON reversals(steam_id, marketplace_slug)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_reversals_steam_id_marketplace_slug ON reversals(steam_id, marketplace_slug) WHERE deleted_at IS NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_reversals_marketplace_slug ON reversals(marketplace_slug)`,
 	}
 
