@@ -34,16 +34,12 @@ func (m *marketplaceRepository) Read(slug string) (*models.Marketplace, error) {
 	return &marketplace, nil
 }
 
-func (m *marketplaceRepository) Update(slug string, opts *dto.MarketplaceUpdateOptions) error {
-	if opts == nil {
-		return fmt.Errorf("marketplace update options cannot be nil")
+func (m *marketplaceRepository) Update(slug string, updates *dto.MarketplaceUpdates) error {
+	if updates == nil {
+		return fmt.Errorf("updates cannot be nil")
 	}
 
-	if len(opts.ToFields()) == 0 {
-		return fmt.Errorf("marketplace update options is empty")
-	}
-
-	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(opts)
+	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(updates)
 	if tx.Error != nil {
 		return tx.Error
 	}

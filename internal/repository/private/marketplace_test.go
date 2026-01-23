@@ -212,13 +212,13 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 	testCases := []struct {
 		name     string
 		original *models.Marketplace
-		opts     *dto.MarketplaceUpdateOptions
+		updates  *dto.MarketplaceUpdates
 		want     *models.Marketplace
 	}{
 		{
 			name:     "allFields",
 			original: testMarketplace1,
-			opts: &dto.MarketplaceUpdateOptions{
+			updates: &dto.MarketplaceUpdates{
 				Name:     util.Ptr("Updated Test Marketplace 1"),
 				IsActive: util.Ptr(false),
 			},
@@ -231,7 +231,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 		{
 			name:     "partialFields",
 			original: testMarketplace2,
-			opts: &dto.MarketplaceUpdateOptions{
+			updates: &dto.MarketplaceUpdates{
 				Name: util.Ptr("Updated Test Marketplace 2"),
 			},
 			want: &models.Marketplace{
@@ -244,7 +244,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := marketplaceRepo.Update(tc.original.Slug, tc.opts); err != nil {
+			if err := marketplaceRepo.Update(tc.original.Slug, tc.updates); err != nil {
 				t.Fatalf("Update(): %v", err)
 			}
 
@@ -281,25 +281,19 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 	testCases := []struct {
 		name    string
 		slug    string
-		opts    *dto.MarketplaceUpdateOptions
+		updates *dto.MarketplaceUpdates
 		wantErr string
 	}{
 		{
-			name:    "noOptions",
-			slug:    testMarketplace1.Slug,
-			opts:    &dto.MarketplaceUpdateOptions{},
-			wantErr: "marketplace update options is empty",
-		},
-		{
 			name:    "nilOptions",
 			slug:    testMarketplace2.Slug,
-			opts:    nil,
-			wantErr: "marketplace update options cannot be nil",
+			updates: nil,
+			wantErr: "updates cannot be nil",
 		},
 		{
 			name: "recordNotFound",
 			slug: "test-marketplace3",
-			opts: &dto.MarketplaceUpdateOptions{
+			updates: &dto.MarketplaceUpdates{
 				Name:     util.Ptr("Updated Test Marketplace 3"),
 				IsActive: util.Ptr(false),
 			},
@@ -309,7 +303,7 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := marketplaceRepo.Update(tc.slug, tc.opts)
+			err := marketplaceRepo.Update(tc.slug, tc.updates)
 			if err == nil {
 				t.Fatalf("Update(): got nil error, wanted error")
 			}
