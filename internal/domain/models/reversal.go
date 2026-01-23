@@ -79,6 +79,10 @@ const (
 )
 
 func (s *Source) String() string {
+	if s == nil {
+		return ""
+	}
+	
 	var source string
 	switch *s {
 	case SourceDirect:
