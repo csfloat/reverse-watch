@@ -2,6 +2,7 @@ package public
 
 import (
 	"fmt"
+
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/repository"
@@ -21,8 +22,16 @@ func NewReversalRepository(conn *gorm.DB) repository.ReversalRepository {
 	}
 }
 
-func (r *reversalRepository) Create(reversals ...*models.Reversal) error {
+func (r *reversalRepository) create(reversals []*models.Reversal) error {
 	return r.conn.Model(&models.Reversal{}).Create(reversals).Error
+}
+
+func (r *reversalRepository) Create(reversal *models.Reversal) error {
+	return r.create([]*models.Reversal{reversal})
+}
+
+func (r *reversalRepository) BulkCreate(reversals []*models.Reversal) error {
+	return r.create(reversals)
 }
 
 func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error) {

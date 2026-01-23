@@ -158,6 +158,99 @@ func TestReversalRepository_Create(t *testing.T) {
 	reversalRepo := NewReversalRepository(db)
 
 	testCases := []struct {
+		name     string
+		reversal *models.Reversal
+	}{
+		{
+			name: "singleReversal",
+			reversal: &models.Reversal{
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug-1",
+			},
+		},
+		{
+			name: "validSourceAndRelatedSteamID",
+			reversal: &models.Reversal{
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug-1",
+				Source:          util.Ptr(models.SourceRelatedUser),
+				RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
+			},
+		},
+		{
+			name: "sourceDirect",
+			reversal: &models.Reversal{
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug-1",
+				Source:          util.Ptr(models.SourceDirect),
+			},
+		},
+		{
+			name: "sourceUserReport",
+			reversal: &models.Reversal{
+				SteamID:         models.SteamID(76561197960287930),
+				MarketplaceSlug: "test-slug-1",
+				Source:          util.Ptr(models.SourceUserReport),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := reversalRepo.Create(tc.reversal); err != nil {
+				t.Fatalf("Create(): %v", err)
+			}
+
+			var storedReversal models.Reversal
+			if err := db.Where("id = ?", tc.reversal.ID).Find(&storedReversal).Error; err != nil {
+				t.Fatalf("failed to retrieve stored reversals: %v", err)
+			}
+
+			if diff := cmp.Diff(storedReversal, *tc.reversal, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt")); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_Create_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testCases := []struct {
+		name     string
+		reversal *models.Reversal
+		wantErr  error
+	}{
+		{
+			name:     "nilReversal",
+			reversal: nil,
+			wantErr:  gorm.ErrInvalidValue,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := reversalRepo.Create(tc.reversal)
+			if err == nil {
+				t.Fatalf("Create(): got nil error, wanted error")
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Create(): got error %v, wanted %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_BulkCreate(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testCases := []struct {
 		name      string
 		reversals []*models.Reversal
 	}{
@@ -218,7 +311,7 @@ func TestReversalRepository_Create(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := reversalRepo.Create(tc.reversals...); err != nil {
+			if err := reversalRepo.BulkCreate(tc.reversals); err != nil {
 				t.Fatalf("Create(): %v", err)
 			}
 
@@ -239,7 +332,7 @@ func TestReversalRepository_Create(t *testing.T) {
 	}
 }
 
-func TestReversalRepository_Create_Errors(t *testing.T) {
+func TestReversalRepository_BulkCreate_Errors(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)

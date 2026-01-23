@@ -6,7 +6,8 @@ import (
 )
 
 type ReversalRepository interface {
-	Create(reversals ...*models.Reversal) error
+	Create(reversal *models.Reversal) error
+	BulkCreate(reversals []*models.Reversal) error
 	Read(id models.Snowflake) (*models.Reversal, error)
 	Update(id models.Snowflake, opts *dto.ReversalUpdateOptions) error
 	Delete(id models.Snowflake) error
