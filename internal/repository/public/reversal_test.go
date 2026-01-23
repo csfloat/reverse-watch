@@ -312,7 +312,7 @@ func TestReversalRepository_BulkCreate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := reversalRepo.BulkCreate(tc.reversals); err != nil {
-				t.Fatalf("Create(): %v", err)
+				t.Fatalf("BulkCreate(): %v", err)
 			}
 
 			var ids []models.Snowflake
@@ -352,12 +352,12 @@ func TestReversalRepository_BulkCreate_Errors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := reversalRepo.Create(tc.reversal)
+			err := reversalRepo.BulkCreate([]*models.Reversal{tc.reversal})
 			if err == nil {
-				t.Fatalf("Create(): got nil error, wanted error")
+				t.Fatalf("BulkCreate(): got nil error, wanted error")
 			}
 			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("Create(): got error %v, wanted %v", err, tc.wantErr)
+				t.Errorf("BulkCreate(): got error %v, wanted %v", err, tc.wantErr)
 			}
 		})
 	}
@@ -399,7 +399,7 @@ func TestReversalRepository_Update(t *testing.T) {
 	testCases := []struct {
 		name         string
 		initial      *models.Reversal
-		opts         *dto.ReversalUpdateOptions
+		updates      *dto.ReversalUpdates
 		want         *models.Reversal
 		ignoreFields []string
 	}{
@@ -412,7 +412,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
 			},
-			opts: &dto.ReversalUpdateOptions{
+			updates: &dto.ReversalUpdates{
 				Source: util.Ptr(models.SourceDirect),
 			},
 			want: &models.Reversal{
@@ -434,7 +434,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
 			},
-			opts: &dto.ReversalUpdateOptions{
+			updates: &dto.ReversalUpdates{
 				Source:         util.Ptr(models.SourceRelatedUser),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 			},
@@ -458,7 +458,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
 			},
-			opts: &dto.ReversalUpdateOptions{
+			updates: &dto.ReversalUpdates{
 				ReversedAt: util.Ptr(models.Epoch + 1),
 			},
 			want: &models.Reversal{
@@ -480,7 +480,7 @@ func TestReversalRepository_Update(t *testing.T) {
 				SteamID:         models.SteamID(76561197960287930),
 				MarketplaceSlug: "test-slug",
 			},
-			opts: &dto.ReversalUpdateOptions{
+			updates: &dto.ReversalUpdates{
 				ExpungedAt: util.Ptr(models.Epoch + 1),
 			},
 			want: &models.Reversal{
@@ -504,7 +504,7 @@ func TestReversalRepository_Update(t *testing.T) {
 
 			testutil.Insert(t, db, tc.initial)
 
-			if err := reversalRepo.Update(tc.initial.ID, tc.opts); err != nil {
+			if err := reversalRepo.Update(tc.initial.ID, tc.updates); err != nil {
 				t.Fatalf("Update(): %v", err)
 			}
 
@@ -535,13 +535,13 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 	testCases := []struct {
 		name    string
 		id      models.Snowflake
-		opts    *dto.ReversalUpdateOptions
+		updates *dto.ReversalUpdates
 		wantErr string
 	}{
 		{
 			name: "notFound",
 			id:   models.Snowflake(0),
-			opts: &dto.ReversalUpdateOptions{
+			updates: &dto.ReversalUpdates{
 				Source: util.Ptr(models.SourceDirect),
 			},
 			wantErr: gorm.ErrRecordNotFound.Error(),
@@ -549,14 +549,14 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 		{
 			name:    "nilOptions",
 			id:      models.Snowflake(1),
-			opts:    nil,
+			updates: nil,
 			wantErr: "opts cannot be nil",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := reversalRepo.Update(tc.id, tc.opts)
+			err := reversalRepo.Update(tc.id, tc.updates)
 			if err == nil {
 				t.Fatalf("Update(): got nil error, wanted error")
 			}

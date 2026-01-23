@@ -14,53 +14,53 @@ type ReversalListOptions struct {
 	Limit           *uint
 }
 
-type ReversalUpdateOptions struct {
+type ReversalUpdates struct {
 	Source         *models.Source  `json:"source"`
 	RelatedSteamID *models.SteamID `json:"related_steam_id"`
 	ReversedAt     *uint64         `json:"reversed_at"`
 	ExpungedAt     *uint64         `json:"expunged_at"`
 }
 
-func (o *ReversalUpdateOptions) ToFields() map[string]interface{} {
+func (u *ReversalUpdates) ToFields() map[string]interface{} {
 	fields := make(map[string]interface{})
-	if o.Source != nil {
-		fields["source"] = o.Source
+	if u.Source != nil {
+		fields["source"] = u.Source
 	}
-	if o.RelatedSteamID != nil {
-		fields["related_steam_id"] = o.RelatedSteamID
+	if u.RelatedSteamID != nil {
+		fields["related_steam_id"] = u.RelatedSteamID
 	}
-	if o.ReversedAt != nil {
-		fields["reversed_at"] = o.ReversedAt
+	if u.ReversedAt != nil {
+		fields["reversed_at"] = u.ReversedAt
 	}
-	if o.ExpungedAt != nil {
-		fields["expunged_at"] = o.ExpungedAt
+	if u.ExpungedAt != nil {
+		fields["expunged_at"] = u.ExpungedAt
 	}
 
 	// Ensure related_steam_id is nullified when source is not SourceRelatedUser
-	if o.Source != nil && *o.Source != models.SourceRelatedUser {
+	if u.Source != nil && *u.Source != models.SourceRelatedUser {
 		fields["related_steam_id"] = nil
 	}
 	return fields
 }
 
-func (o *ReversalUpdateOptions) Validate() error {
-	if len(o.ToFields()) == 0 {
+func (u *ReversalUpdates) Validate() error {
+	if len(u.ToFields()) == 0 {
 		return fmt.Errorf("options cannot be empty")
 	}
 
-	if err := models.ValidateSourceAndRelatedID(o.Source, o.RelatedSteamID); err != nil {
+	if err := models.ValidateSourceAndRelatedID(u.Source, u.RelatedSteamID); err != nil {
 		return err
 	}
 
 	now := uint64(time.Now().UnixMilli())
-	if o.ReversedAt != nil {
-		if *o.ReversedAt == 0 || *o.ReversedAt < models.Epoch || *o.ReversedAt > now {
+	if u.ReversedAt != nil {
+		if *u.ReversedAt == 0 || *u.ReversedAt < models.Epoch || *u.ReversedAt > now {
 			return fmt.Errorf("reversed_at is invalid")
 		}
 	}
 
-	if o.ExpungedAt != nil {
-		if *o.ExpungedAt == 0 || *o.ExpungedAt < models.Epoch || *o.ExpungedAt > now {
+	if u.ExpungedAt != nil {
+		if *u.ExpungedAt == 0 || *u.ExpungedAt < models.Epoch || *u.ExpungedAt > now {
 			return fmt.Errorf("expunged_at is invalid")
 		}
 	}

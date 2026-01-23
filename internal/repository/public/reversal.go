@@ -42,12 +42,12 @@ func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error)
 	return &reversal, nil
 }
 
-func (r *reversalRepository) Update(id models.Snowflake, opts *dto.ReversalUpdateOptions) error {
-	if opts == nil {
-		return fmt.Errorf("opts cannot be nil")
+func (r *reversalRepository) Update(id models.Snowflake, updates *dto.ReversalUpdates) error {
+	if updates == nil {
+		return fmt.Errorf("updates cannot be nil")
 	}
 
-	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(opts.ToFields())
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(updates.ToFields())
 	if tx.Error != nil {
 		return tx.Error
 	}

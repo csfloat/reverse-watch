@@ -14,7 +14,7 @@ import (
 func TestReversalUpdateOptions_FieldCoverage(t *testing.T) {
 	t.Parallel()
 
-	optsType := reflect.TypeOf((*ReversalUpdateOptions)(nil)).Elem()
+	optsType := reflect.TypeOf((*ReversalUpdates)(nil)).Elem()
 	reversalType := reflect.TypeOf((*models.Reversal)(nil)).Elem()
 
 	excludedFieldNames := []string{
@@ -39,12 +39,12 @@ func TestReversalUpdateOptions_FieldCoverage(t *testing.T) {
 
 		reversalField, ok := reversalFields[optsField.Name]
 		if !ok {
-			t.Errorf("ReversalUpdateOptions contains non-existent Reversal field: %s", optsField.Name)
+			t.Errorf("ReversalUpdates contains non-existent Reversal field: %s", optsField.Name)
 			continue
 		}
 
 		if optsField.Type.Kind() != reflect.Ptr {
-			t.Errorf("ReversalUpdateOptions contains non-pointer field: %s", optsField.Name)
+			t.Errorf("ReversalUpdates contains non-pointer field: %s", optsField.Name)
 		}
 
 		// Ensure same type
@@ -65,12 +65,12 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		opts *ReversalUpdateOptions
+		opts *ReversalUpdates
 		want map[string]interface{}
 	}{
 		{
 			name: "allFields",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				Source:         util.Ptr(models.SourceRelatedUser),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 				ReversedAt:     util.Ptr(models.Epoch + 1),
@@ -85,7 +85,7 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 		},
 		{
 			name: "sourceDirect",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				Source: util.Ptr(models.SourceDirect),
 			},
 			want: map[string]interface{}{
@@ -95,7 +95,7 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 		},
 		{
 			name: "sourceRelatedUser",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				Source:         util.Ptr(models.SourceRelatedUser),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 			},
@@ -106,7 +106,7 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 		},
 		{
 			name: "sourceUserReport",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				Source: util.Ptr(models.SourceUserReport),
 			},
 			want: map[string]interface{}{
@@ -128,7 +128,7 @@ func TestReversalUpdateOptions_ToFields(t *testing.T) {
 func TestReversalUpdateOptions_Validate(t *testing.T) {
 	t.Parallel()
 
-	opts := &ReversalUpdateOptions{
+	opts := &ReversalUpdates{
 		Source:         util.Ptr(models.SourceRelatedUser),
 		RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 		ReversedAt:     util.Ptr(models.Epoch + 1),
@@ -145,12 +145,12 @@ func TestReversalUpdateOptions_Validate_Errors(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		opts    *ReversalUpdateOptions
+		opts    *ReversalUpdates
 		wantErr string
 	}{
 		{
 			name: "invalidSourceAndRelatedSteamID",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				Source:         util.Ptr(models.SourceDirect),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 			},
@@ -158,28 +158,28 @@ func TestReversalUpdateOptions_Validate_Errors(t *testing.T) {
 		},
 		{
 			name: "invalidReversedAt",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				ReversedAt: util.Ptr(uint64(0)),
 			},
 			wantErr: "reversed_at is invalid",
 		},
 		{
 			name: "reversedAtInFuture",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				ReversedAt: util.Ptr(uint64(99999999999999999)),
 			},
 			wantErr: "reversed_at is invalid",
 		},
 		{
 			name: "invalidExpungedAt",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				ExpungedAt: util.Ptr(uint64(0)),
 			},
 			wantErr: "expunged_at is invalid",
 		},
 		{
 			name: "expungedAtInFuture",
-			opts: &ReversalUpdateOptions{
+			opts: &ReversalUpdates{
 				ExpungedAt: util.Ptr(uint64(99999999999999999)),
 			},
 			wantErr: "expunged_at is invalid",
