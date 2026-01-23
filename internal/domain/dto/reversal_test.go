@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"reflect"
+	"slices"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
@@ -8,6 +10,55 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestReversalUpdateOptions_FieldCoverage(t *testing.T) {
+	t.Parallel()
+
+	optsType := reflect.TypeOf((*ReversalUpdateOptions)(nil)).Elem()
+	reversalType := reflect.TypeOf((*models.Reversal)(nil)).Elem()
+
+	excludedFieldNames := []string{
+		"CreatedAt",
+		"UpdatedAt",
+		"DeletedAt",
+	}
+
+	reversalFields := make(map[string]reflect.StructField)
+	for i := 0; i < reversalType.NumField(); i++ {
+		field := reversalType.Field(i)
+		reversalFields[field.Name] = field
+	}
+
+	for i := 0; i < optsType.NumField(); i++ {
+		optsField := optsType.Field(i)
+
+		// Skip excluded fields
+		if slices.Contains(excludedFieldNames, optsField.Name) {
+			continue
+		}
+
+		reversalField, ok := reversalFields[optsField.Name]
+		if !ok {
+			t.Errorf("ReversalUpdateOptions contains non-existent Reversal field: %s", optsField.Name)
+			continue
+		}
+
+		if optsField.Type.Kind() != reflect.Ptr {
+			t.Errorf("ReversalUpdateOptions contains non-pointer field: %s", optsField.Name)
+		}
+
+		// Ensure same type
+		if reversalField.Type.Kind() == reflect.Ptr {
+			if optsField.Type != reversalField.Type {
+				t.Errorf("got type %v for field %q, wanted %v", optsField.Type, optsField.Name, reversalField.Type)
+			}
+		} else {
+			if optsField.Type.Elem() != reversalField.Type {
+				t.Errorf("got type %v for field %q, wanted %v", optsField.Type.Elem(), optsField.Name, reversalField.Type)
+			}
+		}
+	}
+}
 
 func TestReversalUpdateOptions_ToFields(t *testing.T) {
 	t.Parallel()
