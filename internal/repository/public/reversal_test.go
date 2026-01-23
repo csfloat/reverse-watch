@@ -584,7 +584,7 @@ func TestReversalRepository_Delete(t *testing.T) {
 	}
 
 	var deletedReversal models.Reversal
-	// Ensure gorm doesn't return the deleted record
+	// Ensure db doesn't return the deleted record
 	err := db.Where("id = ?", testReversal.ID).First(&deletedReversal).Error
 	if err == nil {
 		t.Fatalf("First(): got nil error, wanted error")
