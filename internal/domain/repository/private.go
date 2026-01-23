@@ -15,7 +15,7 @@ type KeyRepository interface {
 type MarketplaceRepository interface {
 	Create(marketplace *models.Marketplace) error
 	Read(slug string) (*models.Marketplace, error)
-	Update(slug string, opts *dto.MarketplaceUpdates) error
+	Update(slug string, updates *dto.MarketplaceUpdates) error
 	Delete(slug string) error
 }
 
