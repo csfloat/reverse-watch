@@ -547,10 +547,10 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 			wantErr: gorm.ErrRecordNotFound.Error(),
 		},
 		{
-			name:    "nilOptions",
+			name:    "nilUpdates",
 			id:      models.Snowflake(1),
 			updates: nil,
-			wantErr: "opts cannot be nil",
+			wantErr: "updates cannot be nil",
 		},
 	}
 
