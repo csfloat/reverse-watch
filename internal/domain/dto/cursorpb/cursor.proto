@@ -8,9 +8,4 @@ message Cursor {
   // REQUIRED
   // ID of the last reversal from the query that generated this cursor
   uint64 id = 1;
-
-  // REQUIRED
-  // The timestamp of the last reversal from the query that generated this cursor
-  // Specified in unix milliseconds
-  uint64 reversed_at = 2;
 }

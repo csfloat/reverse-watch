@@ -9,9 +9,8 @@ type ReversalRepository interface {
 	Create(reversal *models.Reversal) error
 	BulkCreate(reversals []*models.Reversal) error
 	Read(id models.Snowflake) (*models.Reversal, error)
-	Update(id models.Snowflake, fields map[string]interface{}) error
+	Update(id models.Snowflake, opts *dto.ReversalUpdates) error
 	Delete(id models.Snowflake) error
-	Expunge(id models.Snowflake) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }
 

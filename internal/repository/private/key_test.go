@@ -18,7 +18,7 @@ import (
 func TestKeyRepository_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -74,7 +74,7 @@ func TestKeyRepository_BeforeCreate(t *testing.T) {
 func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -160,7 +160,7 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 func TestKeyRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -227,7 +227,7 @@ func TestKeyRepository_Create(t *testing.T) {
 func TestKeyRepository_Create_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -274,7 +274,7 @@ func TestKeyRepository_Create_Errors(t *testing.T) {
 func TestKeyRepository_Read(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -305,7 +305,7 @@ func TestKeyRepository_Read(t *testing.T) {
 func TestKeyRepository_Read_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	_, err := keyRepo.Read("non-existent-key-id")
@@ -320,7 +320,7 @@ func TestKeyRepository_Read_NotFound(t *testing.T) {
 func TestKeyRepository_Delete(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -372,7 +372,7 @@ func TestKeyRepository_Delete(t *testing.T) {
 func TestKeyRepository_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	err := keyRepo.Delete("non-existent-key-id")
@@ -387,7 +387,7 @@ func TestKeyRepository_Delete_NotFound(t *testing.T) {
 func TestKeyRepository_List(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	keyRepo := NewKeyRepository(db)
 
 	testMarketplaces := []*models.Marketplace{

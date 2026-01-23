@@ -12,8 +12,7 @@ import (
 )
 
 type Cursor struct {
-	ID         models.Snowflake
-	ReversedAt uint64
+	ID models.Snowflake
 }
 
 func (c *Cursor) MarshalJSON() ([]byte, error) {
@@ -40,8 +39,7 @@ func (c *Cursor) UnmarshalJSON(data []byte) error {
 
 func (c *Cursor) Encode() (*string, error) {
 	cursorpb := &cpb.Cursor{
-		Id:         uint64(c.ID),
-		ReversedAt: c.ReversedAt,
+		Id: uint64(c.ID),
 	}
 
 	data, err := proto.Marshal(cursorpb)
@@ -65,7 +63,6 @@ func DecodeCursor(encoded string) (*Cursor, error) {
 	}
 
 	return &Cursor{
-		ID:         models.Snowflake(cursorpb.Id),
-		ReversedAt: cursorpb.ReversedAt,
+		ID: models.Snowflake(cursorpb.Id),
 	}, nil
 }

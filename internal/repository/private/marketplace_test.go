@@ -8,6 +8,7 @@ import (
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/domain/models/constants"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/internal/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -17,7 +18,7 @@ import (
 func TestMarketplaceRepository_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testCases := []struct {
@@ -53,7 +54,7 @@ func TestMarketplaceRepository_BeforeCreate(t *testing.T) {
 func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testCases := []struct {
@@ -104,7 +105,7 @@ func TestMarketplaceRepository_BeforeCreate_Errors(t *testing.T) {
 func TestMarketplaceRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -126,7 +127,7 @@ func TestMarketplaceRepository_Create(t *testing.T) {
 func TestMarketplaceRepository_Create_DuplicatePrimaryKey(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -149,7 +150,7 @@ func TestMarketplaceRepository_Create_DuplicatePrimaryKey(t *testing.T) {
 func TestMarketplaceRepository_Read(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplace := &models.Marketplace{
@@ -178,7 +179,7 @@ func TestMarketplaceRepository_Read(t *testing.T) {
 func TestMarketplaceRepository_Read_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	_, err := marketplaceRepo.Read("non-existent-slug")
@@ -193,7 +194,7 @@ func TestMarketplaceRepository_Read_NotFound(t *testing.T) {
 func TestMarketplaceRepository_Update(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplace1 := &models.Marketplace{
@@ -218,8 +219,8 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 			name:     "allFields",
 			original: testMarketplace1,
 			opts: &dto.MarketplaceUpdateOptions{
-				Name:     testutil.Ptr("Updated Test Marketplace 1"),
-				IsActive: testutil.Ptr(false),
+				Name:     util.Ptr("Updated Test Marketplace 1"),
+				IsActive: util.Ptr(false),
 			},
 			want: &models.Marketplace{
 				Slug:     "test-marketplace1",
@@ -231,7 +232,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 			name:     "partialFields",
 			original: testMarketplace2,
 			opts: &dto.MarketplaceUpdateOptions{
-				Name: testutil.Ptr("Updated Test Marketplace 2"),
+				Name: util.Ptr("Updated Test Marketplace 2"),
 			},
 			want: &models.Marketplace{
 				Slug:     "test-marketplace2",
@@ -262,7 +263,7 @@ func TestMarketplaceRepository_Update(t *testing.T) {
 func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplace1 := &models.Marketplace{
@@ -299,8 +300,8 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 			name: "recordNotFound",
 			slug: "test-marketplace3",
 			opts: &dto.MarketplaceUpdateOptions{
-				Name:     testutil.Ptr("Updated Test Marketplace 3"),
-				IsActive: testutil.Ptr(false),
+				Name:     util.Ptr("Updated Test Marketplace 3"),
+				IsActive: util.Ptr(false),
 			},
 			wantErr: "record not found",
 		},
@@ -322,7 +323,7 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 func TestMarketplaceRepository_Delete(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testMarketplaces := []*models.Marketplace{
@@ -402,7 +403,7 @@ func TestMarketplaceRepository_Delete(t *testing.T) {
 func TestMarketplaceRepository_Delete_Errors(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	marketplaceRepo := NewMarketplaceRepository(db)
 
 	testCases := []struct {

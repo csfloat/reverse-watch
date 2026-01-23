@@ -31,19 +31,8 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("marketplace_slug is required")
 	}
 
-	if r.RelatedSteamID != nil {
-		if !r.RelatedSteamID.IsValid() {
-			return fmt.Errorf("related_steam_id is invalid")
-		}
-		if r.Source == nil || *r.Source != SourceRelatedUser {
-			return fmt.Errorf("invalid related_steam_id and source combination")
-		}
-	}
-
-	if r.Source != nil && *r.Source == SourceRelatedUser {
-		if r.RelatedSteamID == nil || !r.RelatedSteamID.IsValid() {
-			return fmt.Errorf("invalid related_steam_id and source combination")
-		}
+	if err := ValidateSourceAndRelatedID(r.Source, r.RelatedSteamID); err != nil {
+		return err
 	}
 
 	now := uint64(time.Now().UnixMilli())
@@ -51,8 +40,32 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("reversed_at cannot be in the future")
 	}
 
+	if r.ExpungedAt != nil {
+		if *r.ExpungedAt == 0 || *r.ExpungedAt < r.CreatedAt || *r.ExpungedAt > now {
+			return fmt.Errorf("expunged_at is invalid")
+		}
+	}
+
 	if r.ReversedAt == 0 {
 		r.ReversedAt = now
+	}
+	return nil
+}
+
+func ValidateSourceAndRelatedID(source *Source, relatedSteamID *SteamID) error {
+	if relatedSteamID != nil {
+		if !relatedSteamID.IsValid() {
+			return fmt.Errorf("related_steam_id is invalid")
+		}
+		if source == nil || *source != SourceRelatedUser {
+			return fmt.Errorf("invalid related_steam_id and source combination")
+		}
+	}
+
+	if source != nil && *source == SourceRelatedUser {
+		if relatedSteamID == nil {
+			return fmt.Errorf("related_steam_id is required when source is %q", "related_user")
+		}
 	}
 	return nil
 }
@@ -65,7 +78,11 @@ const (
 	SourceUserReport  Source = 2
 )
 
-func (s *Source) MarshalJSON() ([]byte, error) {
+func (s *Source) String() string {
+	if s == nil {
+		return ""
+	}
+	
 	var source string
 	switch *s {
 	case SourceDirect:
@@ -74,7 +91,13 @@ func (s *Source) MarshalJSON() ([]byte, error) {
 		source = "related_user"
 	case SourceUserReport:
 		source = "user_report"
-	default:
+	}
+	return source
+}
+
+func (s *Source) MarshalJSON() ([]byte, error) {
+	source := s.String()
+	if source == "" {
 		return nil, fmt.Errorf("invalid source value")
 	}
 	return json.Marshal(source)

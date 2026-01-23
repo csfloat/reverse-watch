@@ -11,18 +11,19 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func NewPrivateTestDB(t *testing.T) *gorm.DB {
+func NewTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db := newTestDB(t)
 
-	privateModels := []interface{}{
+	mods := []interface{}{
 		(*models.Marketplace)(nil),
 		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
+		(*models.Reversal)(nil),
 	}
 
-	for _, model := range privateModels {
+	for _, model := range mods {
 		if err := db.AutoMigrate(model); err != nil {
 			t.Fatalf("failed to migrate model %T: %v", model, err)
 		}
@@ -56,10 +57,6 @@ func Insert[T any](t *testing.T, db *gorm.DB, values ...T) {
 			t.Fatal(err)
 		}
 	}
-}
-
-func Ptr[T any](v T) *T {
-	return &v
 }
 
 func MustRawJsonb(value interface{}) *models.RawJsonb {

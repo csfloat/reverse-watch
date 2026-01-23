@@ -8,6 +8,7 @@ import (
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/internal/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -17,7 +18,7 @@ import (
 func TestAdminAuditRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testCases := []struct {
@@ -132,7 +133,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 func TestAdminAuditRepository_Read(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudit := &models.AdminAudit{
@@ -155,7 +156,7 @@ func TestAdminAuditRepository_Read(t *testing.T) {
 func TestAdminAuditRepository_Delete(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudit := &models.AdminAudit{
@@ -182,7 +183,7 @@ func TestAdminAuditRepository_Delete(t *testing.T) {
 func TestAdminAuditRepository_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	err := adminAuditRepo.Delete(models.Snowflake(1))
@@ -197,7 +198,7 @@ func TestAdminAuditRepository_Delete_NotFound(t *testing.T) {
 func TestAdminAuditRepository_List(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewPrivateTestDB(t)
+	db := testutil.NewTestDB(t)
 	adminAuditRepo := NewAdminAuditRepository(db)
 
 	testAudits := []*models.AdminAudit{
@@ -365,42 +366,42 @@ func TestAdminAuditRepository_List(t *testing.T) {
 		{
 			name: "allMarketplaceAudits",
 			opts: &dto.AdminAuditListOptions{
-				TargetResourceType: testutil.Ptr(models.TargetResourceTypeMarketplace),
+				TargetResourceType: util.Ptr(models.TargetResourceTypeMarketplace),
 			},
 			want: []*models.AdminAudit{testAudits[5], testAudits[4], testAudits[3], testAudits[2], testAudits[1], testAudits[0]},
 		},
 		{
 			name: "allKeyAudits",
 			opts: &dto.AdminAuditListOptions{
-				TargetResourceType: testutil.Ptr(models.TargetResourceTypeKey),
+				TargetResourceType: util.Ptr(models.TargetResourceTypeKey),
 			},
 			want: []*models.AdminAudit{testAudits[8], testAudits[7], testAudits[6]},
 		},
 		{
 			name: "allReversalAudits",
 			opts: &dto.AdminAuditListOptions{
-				TargetResourceType: testutil.Ptr(models.TargetResourceTypeReversal),
+				TargetResourceType: util.Ptr(models.TargetResourceTypeReversal),
 			},
 			want: []*models.AdminAudit{testAudits[11], testAudits[10], testAudits[9]},
 		},
 		{
 			name: "targetResourceSlug",
 			opts: &dto.AdminAuditListOptions{
-				TargetResource: testutil.Ptr("test-slug-1"),
+				TargetResource: util.Ptr("test-slug-1"),
 			},
 			want: []*models.AdminAudit{testAudits[4], testAudits[2], testAudits[0]},
 		},
 		{
 			name: "targetResourceKeyID",
 			opts: &dto.AdminAuditListOptions{
-				TargetResource: testutil.Ptr("test-key-id-1"),
+				TargetResource: util.Ptr("test-key-id-1"),
 			},
 			want: []*models.AdminAudit{testAudits[8], testAudits[6]},
 		},
 		{
 			name: "targetResourceReversalID",
 			opts: &dto.AdminAuditListOptions{
-				TargetResource: testutil.Ptr("1"),
+				TargetResource: util.Ptr("1"),
 			},
 			want: []*models.AdminAudit{testAudits[10], testAudits[9]},
 		},
@@ -408,7 +409,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			name: "multipleFilters",
 			opts: &dto.AdminAuditListOptions{
 				TargetActions:  []models.TargetAction{models.TargetActionAddMarketplace},
-				TargetResource: testutil.Ptr("test-slug-1"),
+				TargetResource: util.Ptr("test-slug-1"),
 			},
 			want: []*models.AdminAudit{testAudits[0]},
 		},
