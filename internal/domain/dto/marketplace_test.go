@@ -2,15 +2,16 @@ package dto
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"reverse-watch/internal/domain/models"
 )
 
-func TestMarketplaceUpdateOptions_FieldCoverage(t *testing.T) {
+func TestMarketplaceUpdates_FieldCoverage(t *testing.T) {
 	t.Parallel()
 
-	optsType := reflect.TypeOf((*MarketplaceUpdates)(nil)).Elem()
+	updatesType := reflect.TypeOf((*MarketplaceUpdates)(nil)).Elem()
 	marketplaceType := reflect.TypeOf((*models.Marketplace)(nil)).Elem()
 
 	excludedFieldNames := []string{
@@ -24,33 +25,27 @@ func TestMarketplaceUpdateOptions_FieldCoverage(t *testing.T) {
 		marketplaceFields[field.Name] = field
 	}
 
-	for i := 0; i < optsType.NumField(); i++ {
-		optsField := optsType.Field(i)
+	for i := 0; i < updatesType.NumField(); i++ {
+		updatesField := updatesType.Field(i)
 
-		excluded := false
-		for _, excludedFieldName := range excludedFieldNames {
-			if optsField.Name == excludedFieldName {
-				excluded = true
-				break
-			}
-		}
-		if excluded {
+		// Skip excluded fields
+		if slices.Contains(excludedFieldNames, updatesField.Name) {
 			continue
 		}
 
-		marketplaceField, ok := marketplaceFields[optsField.Name]
+		marketplaceField, ok := marketplaceFields[updatesField.Name]
 		if !ok {
-			t.Errorf("MarketplaceUpdates contains non-existent Marketplace field: %s", optsField.Name)
+			t.Errorf("MarketplaceUpdates contains non-existent Marketplace field: %s", updatesField.Name)
 			continue
 		}
 
-		if optsField.Type.Kind() != reflect.Ptr {
-			t.Errorf("MarketplaceUpdates contains non-pointer field: %s", optsField.Name)
+		if updatesField.Type.Kind() != reflect.Ptr {
+			t.Errorf("MarketplaceUpdates contains non-pointer field: %s", updatesField.Name)
 		}
 
 		// Ensure same type
-		if optsField.Type.Kind() == reflect.Ptr && marketplaceField.Type != optsField.Type.Elem() {
-			t.Errorf("MarketplaceUpdates contains field %q with incorrect type", optsField.Name)
+		if updatesField.Type.Kind() == reflect.Ptr && marketplaceField.Type != updatesField.Type.Elem() {
+			t.Errorf("MarketplaceUpdates contains field %q with incorrect type", updatesField.Name)
 		}
 	}
 }

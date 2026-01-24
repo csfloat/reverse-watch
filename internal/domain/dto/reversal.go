@@ -45,7 +45,7 @@ func (u *ReversalUpdates) ToFields() map[string]interface{} {
 
 func (u *ReversalUpdates) Validate() error {
 	if len(u.ToFields()) == 0 {
-		return fmt.Errorf("options cannot be empty")
+		return fmt.Errorf("reversal updates must have at least one field")
 	}
 
 	if err := models.ValidateSourceAndRelatedID(u.Source, u.RelatedSteamID); err != nil {
