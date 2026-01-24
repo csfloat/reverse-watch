@@ -10,7 +10,7 @@ import (
 func TestMarketplaceUpdateOptions_FieldCoverage(t *testing.T) {
 	t.Parallel()
 
-	optsType := reflect.TypeOf((*MarketplaceUpdateOptions)(nil)).Elem()
+	optsType := reflect.TypeOf((*MarketplaceUpdates)(nil)).Elem()
 	marketplaceType := reflect.TypeOf((*models.Marketplace)(nil)).Elem()
 
 	excludedFieldNames := []string{
@@ -40,17 +40,17 @@ func TestMarketplaceUpdateOptions_FieldCoverage(t *testing.T) {
 
 		marketplaceField, ok := marketplaceFields[optsField.Name]
 		if !ok {
-			t.Errorf("MarketplaceUpdateOptions contains non-existent Marketplace field: %s", optsField.Name)
+			t.Errorf("MarketplaceUpdates contains non-existent Marketplace field: %s", optsField.Name)
 			continue
 		}
 
 		if optsField.Type.Kind() != reflect.Ptr {
-			t.Errorf("MarketplaceUpdateOptions contains non-pointer field: %s", optsField.Name)
+			t.Errorf("MarketplaceUpdates contains non-pointer field: %s", optsField.Name)
 		}
 
 		// Ensure same type
 		if optsField.Type.Kind() == reflect.Ptr && marketplaceField.Type != optsField.Type.Elem() {
-			t.Errorf("MarketplaceUpdateOptions contains field %q with incorrect type", optsField.Name)
+			t.Errorf("MarketplaceUpdates contains field %q with incorrect type", optsField.Name)
 		}
 	}
 }

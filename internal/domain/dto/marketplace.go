@@ -6,12 +6,12 @@ import (
 	"reverse-watch/internal/domain/models"
 )
 
-type MarketplaceUpdateOptions struct {
+type MarketplaceUpdates struct {
 	Name     *string
 	IsActive *bool
 }
 
-func (o *MarketplaceUpdateOptions) ToFields() map[string]interface{} {
+func (o *MarketplaceUpdates) ToFields() map[string]interface{} {
 	fields := make(map[string]interface{})
 	if o.Name != nil {
 		fields["name"] = *o.Name
@@ -22,7 +22,7 @@ func (o *MarketplaceUpdateOptions) ToFields() map[string]interface{} {
 	return fields
 }
 
-func (o *MarketplaceUpdateOptions) Validate() error {
+func (o *MarketplaceUpdates) Validate() error {
 	if o.Name != nil {
 		if len(*o.Name) <= 0 || len(*o.Name) > 50 {
 			return fmt.Errorf("name must be between 1 and 50 characters long")
@@ -31,6 +31,6 @@ func (o *MarketplaceUpdateOptions) Validate() error {
 	return nil
 }
 
-func (o *MarketplaceUpdateOptions) AuditDetails() (*models.RawJsonb, error) {
+func (o *MarketplaceUpdates) AuditDetails() (*models.RawJsonb, error) {
 	return models.ToRawJsonb(o.ToFields())
 }
