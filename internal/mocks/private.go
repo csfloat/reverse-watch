@@ -2,12 +2,16 @@ package mocks
 
 import "reverse-watch/internal/domain/repository"
 
-type MockPrivateRepository struct{}
+type MockPrivateRepository struct {
+	marketplace repository.MarketplaceRepository
+}
 
 var _ repository.PrivateRepository = (*MockPrivateRepository)(nil)
 
 func NewMockPrivateRepository() repository.PrivateRepository {
-	return &MockPrivateRepository{}
+	return &MockPrivateRepository{
+		marketplace: NewMockMarketplaceRepository(),
+	}
 }
 
 func (m *MockPrivateRepository) Key() repository.KeyRepository {
@@ -15,7 +19,7 @@ func (m *MockPrivateRepository) Key() repository.KeyRepository {
 }
 
 func (m *MockPrivateRepository) Marketplace() repository.MarketplaceRepository {
-	return NewMockMarketplaceRepository()
+	return m.marketplace
 }
 
 func (m *MockPrivateRepository) AdminAudit() repository.AdminAuditRepository {
