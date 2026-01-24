@@ -225,3 +225,47 @@ func TestMarketplaceService_UpdateMarketplace_Errors(t *testing.T) {
 		t.Fatalf("UpdateMarketplace(): got error %q, wanted %q", err, wantErr)
 	}
 }
+
+func TestMarketplaceService_DeleteMarketplace(t *testing.T) {
+	t.Parallel()
+
+	mockPrivateRepo := mocks.NewMockPrivateRepository()
+	marketplaceSvc := NewMarketplaceService(mockPrivateRepo)
+
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+
+	if err := mockPrivateRepo.Marketplace().Create(testMarketplace); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	if err := marketplaceSvc.DeleteMarketplace(testMarketplace.Slug); err != nil {
+		t.Fatalf("DeleteMarketplace(): %v", err)
+	}
+
+	_, err := mockPrivateRepo.Marketplace().Read(testMarketplace.Slug)
+	if err == nil {
+		t.Fatalf("DeleteMarketplace(): got nil error, wanted %v", gorm.ErrRecordNotFound)
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("DeleteMarketplace(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
+func TestMarketplaceService_DeleteMarketplace_NotFound(t *testing.T) {
+	t.Parallel()
+
+	mockPrivateRepo := mocks.NewMockPrivateRepository()
+	marketplaceSvc := NewMarketplaceService(mockPrivateRepo)
+
+	err := marketplaceSvc.DeleteMarketplace("test-marketplace")
+	if err == nil {
+		t.Fatalf("DeleteMarketplace(): got nil error, wanted %v", gorm.ErrRecordNotFound)
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("DeleteMarketplace(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
