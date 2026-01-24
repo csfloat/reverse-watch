@@ -31,19 +31,25 @@ func TestMarketplaceService_CreateMarketplace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateMarketplace(): %v", err)
 	}
-	if testMarketplace.CreatedAt == 0 {
-		t.Errorf("got CreatedAt %d, wanted non-zero value", testMarketplace.CreatedAt)
+
+	gotMarketplace, err := mockPrivateRepo.Marketplace().Read(testMarketplace.Slug)
+	if err != nil {
+		t.Fatalf("Read(): %v", err)
 	}
-	if testMarketplace.UpdatedAt == 0 {
-		t.Errorf("got UpdatedAt %d, wanted non-zero value", testMarketplace.UpdatedAt)
+
+	if gotMarketplace.CreatedAt == 0 {
+		t.Errorf("got CreatedAt %d, wanted non-zero value", gotMarketplace.CreatedAt)
 	}
-	if testMarketplace.Slug != "test-marketplace" {
-		t.Errorf("got Slug %q, wanted %q", testMarketplace.Slug, "test-marketplace")
+	if gotMarketplace.UpdatedAt == 0 {
+		t.Errorf("got UpdatedAt %d, wanted non-zero value", gotMarketplace.UpdatedAt)
 	}
-	if testMarketplace.Name != "Test Marketplace" {
-		t.Errorf("got Name %q, wanted %q", testMarketplace.Name, "Test Marketplace")
+	if gotMarketplace.Slug != "test-marketplace" {
+		t.Errorf("got Slug %q, wanted %q", gotMarketplace.Slug, "test-marketplace")
 	}
-	if testMarketplace.IsActive != true {
+	if gotMarketplace.Name != "Test Marketplace" {
+		t.Errorf("got Name %q, wanted %q", gotMarketplace.Name, "Test Marketplace")
+	}
+	if gotMarketplace.IsActive != true {
 		t.Errorf("got IsActive %v, wanted %v", testMarketplace.IsActive, true)
 	}
 }
