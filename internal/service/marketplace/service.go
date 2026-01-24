@@ -31,7 +31,7 @@ func (m *marketplaceService) GetMarketplace(slug string) (*models.Marketplace, e
 
 func (m *marketplaceService) UpdateMarketplace(slug string, updates *dto.MarketplaceUpdates) error {
 	if err := updates.Validate(); err != nil {
-		return fmt.Errorf("invalid marketplace update options: %w", err)
+		return fmt.Errorf("invalid marketplace updates: %w", err)
 	}
 	return m.Marketplace().Update(slug, updates)
 }

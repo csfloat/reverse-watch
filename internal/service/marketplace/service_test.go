@@ -195,3 +195,33 @@ func TestMarketplaceService_UpdateMarketplace(t *testing.T) {
 		})
 	}
 }
+
+func TestMarketplaceService_UpdateMarketplace_Errors(t *testing.T) {
+	t.Parallel()
+
+	mockPrivateRepo := mocks.NewMockPrivateRepository()
+	marketplaceSvc := NewMarketplaceService(mockPrivateRepo)
+
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+
+	if err := mockPrivateRepo.Marketplace().Create(testMarketplace); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	updates := &dto.MarketplaceUpdates{
+		Name: util.Ptr(""),
+	}
+	wantErr := "invalid marketplace updates: name must be between 1 and 50 characters long"
+
+	err := marketplaceSvc.UpdateMarketplace(testMarketplace.Slug, updates)
+	if err == nil {
+		t.Fatalf("UpdateMarketplace(): got nil error, wanted %q", wantErr)
+	}
+	if err.Error() != wantErr {
+		t.Fatalf("UpdateMarketplace(): got error %q, wanted %q", err, wantErr)
+	}
+}
