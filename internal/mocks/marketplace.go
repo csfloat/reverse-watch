@@ -3,6 +3,7 @@ package mocks
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"reverse-watch/internal/domain/dto"
 	"reverse-watch/internal/domain/models"
@@ -32,6 +33,10 @@ func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) erro
 		return fmt.Errorf("UNIQUE constraint failed: marketplaces.slug")
 	}
 
+	if err := marketplace.BeforeCreate(nil); err != nil {
+		return err
+	}
+
 	m.marketplaces[marketplace.Slug] = marketplace
 	return nil
 }
@@ -59,6 +64,8 @@ func (m *MockMarketplaceRepository) Update(slug string, updates *dto.Marketplace
 	if !ok {
 		return gorm.ErrRecordNotFound
 	}
+
+	marketplace.UpdatedAt = uint64(time.Now().UnixMilli())
 
 	if updates.Name != nil {
 		marketplace.Name = *updates.Name
