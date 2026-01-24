@@ -25,6 +25,16 @@ func NewMockMarketplaceRepository() repository.MarketplaceRepository {
 	}
 }
 
+func cloneMarketplace(marketplace *models.Marketplace) *models.Marketplace {
+	return &models.Marketplace{
+		Slug:      marketplace.Slug,
+		CreatedAt: marketplace.CreatedAt,
+		UpdatedAt: marketplace.UpdatedAt,
+		Name:      marketplace.Name,
+		IsActive:  marketplace.IsActive,
+	}
+}
+
 func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -37,7 +47,7 @@ func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) erro
 		return err
 	}
 
-	m.marketplaces[marketplace.Slug] = marketplace
+	m.marketplaces[marketplace.Slug] = cloneMarketplace(marketplace)
 	return nil
 }
 
