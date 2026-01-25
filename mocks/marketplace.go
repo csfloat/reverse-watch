@@ -48,8 +48,12 @@ func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) erro
 	}
 
 	now := uint64(time.Now().UnixMilli())
-	marketplace.CreatedAt = now
-	marketplace.UpdatedAt = now
+	if marketplace.CreatedAt != 0 {
+		marketplace.CreatedAt = now
+	}
+	if marketplace.UpdatedAt != 0 {
+		marketplace.UpdatedAt = now
+	}
 
 	m.marketplaces[marketplace.Slug] = cloneMarketplace(marketplace)
 	return nil
