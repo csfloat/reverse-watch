@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"reverse-watch/internal/domain/dto"
-	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/mocks"
-	"reverse-watch/internal/util"
+	"reverse-watch/domain/dto"
+	"reverse-watch/domain/models"
+	"reverse-watch/mocks"
+	"reverse-watch/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
