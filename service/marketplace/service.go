@@ -3,10 +3,10 @@ package marketplace
 import (
 	"fmt"
 
-	"reverse-watch/internal/domain/dto"
-	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
-	"reverse-watch/internal/domain/service"
+	"reverse-watch/domain/dto"
+	"reverse-watch/domain/models"
+	"reverse-watch/domain/repository"
+	"reverse-watch/domain/service"
 )
 
 type marketplaceService struct {

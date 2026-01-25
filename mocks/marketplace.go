@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"reverse-watch/internal/domain/dto"
-	"reverse-watch/internal/domain/models"
-	"reverse-watch/internal/domain/repository"
+	"reverse-watch/domain/dto"
+	"reverse-watch/domain/models"
+	"reverse-watch/domain/repository"
 
 	"gorm.io/gorm"
 )

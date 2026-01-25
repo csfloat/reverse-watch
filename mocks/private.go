@@ -1,6 +1,6 @@
 package mocks
 
-import "reverse-watch/internal/domain/repository"
+import "reverse-watch/domain/repository"
 
 type MockPrivateRepository struct {
 	marketplace repository.MarketplaceRepository
