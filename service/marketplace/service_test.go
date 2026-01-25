@@ -50,7 +50,7 @@ func TestMarketplaceService_CreateMarketplace(t *testing.T) {
 		t.Errorf("got Name %q, wanted %q", gotMarketplace.Name, "Test Marketplace")
 	}
 	if gotMarketplace.IsActive != true {
-		t.Errorf("got IsActive %v, wanted %v", testMarketplace.IsActive, true)
+		t.Errorf("got IsActive %v, wanted %v", gotMarketplace.IsActive, true)
 	}
 }
 
