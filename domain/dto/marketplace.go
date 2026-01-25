@@ -23,6 +23,9 @@ func (u *MarketplaceUpdates) ToFields() map[string]interface{} {
 }
 
 func (u *MarketplaceUpdates) Validate() error {
+	if u == nil {
+		return fmt.Errorf("marketplace updates cannot be nil")
+	}
 	if len(u.ToFields()) == 0 {
 		return fmt.Errorf("marketplace updates must have at least one field")
 	}

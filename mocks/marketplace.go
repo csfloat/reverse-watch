@@ -67,7 +67,7 @@ func (m *MockMarketplaceRepository) Read(slug string) (*models.Marketplace, erro
 	if !ok {
 		return nil, gorm.ErrRecordNotFound
 	}
-	return marketplace, nil
+	return cloneMarketplace(marketplace), nil
 }
 
 func (m *MockMarketplaceRepository) Update(slug string, updates *dto.MarketplaceUpdates) error {

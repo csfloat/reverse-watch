@@ -221,7 +221,7 @@ func TestMarketplaceService_UpdateMarketplace_Errors(t *testing.T) {
 	updates := &dto.MarketplaceUpdates{
 		Name: util.Ptr(""),
 	}
-	wantErr := "invalid marketplace updates: name must be between 1 and 50 characters long"
+	wantErr := "invalid updates: name must be between 1 and 50 characters long"
 
 	err := marketplaceSvc.UpdateMarketplace(testMarketplace.Slug, updates)
 	if err == nil {

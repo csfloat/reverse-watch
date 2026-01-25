@@ -73,6 +73,11 @@ func TestMarketplaceUpdates_Validate_Errors(t *testing.T) {
 		wantErr string
 	}{
 		{
+			name:    "nilUpdates",
+			updates: nil,
+			wantErr: "marketplace updates cannot be nil",
+		},
+		{
 			name:    "emptyUpdates",
 			updates: &MarketplaceUpdates{},
 			wantErr: "marketplace updates must have at least one field",
@@ -97,7 +102,7 @@ func TestMarketplaceUpdates_Validate_Errors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.updates.Validate()
 			if err == nil {
-				t.Errorf("Validate(): got nil error, want %s", tc.wantErr)
+				t.Fatalf("Validate(): got nil error, want %s", tc.wantErr)
 			}
 			if err.Error() != tc.wantErr {
 				t.Errorf("Validate(): got error %s, want %s", err.Error(), tc.wantErr)
