@@ -12,15 +12,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type MockMarketplaceRepository struct {
+type mockMarketplaceRepository struct {
 	mutex        sync.RWMutex
 	marketplaces map[string]*models.Marketplace
 }
 
-var _ repository.MarketplaceRepository = (*MockMarketplaceRepository)(nil)
+var _ repository.MarketplaceRepository = (*mockMarketplaceRepository)(nil)
 
 func NewMockMarketplaceRepository() repository.MarketplaceRepository {
-	return &MockMarketplaceRepository{
+	return &mockMarketplaceRepository{
 		marketplaces: make(map[string]*models.Marketplace),
 	}
 }
@@ -35,7 +35,7 @@ func cloneMarketplace(marketplace *models.Marketplace) *models.Marketplace {
 	}
 }
 
-func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) error {
+func (m *mockMarketplaceRepository) Create(marketplace *models.Marketplace) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -59,7 +59,7 @@ func (m *MockMarketplaceRepository) Create(marketplace *models.Marketplace) erro
 	return nil
 }
 
-func (m *MockMarketplaceRepository) Read(slug string) (*models.Marketplace, error) {
+func (m *mockMarketplaceRepository) Read(slug string) (*models.Marketplace, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -70,7 +70,7 @@ func (m *MockMarketplaceRepository) Read(slug string) (*models.Marketplace, erro
 	return cloneMarketplace(marketplace), nil
 }
 
-func (m *MockMarketplaceRepository) Update(slug string, updates *dto.MarketplaceUpdates) error {
+func (m *mockMarketplaceRepository) Update(slug string, updates *dto.MarketplaceUpdates) error {
 	if updates == nil {
 		return fmt.Errorf("updates cannot be nil")
 	}
@@ -96,7 +96,7 @@ func (m *MockMarketplaceRepository) Update(slug string, updates *dto.Marketplace
 	return nil
 }
 
-func (m *MockMarketplaceRepository) Delete(slug string) error {
+func (m *mockMarketplaceRepository) Delete(slug string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
