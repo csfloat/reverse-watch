@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"reverse-watch/internal/domain/models"
+	"reverse-watch/domain/models"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
