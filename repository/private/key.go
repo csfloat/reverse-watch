@@ -1,13 +1,10 @@
 package private
 
 import (
-	"crypto/subtle"
-
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/domain/secret"
-	"reverse-watch/errors"
 
 	"gorm.io/gorm"
 )
@@ -106,14 +103,5 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 
 func (k *keyRepository) ValidateKey(secretKey string) (*models.Key, error) {
 	hashedKey := secret.Hash(secretKey)
-
-	storedKey, err := k.Read(hashedKey)
-	if err != nil {
-		return nil, err
-	}
-
-	if subtle.ConstantTimeCompare([]byte(storedKey.ID), []byte(secretKey)) != 1 {
-		return nil, &errors.InvalidApiKey
-	}
-	return storedKey, nil
+	return k.Read(hashedKey)
 }
