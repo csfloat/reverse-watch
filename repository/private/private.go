@@ -29,6 +29,10 @@ var (
 
 type privateRepository struct {
 	conn *gorm.DB
+
+	marketplace repository.MarketplaceRepository
+	adminAudit  repository.AdminAuditRepository
+	key         repository.KeyRepository
 }
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
@@ -49,7 +53,10 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 		}
 
 		repo := &privateRepository{
-			conn: conn,
+			conn:        conn,
+			key:         NewKeyRepository(conn),
+			marketplace: NewMarketplaceRepository(conn),
+			adminAudit:  NewAdminAuditRepository(conn),
 		}
 
 		onErr := func(err error) error {
@@ -114,15 +121,15 @@ func (p *privateRepository) Close() error {
 }
 
 func (p *privateRepository) Key() repository.KeyRepository {
-	return NewKeyRepository(p.conn)
+	return p.key
 }
 
 func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
-	return NewMarketplaceRepository(p.conn)
+	return p.marketplace
 }
 
 func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
-	return NewAdminAuditRepository(p.conn)
+	return p.adminAudit
 }
 
 func migratePrivateModels(tx *gorm.DB) error {
