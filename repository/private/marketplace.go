@@ -1,8 +1,6 @@
 package private
 
 import (
-	"fmt"
-
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
@@ -35,8 +33,8 @@ func (m *marketplaceRepository) Read(slug string) (*models.Marketplace, error) {
 }
 
 func (m *marketplaceRepository) Update(slug string, updates *dto.MarketplaceUpdates) error {
-	if updates == nil {
-		return fmt.Errorf("updates cannot be nil")
+	if err := updates.Validate(); err != nil {
+		return err
 	}
 
 	tx := m.conn.Model(&models.Marketplace{}).Where("slug = ?", slug).Updates(updates)
