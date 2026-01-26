@@ -1,27 +1,64 @@
 package private
 
 import (
+	"crypto/subtle"
+
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
+	"reverse-watch/domain/secret"
+	"reverse-watch/errors"
 
 	"gorm.io/gorm"
 )
 
 type keyRepository struct {
 	conn *gorm.DB
+	secret.KeyGenerator
 }
 
 var _ repository.KeyRepository = (*keyRepository)(nil)
 
-func NewKeyRepository(conn *gorm.DB) repository.KeyRepository {
+func NewKeyRepository(conn *gorm.DB, keygen secret.KeyGenerator) repository.KeyRepository {
 	return &keyRepository{
-		conn: conn,
+		conn:         conn,
+		KeyGenerator: keygen,
 	}
 }
 
-func (k *keyRepository) Create(key *models.Key) error {
-	return k.conn.Model(&models.Key{}).Create(key).Error
+func (k *keyRepository) Create(marketplaceSlug string, permissions models.Permissions) (*dto.RawKey, error) {
+	secretKey, err := k.GenerateSecretKey()
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := secretKey.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	key := &models.Key{
+		ID:              id,
+		Environment:     k.Environment(),
+		MarketplaceSlug: marketplaceSlug,
+		Permissions:     permissions,
+	}
+	if err := k.conn.Model(&models.Key{}).Create(key).Error; err != nil {
+		return nil, err
+	}
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.RawKey{
+		ID:              id,
+		Environment:     k.Environment(),
+		SecretKey:       formattedKey,
+		MarketplaceSlug: marketplaceSlug,
+		Permissions:     permissions,
+	}, nil
 }
 
 func (k *keyRepository) Read(id string) (*models.Key, error) {
@@ -65,4 +102,18 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+func (k *keyRepository) ValidateKey(secretKey string) (*models.Key, error) {
+	hashedKey := secret.Hash(secretKey)
+
+	storedKey, err := k.Read(hashedKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if subtle.ConstantTimeCompare([]byte(storedKey.ID), []byte(secretKey)) != 1 {
+		return nil, &errors.InvalidApiKey
+	}
+	return storedKey, nil
 }

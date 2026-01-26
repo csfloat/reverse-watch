@@ -6,10 +6,11 @@ import (
 )
 
 type KeyRepository interface {
-	Create(key *models.Key) error
+	Create(marketplaceSlug string, permissions models.Permissions) (*dto.RawKey, error)
 	Read(id string) (*models.Key, error)
 	Delete(id string) error
 	List(opts *dto.KeyListOptions) ([]*models.Key, error)
+	ValidateKey(secretKey string) (*models.Key, error)
 }
 
 type MarketplaceRepository interface {
