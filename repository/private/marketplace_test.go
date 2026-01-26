@@ -288,7 +288,7 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 			name:    "nilOptions",
 			slug:    testMarketplace2.Slug,
 			updates: nil,
-			wantErr: "updates cannot be nil",
+			wantErr: "marketplace updates cannot be nil",
 		},
 		{
 			name: "recordNotFound",
