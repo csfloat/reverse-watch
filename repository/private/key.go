@@ -10,21 +10,21 @@ import (
 )
 
 type keyRepository struct {
-	conn *gorm.DB
-	secret.KeyGenerator
+	conn   *gorm.DB
+	keygen secret.KeyGenerator
 }
 
 var _ repository.KeyRepository = (*keyRepository)(nil)
 
 func NewKeyRepository(conn *gorm.DB, keygen secret.KeyGenerator) repository.KeyRepository {
 	return &keyRepository{
-		conn:         conn,
-		KeyGenerator: keygen,
+		conn:   conn,
+		keygen: keygen,
 	}
 }
 
 func (k *keyRepository) Create(marketplaceSlug string, permissions models.Permissions) (*dto.RawKey, error) {
-	secretKey, err := k.GenerateSecretKey()
+	secretKey, err := k.keygen.GenerateSecretKey()
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (k *keyRepository) Create(marketplaceSlug string, permissions models.Permis
 
 	key := &models.Key{
 		ID:              id,
-		Environment:     k.Environment(),
+		Environment:     k.keygen.Environment(),
 		MarketplaceSlug: marketplaceSlug,
 		Permissions:     permissions,
 	}
@@ -51,7 +51,7 @@ func (k *keyRepository) Create(marketplaceSlug string, permissions models.Permis
 
 	return &dto.RawKey{
 		ID:              id,
-		Environment:     k.Environment(),
+		Environment:     k.keygen.Environment(),
 		SecretKey:       formattedKey,
 		MarketplaceSlug: marketplaceSlug,
 		Permissions:     permissions,
