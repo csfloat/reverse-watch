@@ -102,6 +102,6 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 }
 
 func (k *keyRepository) ValidateKey(secretKey string) (*models.Key, error) {
-	hashedKey := secret.Hash(secretKey)
+	hashedKey := secret.Sha256Hash(secretKey)
 	return k.Read(hashedKey)
 }

@@ -17,7 +17,7 @@ type KeyGenerator interface {
 	Environment() constants.Environment
 }
 
-func Hash(value string) string {
+func Sha256Hash(value string) string {
 	hash := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(hash[:])
 }

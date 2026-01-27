@@ -57,7 +57,7 @@ func (s *secretKey) ID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return secret.Hash(key), nil
+	return secret.Sha256Hash(key), nil
 }
 
 type keyGenerator struct {
