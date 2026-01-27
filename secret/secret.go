@@ -2,9 +2,7 @@ package secret
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 
 	"reverse-watch/domain/models/constants"
@@ -59,8 +57,7 @@ func (s *secretKey) ID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(hash[:]), nil
+	return secret.Sha256Hash(key), nil
 }
 
 type keyGenerator struct {

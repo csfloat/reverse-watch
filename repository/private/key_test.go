@@ -9,6 +9,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/secret"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -19,7 +20,8 @@ func TestKeyRepository_BeforeCreate(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
@@ -32,40 +34,39 @@ func TestKeyRepository_BeforeCreate(t *testing.T) {
 	testutil.Insert(t, db, testMarketplace, csfloatTestMarketplace)
 
 	testCases := []struct {
-		name string
-		key  *models.Key
+		name        string
+		slug        string
+		permissions models.Permissions
 	}{
 		{
-			name: "validKey",
-			key: &models.Key{
-				ID:              "test-key-id",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionWrite,
-			},
+			name:        "validKey",
+			slug:        "test-marketplace",
+			permissions: models.PermissionWrite,
 		},
 		{
-			name: "adminKeyForCSFloat",
-			key: &models.Key{
-				ID:              "admin-key-id",
-				Environment:     constants.EnvironmentDevelopment,
-				MarketplaceSlug: csfloatTestMarketplace.Slug,
-				Permissions:     models.PermissionAdmin,
-			},
+			name:        "adminKeyForCSFloat",
+			slug:        "csfloat",
+			permissions: models.PermissionAdmin,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := keyRepo.Create(tc.key); err != nil {
+			rawKey, err := keyRepo.Create(tc.slug, tc.permissions)
+			if err != nil {
 				t.Fatalf("Create(): %v", err)
 			}
 
-			if tc.key.CreatedAt == 0 {
-				t.Errorf("got CreatedAt %d, wanted non-zero value", tc.key.CreatedAt)
+			var storedKey models.Key
+			if err := db.Where("id = ?", rawKey.ID).First(&storedKey).Error; err != nil {
+				t.Fatalf("First(): %v", err)
 			}
-			if tc.key.UpdatedAt == 0 {
-				t.Errorf("got UpdatedAt %d, wanted non-zero value", tc.key.UpdatedAt)
+
+			if storedKey.CreatedAt == 0 {
+				t.Errorf("got CreatedAt %d, wanted non-zero value", storedKey.CreatedAt)
+			}
+			if storedKey.UpdatedAt == 0 {
+				t.Errorf("got UpdatedAt %d, wanted non-zero value", storedKey.UpdatedAt)
 			}
 		})
 	}
@@ -75,7 +76,8 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
@@ -88,65 +90,34 @@ func TestKeyRepository_BeforeCreate_Errors(t *testing.T) {
 	testutil.Insert(t, db, testMarketplace, csfloatTestMarketplace)
 
 	testCases := []struct {
-		name    string
-		key     *models.Key
-		wantErr string
+		name        string
+		slug        string
+		permissions models.Permissions
+		wantErr     string
 	}{
 		{
-			name: "emptyID",
-			key: &models.Key{
-				ID:              "",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionRead,
-			},
-			wantErr: "id is required",
+			name:        "emptyMarketplaceSlug",
+			slug:        "",
+			permissions: models.PermissionExport,
+			wantErr:     "marketplace_slug is required",
 		},
 		{
-			name: "emptyEnvironment",
-			key: &models.Key{
-				ID:              "test-key-id-2",
-				Environment:     "",
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionExport | models.PermissionRead,
-			},
-			wantErr: "environment is required",
+			name:        "noPermissions",
+			slug:        testMarketplace.Slug,
+			permissions: models.PermissionNone,
+			wantErr:     "at least one permission is required",
 		},
 		{
-			name: "emptyMarketplaceSlug",
-			key: &models.Key{
-				ID:              "test-key-id-3",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: "",
-				Permissions:     models.PermissionExport,
-			},
-			wantErr: "marketplace_slug is required",
-		},
-		{
-			name: "noPermissions",
-			key: &models.Key{
-				ID:              "test-key-id-4",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionNone,
-			},
-			wantErr: "at least one permission is required",
-		},
-		{
-			name: "adminPermissionNonCSFloat",
-			key: &models.Key{
-				ID:              "test-key-id-5",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: "test-marketplace",
-				Permissions:     models.PermissionAdmin,
-			},
-			wantErr: "admin scoped keys can only be created for CSFloat",
+			name:        "adminPermissionNonCSFloat",
+			slug:        "test-marketplace",
+			permissions: models.PermissionAdmin,
+			wantErr:     "admin scoped keys can only be created for CSFloat",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := keyRepo.Create(tc.key)
+			_, err := keyRepo.Create(tc.slug, tc.permissions)
 			if err == nil {
 				t.Fatal("Create(): got nil error, wanted error from BeforeCreate")
 			}
@@ -161,7 +132,8 @@ func TestKeyRepository_Create(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
@@ -174,51 +146,72 @@ func TestKeyRepository_Create(t *testing.T) {
 	testutil.Insert(t, db, testMarketplace, testCSFloatMarketplace)
 
 	testCases := []struct {
-		name string
-		key  *models.Key
+		name        string
+		slug        string
+		permissions models.Permissions
 	}{
 		{
-			name: "singlePermission",
-			key: &models.Key{
-				ID:              "test-key-id-1",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionRead,
-			},
+			name:        "singlePermission",
+			slug:        testMarketplace.Slug,
+			permissions: models.PermissionRead,
 		},
 		{
-			name: "multiplePermissions",
-			key: &models.Key{
-				ID:              "test-key-id-2",
-				Environment:     constants.EnvironmentDevelopment,
-				MarketplaceSlug: testMarketplace.Slug,
-				Permissions:     models.PermissionWrite | models.PermissionManage | models.PermissionExport,
-			},
+			name:        "multiplePermissions",
+			slug:        testMarketplace.Slug,
+			permissions: models.PermissionWrite | models.PermissionManage | models.PermissionExport,
 		},
 		{
-			name: "adminPermissionCSFloat",
-			key: &models.Key{
-				ID:              "test-key-id-3",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: testCSFloatMarketplace.Slug,
-				Permissions:     models.PermissionAdmin,
-			},
+			name:        "adminPermissionCSFloat",
+			slug:        testCSFloatMarketplace.Slug,
+			permissions: models.PermissionAdmin,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := keyRepo.Create(tc.key); err != nil {
+			rawKey, err := keyRepo.Create(tc.slug, tc.permissions)
+			if err != nil {
 				t.Fatalf("Create(): %v", err)
 			}
 
+			if rawKey.ID == "" {
+				t.Error("got empty id")
+			}
+			if rawKey.SecretKey == "" {
+				t.Error("got empty secret key")
+			}
+			if rawKey.MarketplaceSlug != tc.slug {
+				t.Errorf("got slug %q, wanted %q", rawKey.MarketplaceSlug, tc.slug)
+			}
+			if rawKey.Permissions != tc.permissions {
+				t.Errorf("got permissions %d, wanted %d", rawKey.Permissions, tc.permissions)
+			}
+			if rawKey.Environment != constants.EnvironmentDevelopment {
+				t.Errorf("got environment %q, wanted %q", rawKey.Environment, constants.EnvironmentDevelopment)
+			}
+
 			var storedKey models.Key
-			if err := db.Where("id = ?", tc.key.ID).First(&storedKey).Error; err != nil {
+			if err := db.Where("id = ?", rawKey.ID).First(&storedKey).Error; err != nil {
 				t.Fatalf("failed to retrieve stored key: %v", err)
 			}
 
-			if diff := cmp.Diff(*tc.key, storedKey, cmpopts.IgnoreFields(models.Key{}, "CreatedAt", "UpdatedAt")); diff != "" {
-				t.Error(diff)
+			if storedKey.CreatedAt == 0 {
+				t.Errorf("got CreatedAt %d, wanted non-zero value", storedKey.CreatedAt)
+			}
+			if storedKey.UpdatedAt == 0 {
+				t.Errorf("got UpdatedAt %d, wanted non-zero value", storedKey.UpdatedAt)
+			}
+			if storedKey.ID != rawKey.ID {
+				t.Errorf("ID mismatch: got storedKey ID %q, rawKey ID %q", storedKey.ID, rawKey.ID)
+			}
+			if storedKey.Environment != rawKey.Environment {
+				t.Errorf("Environment mismatch: got storedKey Environment %q, rawKey Environment %q", storedKey.Environment, rawKey.Environment)
+			}
+			if storedKey.MarketplaceSlug != rawKey.MarketplaceSlug {
+				t.Errorf("MarketplaceSlug mismatch: got storedKey MarketplaceSlug %q, rawKey MarketplaceSlug %q", storedKey.MarketplaceSlug, rawKey.MarketplaceSlug)
+			}
+			if storedKey.Permissions != rawKey.Permissions {
+				t.Errorf("Permissions mismatch: got storedKey Permissions %q, rawKey Permissions %q", storedKey.Permissions, rawKey.Permissions)
 			}
 		})
 	}
@@ -228,38 +221,32 @@ func TestKeyRepository_Create_Errors(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
 		Name: "Test Marketplace",
 	}
-	testCSFloatMarketplace := &models.Marketplace{
-		Slug: "csfloat",
-		Name: "CSFloat",
-	}
-	testutil.Insert(t, db, testMarketplace, testCSFloatMarketplace)
+	testutil.Insert(t, db, testMarketplace)
 
 	testCases := []struct {
-		name    string
-		key     *models.Key
-		wantErr string
+		name        string
+		slug        string
+		permissions models.Permissions
+		wantErr     string
 	}{
 		{
-			name: "nonExistentMarketplace",
-			key: &models.Key{
-				ID:              "test-key-id",
-				Environment:     constants.EnvironmentProduction,
-				MarketplaceSlug: "non-existent-marketplace",
-				Permissions:     models.PermissionRead,
-			},
-			wantErr: "FOREIGN KEY constraint failed",
+			name:        "nonExistentMarketplace",
+			slug:        "non-existent-marketplace",
+			permissions: models.PermissionRead,
+			wantErr:     "FOREIGN KEY constraint failed",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := keyRepo.Create(tc.key)
+			_, err := keyRepo.Create(tc.slug, tc.permissions)
 			if err == nil {
 				t.Fatal("Create(): got nil error, wanted error")
 			}
@@ -275,7 +262,8 @@ func TestKeyRepository_Read(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
@@ -306,7 +294,8 @@ func TestKeyRepository_Read_NotFound(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	_, err := keyRepo.Read("non-existent-key-id")
 	if err == nil {
@@ -321,7 +310,8 @@ func TestKeyRepository_Delete(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
 		Slug: "test-marketplace",
@@ -373,7 +363,8 @@ func TestKeyRepository_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	err := keyRepo.Delete("non-existent-key-id")
 	if err == nil {
@@ -388,7 +379,8 @@ func TestKeyRepository_List(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
-	keyRepo := NewKeyRepository(db)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplaces := []*models.Marketplace{
 		{
@@ -458,5 +450,74 @@ func TestKeyRepository_List(t *testing.T) {
 				t.Errorf("Diff: %s", diff)
 			}
 		})
+	}
+}
+
+func TestKeyRepository_ValidateKey(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
+
+	testMarketplace := &models.Marketplace{
+		Slug: "test-marketplace",
+		Name: "Test Marketplace",
+	}
+	testutil.Insert(t, db, testMarketplace)
+
+	secretKey, err := keygen.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey(): %v", err)
+	}
+
+	id, err := secretKey.ID()
+	if err != nil {
+		t.Fatalf("ID(): %v", err)
+	}
+
+	testKey := &models.Key{
+		ID:              id,
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Marketplace:     testMarketplace,
+		Permissions:     models.PermissionRead,
+	}
+	testutil.Insert(t, db, testKey)
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		t.Fatalf("Format(): %v", err)
+	}
+
+	gotKey, err := keyRepo.ValidateKey(formattedKey)
+	if err != nil {
+		t.Fatalf("ValidateKey(): %v", err)
+	}
+	if diff := cmp.Diff(*testKey, *gotKey, cmpopts.IgnoreFields(models.Key{}, "CreatedAt", "UpdatedAt")); diff != "" {
+		t.Errorf("Diff: %s", diff)
+	}
+}
+
+func TestKeyRepository_ValidateKey_Errors(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
+
+	testMarketplace := &models.Marketplace{
+		Slug: "test-marketplace",
+		Name: "Test Marketplace",
+	}
+	testutil.Insert(t, db, testMarketplace)
+
+	secretKey := "non-existent-key"
+	_, err := keyRepo.ValidateKey(secretKey)
+	if err == nil {
+		t.Fatal("ValidateKey(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("ValidateKey(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
 	}
 }

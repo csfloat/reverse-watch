@@ -4,24 +4,58 @@ import (
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
+	"reverse-watch/domain/secret"
 
 	"gorm.io/gorm"
 )
 
 type keyRepository struct {
-	conn *gorm.DB
+	conn   *gorm.DB
+	keygen secret.KeyGenerator
 }
 
 var _ repository.KeyRepository = (*keyRepository)(nil)
 
-func NewKeyRepository(conn *gorm.DB) repository.KeyRepository {
+func NewKeyRepository(conn *gorm.DB, keygen secret.KeyGenerator) repository.KeyRepository {
 	return &keyRepository{
-		conn: conn,
+		conn:   conn,
+		keygen: keygen,
 	}
 }
 
-func (k *keyRepository) Create(key *models.Key) error {
-	return k.conn.Model(&models.Key{}).Create(key).Error
+func (k *keyRepository) Create(marketplaceSlug string, permissions models.Permissions) (*dto.RawKey, error) {
+	secretKey, err := k.keygen.GenerateSecretKey()
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := secretKey.ID()
+	if err != nil {
+		return nil, err
+	}
+
+	key := &models.Key{
+		ID:              id,
+		Environment:     k.keygen.Environment(),
+		MarketplaceSlug: marketplaceSlug,
+		Permissions:     permissions,
+	}
+	if err := k.conn.Model(&models.Key{}).Create(key).Error; err != nil {
+		return nil, err
+	}
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.RawKey{
+		ID:              id,
+		Environment:     k.keygen.Environment(),
+		SecretKey:       formattedKey,
+		MarketplaceSlug: marketplaceSlug,
+		Permissions:     permissions,
+	}, nil
 }
 
 func (k *keyRepository) Read(id string) (*models.Key, error) {
@@ -65,4 +99,9 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+func (k *keyRepository) ValidateKey(secretKey string) (*models.Key, error) {
+	hashedKey := secret.Sha256Hash(secretKey)
+	return k.Read(hashedKey)
 }

@@ -54,7 +54,7 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (reposi
 
 		repo := &privateRepository{
 			conn:        conn,
-			key:         NewKeyRepository(conn),
+			key:         NewKeyRepository(conn, keygen),
 			marketplace: NewMarketplaceRepository(conn),
 			adminAudit:  NewAdminAuditRepository(conn),
 		}
