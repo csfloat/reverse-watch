@@ -17,8 +17,8 @@ const KeyContextKey ContextKey = "key"
 func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			secretKey, ok := strings.CutPrefix(authHeader, "Bearer ")
+			token := r.Header.Get("Authorization")
+			secretKey, ok := strings.CutPrefix(token, "Bearer ")
 			if !ok {
 				render.Error(w, r, &errors.InvalidApiKey)
 				return
