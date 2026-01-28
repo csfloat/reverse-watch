@@ -17,7 +17,5 @@ func NewKeyHandler(keyRepo repository.KeyRepository) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	r.Get("/", h.listKeys)
 	r.Post("/", h.createKey)
-	r.Delete("/{id}", h.deleteKey)
 }
