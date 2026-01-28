@@ -28,8 +28,12 @@ func main() {
 
 	srv := server.New(cfg)
 	httpSrv := http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
-		Handler: srv,
+		Addr:              fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
+		Handler:           srv,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	go func() {
@@ -44,12 +48,12 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Close db connections
-	if err := srv.Close(); err != nil {
+	if err := httpSrv.Shutdown(ctx); err != nil {
 		panic(err)
 	}
 
-	if err := httpSrv.Shutdown(ctx); err != nil {
+	// Close db connections
+	if err := srv.Close(); err != nil {
 		panic(err)
 	}
 }
