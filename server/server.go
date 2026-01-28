@@ -14,7 +14,7 @@ import (
 )
 
 type Server struct {
-	router chi.Router
+	r chi.Router
 
 	privateRepo repository.PrivateRepository
 	publicRepo  repository.PublicRepository
@@ -41,12 +41,22 @@ func New(cfg config.Config) *Server {
 	// TODO(zach): Define routes
 
 	return &Server{
-		router:      r,
+		r:           r,
 		privateRepo: privateRepo,
 		publicRepo:  publicRepo,
 	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
+	s.r.ServeHTTP(w, r)
+}
+
+func (s *Server) Close() error {
+	if err := s.privateRepo.Close(); err != nil {
+		return err
+	}
+	if err := s.publicRepo.Close(); err != nil {
+		return err
+	}
+	return nil
 }

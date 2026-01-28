@@ -24,11 +24,12 @@ func main() {
 	logging.Log.Info("Starting Reverse Watch")
 
 	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
+	srv := server.New(cfg)
 	httpSrv := http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
-		Handler: server.New(cfg),
+		Handler: srv,
 	}
 
 	go func() {
@@ -41,9 +42,12 @@ func main() {
 	<-done
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
+
+	// Close db connections
+	if err := srv.Close(); err != nil {
+		panic(err)
+	}
 
 	if err := httpSrv.Shutdown(ctx); err != nil {
 		panic(err)
