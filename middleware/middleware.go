@@ -14,7 +14,7 @@ type ContextKey string
 
 const KeyContextKey ContextKey = "key"
 
-func Middleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
+func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
