@@ -45,7 +45,7 @@ func (r *reversalRepository) Update(id models.Snowflake, updates *dto.ReversalUp
 		return err
 	}
 
-	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(updates)
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(updates.ToFields())
 	if tx.Error != nil {
 		return tx.Error
 	}
