@@ -1,10 +1,13 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
 	"reverse-watch/config"
 	"reverse-watch/domain/repository"
+	"reverse-watch/logging"
 	"reverse-watch/repository/private"
 	"reverse-watch/repository/public"
 	"reverse-watch/secret"
@@ -20,23 +23,26 @@ type Server struct {
 	publicRepo  repository.PublicRepository
 }
 
-func New(cfg config.Config) *Server {
+func New(cfg config.Config) (*Server, error) {
 	keygen := secret.NewKeyGenerator(cfg.Environment)
 	privateRepo, err := private.NewPrivateRepository(cfg, keygen)
 	if err != nil {
-		panic(err)
+		logging.Log.Errorf("failed to create private repository: %v", err)
+		return nil, fmt.Errorf("failed to create private repository: %v", err)
 	}
 	publicRepo, err := public.NewPublicRepository(cfg)
 	if err != nil {
-		panic(err)
+		privateRepo.Close()
+		logging.Log.Errorf("failed to create public repository: %v", err)
+		return nil, fmt.Errorf("failed to create public repository: %v", err)
 	}
 
 	r := chi.NewRouter()
 
+	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
 
 	// TODO(zach): Define routes
 
@@ -44,7 +50,7 @@ func New(cfg config.Config) *Server {
 		r:           r,
 		privateRepo: privateRepo,
 		publicRepo:  publicRepo,
-	}
+	}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -52,11 +58,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Close() error {
+	var errs []error
 	if err := s.privateRepo.Close(); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 	if err := s.publicRepo.Close(); err != nil {
-		return err
+		errs = append(errs, err)
 	}
-	return nil
+	return errors.Join(errs...)
 }

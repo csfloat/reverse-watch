@@ -26,8 +26,11 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	srv := server.New(cfg)
-	httpSrv := http.Server{
+	srv, err := server.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	httpSrv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
 		Handler:           srv,
 		ReadHeaderTimeout: 5 * time.Second,
@@ -44,6 +47,8 @@ func main() {
 	}()
 
 	<-done
+
+	logging.Log.Info("Shutting down server connections gracefully")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
