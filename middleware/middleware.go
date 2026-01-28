@@ -22,7 +22,7 @@ func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Ha
 
 			key, err := keyRepo.ValidateKey(secretKey)
 			if err != nil {
-				render.Error(w, r, &errors.InvalidApiKey)
+				render.Error(w, r, &errors.NotAuthorized)
 				return
 			}
 
