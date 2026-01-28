@@ -6,8 +6,11 @@ import (
 	"net/http"
 
 	"reverse-watch/config"
+	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
+	"reverse-watch/handler/marketplace/keys"
 	"reverse-watch/logging"
+	rwmiddleware "reverse-watch/middleware"
 	"reverse-watch/repository/private"
 	"reverse-watch/repository/public"
 	"reverse-watch/secret"
@@ -44,7 +47,15 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 
-	// TODO(zach): Define routes
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Route("/marketplace", func(r chi.Router) {
+			r.Use(rwmiddleware.AuthMiddleware(privateRepo.Key()))
+			r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
+			r.Route("/keys", func(r chi.Router) {
+				keys.NewKeyHandler(privateRepo.Key()).RegisterRoutes(r)
+			})
+		})
+	})
 
 	return &Server{
 		r:           r,
