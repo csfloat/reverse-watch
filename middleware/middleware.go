@@ -18,11 +18,15 @@ func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Ha
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
-			secretKey := strings.TrimPrefix(authHeader, "Bearer ")
+			secretKey, ok := strings.CutPrefix(authHeader, "Bearer ")
+			if !ok {
+				render.Error(w, r, &errors.InvalidApiKey)
+				return
+			}
 
 			key, err := keyRepo.ValidateKey(secretKey)
 			if err != nil {
-				render.Error(w, r, &errors.NotAuthorized)
+				render.Error(w, r, &errors.InvalidApiKey)
 				return
 			}
 
