@@ -1,8 +1,6 @@
 package public
 
 import (
-	"fmt"
-
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
@@ -43,11 +41,11 @@ func (r *reversalRepository) Read(id models.Snowflake) (*models.Reversal, error)
 }
 
 func (r *reversalRepository) Update(id models.Snowflake, updates *dto.ReversalUpdates) error {
-	if updates == nil {
-		return fmt.Errorf("updates cannot be nil")
+	if err := updates.Validate(); err != nil {
+		return err
 	}
 
-	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(updates.ToFields())
+	tx := r.conn.Model(&models.Reversal{}).Where("id = ?", id).Updates(updates)
 	if tx.Error != nil {
 		return tx.Error
 	}

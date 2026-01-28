@@ -44,6 +44,9 @@ func (u *ReversalUpdates) ToFields() map[string]interface{} {
 }
 
 func (u *ReversalUpdates) Validate() error {
+	if u == nil {
+		return fmt.Errorf("reversal updates cannot be nil")
+	}
 	if len(u.ToFields()) == 0 {
 		return fmt.Errorf("reversal updates must have at least one field")
 	}
