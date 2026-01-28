@@ -149,6 +149,11 @@ func TestReversalUpdates_Validate_Errors(t *testing.T) {
 		wantErr string
 	}{
 		{
+			name:    "nilUpdates",
+			updates: nil,
+			wantErr: "reversal updates cannot be nil",
+		},
+		{
 			name:    "emptyUpdates",
 			updates: &ReversalUpdates{},
 			wantErr: "reversal updates must have at least one field",
