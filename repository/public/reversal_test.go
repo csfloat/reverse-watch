@@ -550,7 +550,7 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 			name:    "nilUpdates",
 			id:      models.Snowflake(1),
 			updates: nil,
-			wantErr: "updates cannot be nil",
+			wantErr: "reversal updates cannot be nil",
 		},
 	}
 
