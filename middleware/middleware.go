@@ -22,12 +22,7 @@ func parseBearerToken(authHeader string) (string, bool) {
 	if !strings.EqualFold(authHeader[:len(prefix)], prefix) {
 		return "", false
 	}
-
-	token := authHeader[len(prefix):]
-	if token == "" {
-		return "", false
-	}
-	return token, true
+	return authHeader[len(prefix):], true
 }
 
 func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
