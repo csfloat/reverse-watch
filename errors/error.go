@@ -56,7 +56,7 @@ func Newf(base Error, cause error, format string, a ...interface{}) *Error {
 var (
 	Unknown             = Error{Code: 0, status: http.StatusInternalServerError, Message: "unknown error"}
 	BadRequest          = Error{Code: 1, status: http.StatusBadRequest, Message: "malformed request"}
-	NotAuthorized       = Error{Code: 2, status: http.StatusForbidden, Message: "not authorized"}
+	Forbidden           = Error{Code: 2, status: http.StatusForbidden, Message: "forbidden"}
 	NotFound            = Error{Code: 3, status: http.StatusNotFound, Message: "resource not found"}
 	InternalServerError = Error{Code: 4, status: http.StatusInternalServerError, Message: "internal server error"}
 	UnknownResource     = Error{Code: 5, status: http.StatusBadRequest, Message: "unknown resource"}
