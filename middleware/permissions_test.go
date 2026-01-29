@@ -50,7 +50,7 @@ func TestRequirePermissions(t *testing.T) {
 			setup: func() *http.Request {
 				return httptest.NewRequest(http.MethodGet, "http://testing", nil)
 			},
-			wantStatusCode: http.StatusForbidden,
+			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name:        "insufficientPermissions",
