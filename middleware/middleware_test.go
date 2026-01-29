@@ -78,13 +78,13 @@ func TestAuthMiddleware(t *testing.T) {
 				}
 				testutil.Insert(t, db, key)
 
-				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
-
 				formattedKey, err := testKey.Format()
 				if err != nil {
 					t.Fatalf("Format(): %v", err)
 				}
+
 				value := fmt.Sprintf("Bearer %s", formattedKey)
+				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", value)
 				return req
 			},
@@ -102,11 +102,13 @@ func TestAuthMiddleware(t *testing.T) {
 			middlewareFunc := AuthMiddleware(keyRepo)
 			handler := middlewareFunc(dummyHandler)
 
-			recorder := httptest.NewRecorder()
-			handler.ServeHTTP(recorder, tc.setup())
+			w := httptest.NewRecorder()
+			r := tc.setup()
 
-			if recorder.Code != tc.wantStatusCode {
-				t.Errorf("got status code %d, wanted %d", recorder.Code, tc.wantStatusCode)
+			handler.ServeHTTP(w, r)
+
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("got status code %d, wanted %d", w.Code, tc.wantStatusCode)
 			}
 		})
 	}
