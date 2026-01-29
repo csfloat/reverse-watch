@@ -13,12 +13,12 @@ func RequirePermissions(permissions ...models.Permissions) func(http.Handler) ht
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			key, ok := r.Context().Value(KeyContextKey).(*models.Key)
 			if !ok {
-				render.Error(w, r, &errors.NotAuthorized)
+				render.Error(w, r, &errors.InvalidApiKey)
 				return
 			}
 
 			if !key.HasPermissions(permissions...) {
-				render.Error(w, r, &errors.NotAuthorized)
+				render.Error(w, r, &errors.Forbidden)
 				return
 			}
 			next.ServeHTTP(w, r)
