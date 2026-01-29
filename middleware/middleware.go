@@ -14,11 +14,22 @@ type ContextKey string
 
 const KeyContextKey ContextKey = "key"
 
+func parseBearerToken(authHeader string) (string, bool) {
+	prefix := "bearer "
+	if len(authHeader) < len(prefix) {
+		return "", false
+	}
+	if !strings.EqualFold(authHeader[:len(prefix)], prefix) {
+		return "", false
+	}
+	return authHeader[len(prefix):], true
+}
+
 func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			token := r.Header.Get("Authorization")
-			secretKey, ok := strings.CutPrefix(token, "Bearer ")
+			authHeader := r.Header.Get("Authorization")
+			secretKey, ok := parseBearerToken(authHeader)
 			if !ok {
 				render.Error(w, r, &errors.InvalidApiKey)
 				return

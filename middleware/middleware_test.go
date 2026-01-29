@@ -22,37 +22,37 @@ func TestAuthMiddleware(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		setup          func() *http.Request
+		setup          func() (*http.Request, error)
 		wantStatusCode int
 	}{
 		{
 			name: "noAuthHeader",
-			setup: func() *http.Request {
-				return httptest.NewRequest(http.MethodGet, "http://testing", nil)
+			setup: func() (*http.Request, error) {
+				return httptest.NewRequest(http.MethodGet, "http://testing", nil), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name: "invalidAuthHeader",
-			setup: func() *http.Request {
+			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "test-token")
-				return req
+				return req, nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name: "invalidToken",
-			setup: func() *http.Request {
+			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "Bearer test-token")
-				return req
+				return req, nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name: "validToken",
-			setup: func() *http.Request {
+			setup: func() (*http.Request, error) {
 				testMarketplace := &models.Marketplace{
 					Slug:     "test-marketplace",
 					Name:     "Test Marketplace",
@@ -62,12 +62,12 @@ func TestAuthMiddleware(t *testing.T) {
 
 				testKey, err := keygen.GenerateSecretKey()
 				if err != nil {
-					t.Fatalf("GenerateSecretKey(): %v", err)
+					return nil, err
 				}
 
 				id, err := testKey.ID()
 				if err != nil {
-					t.Fatalf("ID(): %v", err)
+					return nil, err
 				}
 
 				key := &models.Key{
@@ -80,13 +80,13 @@ func TestAuthMiddleware(t *testing.T) {
 
 				formattedKey, err := testKey.Format()
 				if err != nil {
-					t.Fatalf("Format(): %v", err)
+					return nil, err
 				}
 
 				value := fmt.Sprintf("Bearer %s", formattedKey)
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", value)
-				return req
+				return req, nil
 			},
 			wantStatusCode: http.StatusOK,
 		},
@@ -103,7 +103,10 @@ func TestAuthMiddleware(t *testing.T) {
 			handler := middlewareFunc(dummyHandler)
 
 			w := httptest.NewRecorder()
-			r := tc.setup()
+			r, err := tc.setup()
+			if err != nil {
+				t.Fatalf("setup(): %v", err)
+			}
 
 			handler.ServeHTTP(w, r)
 
