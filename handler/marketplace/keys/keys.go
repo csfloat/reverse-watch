@@ -11,7 +11,11 @@ import (
 )
 
 func (h *Handler) createKey(w http.ResponseWriter, r *http.Request) {
-	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	if !ok {
+		render.Error(w, r, &errors.InternalServerError)
+		return
+	}
 
 	var req struct {
 		Permissions models.Permissions `json:"permissions"`
