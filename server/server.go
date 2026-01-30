@@ -49,7 +49,7 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.Logger)
 
 	f := factory.NewFactory(privateRepo, publicRepo)
-	r.Use(rwmiddleware.Factory(f))
+	r.Use(rwmiddleware.FactoryMiddleware(f))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/marketplace", func(r chi.Router) {
