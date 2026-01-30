@@ -1,6 +1,8 @@
 package repository
 
 type Factory interface {
-	Private() PrivateRepository
-	Public() PublicRepository
+	Key() KeyRepository
+	Marketplace() MarketplaceRepository
+	AdminAudit() AdminAuditRepository
+	Reversal() ReversalRepository
 }
