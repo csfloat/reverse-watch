@@ -20,7 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestHandler_createKey(t *testing.T) {
+func TestCreateKey(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
