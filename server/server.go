@@ -11,6 +11,7 @@ import (
 	"reverse-watch/handler/marketplace/keys"
 	"reverse-watch/logging"
 	rwmiddleware "reverse-watch/middleware"
+	"reverse-watch/repository/factory"
 	"reverse-watch/repository/private"
 	"reverse-watch/repository/public"
 	"reverse-watch/secret"
@@ -46,6 +47,9 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+
+	f := factory.NewFactory(privateRepo, publicRepo)
+	r.Use(rwmiddleware.Factory(f))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/marketplace", func(r chi.Router) {
