@@ -1,7 +1,7 @@
 package marketplace
 
 import (
-	"reverse-watch/api/v1/marketplace/keys"
+	"reverse-watch/domain/models"
 	rwmiddleware "reverse-watch/middleware"
 
 	"github.com/go-chi/chi/v5"
@@ -10,6 +10,10 @@ import (
 func Router() chi.Router {
 	r := chi.NewRouter()
 	r.Use(rwmiddleware.AuthMiddleware)
-	r.Mount("/keys", keys.Router())
+	r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
+
+	r.Route("/keys", func(r chi.Router) {
+		r.Post("/", createKey)
+	})
 	return r
 }
