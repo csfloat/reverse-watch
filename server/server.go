@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"reverse-watch/api"
 	"reverse-watch/config"
-	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
-	"reverse-watch/handler/marketplace/keys"
 	"reverse-watch/logging"
 	rwmiddleware "reverse-watch/middleware"
 	"reverse-watch/repository/factory"
@@ -51,15 +50,7 @@ func New(cfg config.Config) (*Server, error) {
 	f := factory.NewFactory(privateRepo, publicRepo)
 	r.Use(rwmiddleware.FactoryMiddleware(f))
 
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Route("/marketplace", func(r chi.Router) {
-			r.Use(rwmiddleware.AuthMiddleware(privateRepo.Key()))
-			r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
-			r.Route("/keys", func(r chi.Router) {
-				keys.NewKeyHandler(privateRepo.Key()).RegisterRoutes(r)
-			})
-		})
-	})
+	r.Mount("/api", api.Router())
 
 	return &Server{
 		r:           r,

@@ -11,28 +11,27 @@ import (
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
+	"reverse-watch/domain/repository"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/middleware"
 	"reverse-watch/repository/private"
 	"reverse-watch/secret"
+
+	"gorm.io/gorm"
 )
 
 func TestHandler_createKey(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.NewTestDB(t)
-	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	keyRepo := private.NewKeyRepository(db, keygen)
-
 	testCases := []struct {
 		name           string
-		setup          func() (*http.Request, error)
+		setup          func(db *gorm.DB, factory repository.Factory) (*http.Request, error)
 		wantStatusCode int
 		wantRawKey     bool
 	}{
 		{
 			name: "validRequest",
-			setup: func() (*http.Request, error) {
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
 				testMarketplace := &models.Marketplace{
 					Slug:     "test-marketplace",
 					Name:     "Test Marketplace",
@@ -61,6 +60,7 @@ func TestHandler_createKey(t *testing.T) {
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				ctx := context.WithValue(r.Context(), middleware.KeyContextKey, testKey)
+				ctx = context.WithValue(ctx, middleware.FactoryContextKey, factory)
 				return r.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusOK,
@@ -68,7 +68,7 @@ func TestHandler_createKey(t *testing.T) {
 		},
 		{
 			name: "noKeyInContext",
-			setup: func() (*http.Request, error) {
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
 				return http.NewRequest(http.MethodPost, "/", nil)
 			},
 			wantStatusCode: http.StatusInternalServerError,
@@ -76,7 +76,7 @@ func TestHandler_createKey(t *testing.T) {
 		},
 		{
 			name: "invalidBody",
-			setup: func() (*http.Request, error) {
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
 				testKey := &models.Key{
 					ID:              "test-key",
 					MarketplaceSlug: "test-marketplace",
@@ -84,16 +84,17 @@ func TestHandler_createKey(t *testing.T) {
 					Permissions:     models.PermissionWrite,
 				}
 
-				body := `{permissions: 1}`
+				body := `{"permissions": 1}`
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(body)))
 				ctx := context.WithValue(r.Context(), middleware.KeyContextKey, testKey)
+				ctx = context.WithValue(ctx, middleware.FactoryContextKey, factory)
 				return r.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusBadRequest,
 		},
 		{
 			name: "invalidPermissions",
-			setup: func() (*http.Request, error) {
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
 				body := struct {
 					Permissions models.Permissions `json:"permissions"`
 				}{
@@ -115,6 +116,7 @@ func TestHandler_createKey(t *testing.T) {
 					Permissions:     models.PermissionWrite,
 				}
 				ctx := context.WithValue(r.Context(), middleware.KeyContextKey, testKey)
+				ctx = context.WithValue(ctx, middleware.FactoryContextKey, factory)
 				return r.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusBadRequest,
@@ -122,7 +124,7 @@ func TestHandler_createKey(t *testing.T) {
 		},
 		{
 			name: "invalidSlug",
-			setup: func() (*http.Request, error) {
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
 				body := struct {
 					Permissions models.Permissions `json:"permissions"`
 				}{
@@ -144,6 +146,7 @@ func TestHandler_createKey(t *testing.T) {
 					Permissions:     models.PermissionWrite,
 				}
 				ctx := context.WithValue(r.Context(), middleware.KeyContextKey, testKey)
+				ctx = context.WithValue(ctx, middleware.FactoryContextKey, factory)
 				return r.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusInternalServerError,
@@ -153,17 +156,18 @@ func TestHandler_createKey(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := &Handler{
-				keyRepo: keyRepo,
-			}
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			keyRepo := private.NewKeyRepository(db, keygen)
+			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
 
 			w := httptest.NewRecorder()
-			r, err := tc.setup()
+			r, err := tc.setup(db, factory)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			handler := http.HandlerFunc(h.createKey)
+			handler := http.HandlerFunc(createKey)
 			handler.ServeHTTP(w, r)
 
 			if w.Code != tc.wantStatusCode {
@@ -183,7 +187,6 @@ func TestHandler_createKey(t *testing.T) {
 					t.Fatal("got nil RawKey, wanted non-nil")
 				}
 			}
-
 		})
 	}
 }
