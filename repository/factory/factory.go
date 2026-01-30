@@ -7,7 +7,7 @@ type factory struct {
 	publicRepo  repository.PublicRepository
 }
 
-func NewFactory(privateRepo repository.PrivateRepository, publicRepo repository.PublicRepository) repository.RepositoryFactory {
+func NewFactory(privateRepo repository.PrivateRepository, publicRepo repository.PublicRepository) repository.Factory {
 	return &factory{
 		privateRepo: privateRepo,
 		publicRepo:  publicRepo,
