@@ -85,10 +85,10 @@ func TestRequirePermissions(t *testing.T) {
 			fn := func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}
-			dummyHandler := http.HandlerFunc(fn)
+			next := http.HandlerFunc(fn)
 
 			middlewareFunc := RequirePermissions(tc.permissions...)
-			handler := middlewareFunc(dummyHandler)
+			handler := middlewareFunc(next)
 
 			w := httptest.NewRecorder()
 			r := tc.setup()
