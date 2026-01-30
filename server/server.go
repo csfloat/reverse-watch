@@ -8,6 +8,8 @@ import (
 	"reverse-watch/config"
 	"reverse-watch/domain/repository"
 	"reverse-watch/logging"
+	rwmiddleware "reverse-watch/middleware"
+	"reverse-watch/repository/factory"
 	"reverse-watch/repository/private"
 	"reverse-watch/repository/public"
 	"reverse-watch/secret"
@@ -43,6 +45,9 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+
+	f := factory.NewFactory(privateRepo, publicRepo)
+	r.Use(rwmiddleware.Factory(f))
 
 	// TODO(zach): Define routes
 
