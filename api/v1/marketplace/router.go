@@ -13,6 +13,7 @@ func Router() chi.Router {
 	r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
 
 	r.Route("/keys", func(r chi.Router) {
+		r.Get("/", listKeys)
 		r.Post("/", createKey)
 	})
 	return r
