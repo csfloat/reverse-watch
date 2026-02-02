@@ -26,10 +26,3 @@ type AdminAuditRepository interface {
 	Delete(id models.Snowflake) error
 	List(opts *dto.AdminAuditListOptions) ([]*models.AdminAudit, error)
 }
-
-type PrivateRepository interface {
-	Key() KeyRepository
-	Marketplace() MarketplaceRepository
-	AdminAudit() AdminAuditRepository
-	Close() error
-}

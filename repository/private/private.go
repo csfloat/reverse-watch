@@ -2,13 +2,11 @@ package private
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"sync"
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
-	"reverse-watch/domain/repository"
 	"reverse-watch/domain/secret"
 	"reverse-watch/logging"
 
@@ -19,117 +17,59 @@ import (
 )
 
 var (
-	once   sync.Once
-	mu     sync.RWMutex
-	closed bool
-	err    error
-
-	privateRepo repository.PrivateRepository = (*privateRepository)(nil)
+	once sync.Once
+	err  error
 )
 
-type privateRepository struct {
-	conn *gorm.DB
-
-	marketplace repository.MarketplaceRepository
-	adminAudit  repository.AdminAuditRepository
-	key         repository.KeyRepository
-}
-
-func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (repository.PrivateRepository, error) {
+func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*gorm.DB, error) {
+	var db *gorm.DB
 	once.Do(func() {
-		rootDir, innerErr := config.GetProjectRootDir()
-		if innerErr != nil {
-			err = innerErr
+		rootDir, error := config.GetProjectRootDir()
+		if error != nil {
+			err = error
 			return
 		}
 
 		dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
-		conn, innerErr := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		conn, error := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
-		if innerErr != nil {
-			err = innerErr
+		if error != nil {
+			err = error
 			return
 		}
 
-		repo := &privateRepository{
-			conn:        conn,
-			key:         NewKeyRepository(conn, keygen),
-			marketplace: NewMarketplaceRepository(conn),
-			adminAudit:  NewAdminAuditRepository(conn),
-		}
-
-		onErr := func(err error) error {
-			if innerErr := repo.Close(); innerErr != nil {
-				return errors.Join(err, innerErr)
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			closed = true
-			return err
-		}
-
-		if innerErr := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; innerErr != nil {
-			err = onErr(innerErr)
+		if error := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; error != nil {
+			err = error
 			return
 		}
 
-		if innerErr := migratePrivateModels(conn); innerErr != nil {
-			err = onErr(innerErr)
+		if error := migratePrivateModels(conn); error != nil {
+			err = error
 			return
 		}
 
-		if innerErr := seedMarketplaces(conn); innerErr != nil {
-			err = onErr(innerErr)
+		if error := seedMarketplaces(conn); error != nil {
+			err = error
 			return
 		}
 
-		if innerErr := seedAdminAPIKey(conn, keygen); innerErr != nil {
-			err = onErr(innerErr)
+		if error := seedAdminAPIKey(conn, keygen); error != nil {
+			err = error
 			return
 		}
-
-		privateRepo = repo
+		db = conn
 	})
 
 	if err != nil {
+		conn, error := db.DB()
+		if error != nil {
+			return nil, errors.Join(err, error)
+		}
+		conn.Close()
 		return nil, err
 	}
-
-	mu.RLock()
-	defer mu.RUnlock()
-
-	if closed {
-		return nil, fmt.Errorf("repository already closed")
-	}
-	return privateRepo, nil
-}
-
-func (p *privateRepository) Close() error {
-	db, err := p.conn.DB()
-	if err != nil {
-		return err
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	closed = true
-	return db.Close()
-}
-
-func (p *privateRepository) Key() repository.KeyRepository {
-	return p.key
-}
-
-func (p *privateRepository) Marketplace() repository.MarketplaceRepository {
-	return p.marketplace
-}
-
-func (p *privateRepository) AdminAudit() repository.AdminAuditRepository {
-	return p.adminAudit
+	return db, nil
 }
 
 func migratePrivateModels(tx *gorm.DB) error {

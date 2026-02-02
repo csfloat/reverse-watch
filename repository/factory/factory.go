@@ -1,31 +1,57 @@
 package factory
 
-import "reverse-watch/domain/repository"
+import (
+	"reverse-watch/domain/repository"
+	"reverse-watch/domain/secret"
+	"reverse-watch/repository/private"
+	"reverse-watch/repository/public"
+
+	"gorm.io/gorm"
+)
 
 type factory struct {
-	private repository.PrivateRepository
-	public  repository.PublicRepository
+	private *gorm.DB
+	public  *gorm.DB
+	keygen  secret.KeyGenerator
+
+	key         repository.KeyRepository
+	marketplace repository.MarketplaceRepository
+	adminAudit  repository.AdminAuditRepository
+	reversal    repository.ReversalRepository
 }
 
-func NewFactory(private repository.PrivateRepository, public repository.PublicRepository) repository.Factory {
+func NewFactory(private, public *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
 	return &factory{
 		private: private,
 		public:  public,
+		keygen:  keygen,
 	}
 }
 
 func (f *factory) Key() repository.KeyRepository {
-	return f.private.Key()
+	if f.key == nil {
+		f.key = private.NewKeyRepository(f.private, f.keygen)
+	}
+	return f.key
 }
 
 func (f *factory) Marketplace() repository.MarketplaceRepository {
-	return f.private.Marketplace()
+	if f.marketplace == nil {
+		f.marketplace = private.NewMarketplaceRepository(f.private)
+	}
+	return f.marketplace
 }
 
 func (f *factory) AdminAudit() repository.AdminAuditRepository {
-	return f.private.AdminAudit()
+	if f.adminAudit == nil {
+		f.adminAudit = private.NewAdminAuditRepository(f.private)
+	}
+	return f.adminAudit
 }
 
 func (f *factory) Reversal() repository.ReversalRepository {
-	return f.public.Reversal()
+	if f.reversal == nil {
+		f.reversal = public.NewReversalRepository(f.public)
+	}
+	return f.reversal
 }

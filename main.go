@@ -56,9 +56,4 @@ func main() {
 	if err := httpSrv.Shutdown(ctx); err != nil {
 		panic(err)
 	}
-
-	// Close db connections
-	if err := srv.Close(); err != nil {
-		panic(err)
-	}
 }

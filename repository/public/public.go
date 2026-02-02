@@ -2,110 +2,66 @@ package public
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"sync"
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
-	"reverse-watch/domain/repository"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-type publicRepository struct {
-	conn *gorm.DB
-}
-
 var (
-	once   sync.Once
-	mu     sync.RWMutex
-	closed bool
-	err    error
-
-	publicRepo repository.PublicRepository = (*publicRepository)(nil)
+	once sync.Once
+	err  error
 )
 
-func NewPublicRepository(cfg config.Config) (repository.PublicRepository, error) {
+func NewPublicRepository(cfg config.Config) (*gorm.DB, error) {
+	var db *gorm.DB
 	once.Do(func() {
-		rootDir, innerErr := config.GetProjectRootDir()
-		if innerErr != nil {
-			err = innerErr
+		rootDir, error := config.GetProjectRootDir()
+		if error != nil {
+			err = error
 			return
 		}
 
 		dsn := filepath.Join(rootDir, cfg.StaticDir, "public.db")
-		conn, innerErr := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		conn, error := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
-		if innerErr != nil {
-			err = innerErr
+		if error != nil {
+			err = error
 			return
 		}
 
-		repo := &publicRepository{
-			conn: conn,
-		}
-
-		onErr := func(err error) error {
-			if innerErr := repo.Close(); innerErr != nil {
-				return errors.Join(err, innerErr)
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			closed = true
-			return err
-		}
-
-		if innerErr := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; innerErr != nil {
-			err = onErr(innerErr)
+		if error := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; error != nil {
+			err = error
 			return
 		}
 
-		if innerErr := migratePublicModels(conn); innerErr != nil {
-			err = onErr(innerErr)
+		if error := migratePublicModels(conn); error != nil {
+			err = error
 			return
 		}
 
-		if innerErr := createIndexes(conn); innerErr != nil {
-			err = onErr(innerErr)
+		if error := createIndexes(conn); error != nil {
+			err = error
 			return
 		}
 
-		publicRepo = repo
+		db = conn
 	})
 	if err != nil {
+		conn, error := db.DB()
+		if error != nil {
+			return nil, errors.Join(err, error)
+		}
+		conn.Close()
 		return nil, err
 	}
-
-	mu.RLock()
-	defer mu.RUnlock()
-
-	if closed {
-		return nil, fmt.Errorf("repository already closed")
-	}
-	return publicRepo, nil
-}
-
-func (p *publicRepository) Close() error {
-	db, err := p.conn.DB()
-	if err != nil {
-		return err
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	closed = true
-	return db.Close()
-}
-
-func (p *publicRepository) Reversal() repository.ReversalRepository {
-	return NewReversalRepository(p.conn)
+	return db, nil
 }
 
 func migratePublicModels(tx *gorm.DB) error {
