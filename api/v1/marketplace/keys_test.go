@@ -348,3 +348,188 @@ func TestCreateKey_ContextErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestListKeys(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		setup          func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, error)
+		wantStatusCode int
+		validateResp   func(t *testing.T, keys []*models.Key)
+	}{
+		{
+			name: "validRequestWithKeys",
+			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				// Create auth key
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, err
+				}
+
+				authKey := &models.Key{
+					ID:              id,
+					Environment:     keygen.Environment(),
+					MarketplaceSlug: testMarketplace.Slug,
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, authKey)
+
+				// Create additional keys for the same marketplace
+				key1 := &models.Key{
+					ID:              "key-1",
+					Environment:     keygen.Environment(),
+					MarketplaceSlug: testMarketplace.Slug,
+					Permissions:     models.PermissionRead,
+				}
+				key2 := &models.Key{
+					ID:              "key-2",
+					Environment:     keygen.Environment(),
+					MarketplaceSlug: testMarketplace.Slug,
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, key1)
+				testutil.Insert(t, db, key2)
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, err
+				}
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil
+			},
+			wantStatusCode: http.StatusOK,
+			validateResp: func(t *testing.T, keys []*models.Key) {
+				if len(keys) != 3 {
+					t.Errorf("expected 3 keys, got %d", len(keys))
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			keyRepo := private.NewKeyRepository(db, keygen)
+			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+
+			w := httptest.NewRecorder()
+			r, err := tc.setup(db, keygen)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(factory)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
+			handler := http.HandlerFunc(listKeys)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			finalHandler.ServeHTTP(w, r)
+
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("got status code %d, wanted %d", w.Code, tc.wantStatusCode)
+			}
+
+			if tc.validateResp != nil {
+				resp := w.Result()
+				defer resp.Body.Close()
+
+				var keys []*models.Key
+				if err := json.NewDecoder(resp.Body).Decode(&keys); err != nil {
+					t.Fatal(err)
+				}
+				tc.validateResp(t, keys)
+			}
+		})
+	}
+}
+
+func TestListKeys_ContextErrors(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		setup          func(db *gorm.DB, factory repository.Factory) (*http.Request, error)
+		wantStatusCode int
+	}{
+		{
+			name: "missingFactoryFromContext",
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
+				return httptest.NewRequest(http.MethodGet, "/", nil), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "missingKeyFromContext",
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, factory)
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "failedToListKeys",
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, factory)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, &models.Key{
+					MarketplaceSlug: "test-marketplace",
+				})
+
+				// Close db connection to simulate database error
+				sqlDb, err := db.DB()
+				if err != nil {
+					return nil, err
+				}
+				if err := sqlDb.Close(); err != nil {
+					return nil, err
+				}
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			keyRepo := private.NewKeyRepository(db, keygen)
+			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+
+			w := httptest.NewRecorder()
+			r, err := tc.setup(db, factory)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := http.HandlerFunc(listKeys)
+			handler.ServeHTTP(w, r)
+
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("got status code %d, wanted %d", w.Code, tc.wantStatusCode)
+			}
+		})
+	}
+}
