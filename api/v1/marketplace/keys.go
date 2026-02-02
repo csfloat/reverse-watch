@@ -39,6 +39,11 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Permissions == models.PermissionAdmin && key.MarketplaceSlug != "csfloat" {
+		render.Errorf(w, r, errors.BadRequest, "admin scoped keys can only be created for csfloat")
+		return
+	}
+
 	rawKey, err := factory.Key().Create(key.MarketplaceSlug, req.Permissions)
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to create key")
