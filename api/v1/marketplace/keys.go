@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
@@ -51,4 +52,28 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, rawKey)
+}
+
+func listKeys(w http.ResponseWriter, r *http.Request) {
+	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
+		return
+	}
+
+	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing key from context")
+		return
+	}
+
+	keysList, err := factory.Key().List(&dto.KeyListOptions{
+		MarketplaceSlug: &key.MarketplaceSlug,
+	})
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to list keys")
+		return
+	}
+
+	render.JSON(w, r, keysList)
 }
