@@ -13,8 +13,3 @@ type ReversalRepository interface {
 	Delete(id models.Snowflake) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }
-
-type PublicRepository interface {
-	Reversal() ReversalRepository
-	Close() error
-}
