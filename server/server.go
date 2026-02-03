@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -14,10 +15,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"gorm.io/gorm"
 )
 
 type Server struct {
 	r chi.Router
+
+	private *gorm.DB
+	public  *gorm.DB
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -46,10 +51,31 @@ func New(cfg config.Config) (*Server, error) {
 	// TODO(zach): Define routes
 
 	return &Server{
-		r: r,
+		r:       r,
+		private: privateDB,
+		public:  publicDB,
 	}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.r.ServeHTTP(w, r)
+}
+
+func (s *Server) Close() error {
+	var errs []error
+	if err := closeConn(s.private); err != nil {
+		errs = append(errs, err)
+	}
+	if err := closeConn(s.public); err != nil {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
+func closeConn(conn *gorm.DB) error {
+	db, err := conn.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
 }

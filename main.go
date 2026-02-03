@@ -56,4 +56,8 @@ func main() {
 	if err := httpSrv.Shutdown(ctx); err != nil {
 		panic(err)
 	}
+
+	if err := srv.Close(); err != nil {
+		panic(err)
+	}
 }
