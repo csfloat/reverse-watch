@@ -17,54 +17,54 @@ import (
 )
 
 var (
-	once sync.Once
-	err  error
+	once    sync.Once
+	initErr error
 )
 
 func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*gorm.DB, error) {
 	var db *gorm.DB
 	once.Do(func() {
-		rootDir, error := config.GetProjectRootDir()
-		if error != nil {
-			err = error
+		rootDir, err := config.GetProjectRootDir()
+		if err != nil {
+			initErr = err
 			return
 		}
 
 		dsn := filepath.Join(rootDir, cfg.StaticDir, "private.db")
-		conn, error := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
-		if error != nil {
-			err = error
+		if err != nil {
+			initErr = err
 			return
 		}
 
-		if error := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; error != nil {
-			err = error
+		if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
+			initErr = err
 			return
 		}
 
-		if error := migratePrivateModels(conn); error != nil {
-			err = error
+		if err := migratePrivateModels(conn); err != nil {
+			initErr = err
 			return
 		}
 
-		if error := seedMarketplaces(conn); error != nil {
-			err = error
+		if err := seedMarketplaces(conn); err != nil {
+			initErr = err
 			return
 		}
 
-		if error := seedAdminAPIKey(conn, keygen); error != nil {
-			err = error
+		if err := seedAdminAPIKey(conn, keygen); err != nil {
+			initErr = err
 			return
 		}
 		db = conn
 	})
 
-	if err != nil {
-		conn, error := db.DB()
-		if error != nil {
-			return nil, errors.Join(err, error)
+	if initErr != nil {
+		conn, err := db.DB()
+		if err != nil {
+			return nil, errors.Join(initErr, err)
 		}
 		conn.Close()
 		return nil, err
