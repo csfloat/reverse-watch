@@ -34,6 +34,7 @@ func New(cfg config.Config) (*Server, error) {
 	}
 	publicDB, err := public.NewPublicRepository(cfg)
 	if err != nil {
+		closeConn(privateDB)
 		logging.Log.Errorf("failed to create public repository: %v", err)
 		return nil, fmt.Errorf("failed to create public repository: %v", err)
 	}
