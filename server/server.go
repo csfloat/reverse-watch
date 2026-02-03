@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -10,8 +9,6 @@ import (
 	"reverse-watch/logging"
 	rwmiddleware "reverse-watch/middleware"
 	"reverse-watch/repository/factory"
-	"reverse-watch/repository/private"
-	"reverse-watch/repository/public"
 	"reverse-watch/secret"
 
 	"github.com/go-chi/chi/v5"
@@ -19,24 +16,16 @@ import (
 )
 
 type Server struct {
-	r chi.Router
-
-	privateRepo repository.PrivateRepository
-	publicRepo  repository.PublicRepository
+	r       chi.Router
+	factory repository.Factory
 }
 
 func New(cfg config.Config) (*Server, error) {
 	keygen := secret.NewKeyGenerator(cfg.Environment)
-	privateRepo, err := private.NewPrivateRepository(cfg, keygen)
+	f, err := factory.NewFactory(cfg, keygen)
 	if err != nil {
-		logging.Log.Errorf("failed to create private repository: %v", err)
-		return nil, fmt.Errorf("failed to create private repository: %v", err)
-	}
-	publicRepo, err := public.NewPublicRepository(cfg)
-	if err != nil {
-		privateRepo.Close()
-		logging.Log.Errorf("failed to create public repository: %v", err)
-		return nil, fmt.Errorf("failed to create public repository: %v", err)
+		logging.Log.Errorf("failed to create factory: %v", err)
+		return nil, fmt.Errorf("failed to create factory: %w", err)
 	}
 
 	r := chi.NewRouter()
@@ -46,15 +35,13 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 
-	f := factory.NewFactory(privateRepo, publicRepo)
 	r.Use(rwmiddleware.FactoryMiddleware(f))
 
 	// TODO(zach): Define routes
 
 	return &Server{
-		r:           r,
-		privateRepo: privateRepo,
-		publicRepo:  publicRepo,
+		r:       r,
+		factory: f,
 	}, nil
 }
 
@@ -63,12 +50,5 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Close() error {
-	var errs []error
-	if err := s.privateRepo.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.publicRepo.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	return errors.Join(errs...)
+	return s.factory.Close()
 }
