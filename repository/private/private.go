@@ -1,7 +1,6 @@
 package private
 
 import (
-	"errors"
 	"path/filepath"
 	"sync"
 
@@ -62,12 +61,7 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*gorm.
 	})
 
 	if initErr != nil {
-		conn, err := db.DB()
-		if err != nil {
-			return nil, errors.Join(initErr, err)
-		}
-		conn.Close()
-		return nil, err
+		return nil, initErr
 	}
 	return db, nil
 }
