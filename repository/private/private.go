@@ -1,6 +1,7 @@
 package private
 
 import (
+	"errors"
 	"path/filepath"
 	"sync"
 
@@ -20,8 +21,12 @@ var (
 	initErr error
 )
 
-func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*gorm.DB, error) {
-	var db *gorm.DB
+type privateRepository struct {
+	db *gorm.DB
+}
+
+func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*privateRepository, error) {
+	var private *privateRepository
 	once.Do(func() {
 		rootDir, err := config.GetProjectRootDir()
 		if err != nil {
@@ -38,32 +43,51 @@ func NewPrivateRepository(cfg config.Config, keygen secret.KeyGenerator) (*gorm.
 			return
 		}
 
+		private = &privateRepository{
+			db: conn,
+		}
+
+		onErr := func(err error) error {
+			if closeErr := private.Close(); closeErr != nil {
+				logging.Log.Errorf("failed to close private repository: %v", closeErr)
+				return errors.Join(err, closeErr)
+			}
+			return err
+		}
+
 		if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
 
 		if err := migratePrivateModels(conn); err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
 
 		if err := seedMarketplaces(conn); err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
 
 		if err := seedAdminAPIKey(conn, keygen); err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
-		db = conn
 	})
 
 	if initErr != nil {
 		return nil, initErr
 	}
-	return db, nil
+	return private, nil
+}
+
+func (p *privateRepository) Close() error {
+	db, err := p.db.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
 }
 
 func migratePrivateModels(tx *gorm.DB) error {

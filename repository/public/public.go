@@ -1,11 +1,13 @@
 package public
 
 import (
+	"errors"
 	"path/filepath"
 	"sync"
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
+	"reverse-watch/logging"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -17,8 +19,12 @@ var (
 	initErr error
 )
 
-func NewPublicRepository(cfg config.Config) (*gorm.DB, error) {
-	var db *gorm.DB
+type publicRepository struct {
+	db *gorm.DB
+}
+
+func NewPublicRepository(cfg config.Config) (*publicRepository, error) {
+	var public *publicRepository
 	once.Do(func() {
 		rootDir, err := config.GetProjectRootDir()
 		if err != nil {
@@ -35,27 +41,45 @@ func NewPublicRepository(cfg config.Config) (*gorm.DB, error) {
 			return
 		}
 
+		public = &publicRepository{
+			db: conn,
+		}
+
+		onErr := func(err error) error {
+			if closeErr := public.Close(); closeErr != nil {
+				logging.Log.Errorf("failed to close public repository: %v", closeErr)
+				return errors.Join(err, closeErr)
+			}
+			return err
+		}
+
 		if err := conn.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
 
 		if err := migratePublicModels(conn); err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
 
 		if err := createIndexes(conn); err != nil {
-			initErr = err
+			initErr = onErr(err)
 			return
 		}
-
-		db = conn
 	})
 	if initErr != nil {
 		return nil, initErr
 	}
-	return db, nil
+	return public, nil
+}
+
+func (p *publicRepository) Close() error {
+	db, err := p.db.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
 }
 
 func migratePublicModels(tx *gorm.DB) error {
