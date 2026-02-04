@@ -18,6 +18,8 @@ import (
 	"reverse-watch/repository/private"
 	"reverse-watch/secret"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"gorm.io/gorm"
 )
 
@@ -352,115 +354,91 @@ func TestCreateKey_ContextErrors(t *testing.T) {
 func TestListKeys(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name           string
-		setup          func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, error)
-		wantStatusCode int
-		validateResp   func(t *testing.T, keys []*models.Key)
-	}{
-		{
-			name: "validRequestWithKeys",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := private.NewKeyRepository(db, keygen)
+	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
 
-				// Create auth key
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, err
-				}
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+	testutil.Insert(t, db, testMarketplace)
 
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				// Create additional keys for the same marketplace
-				key1 := &models.Key{
-					ID:              "key-1",
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionRead,
-				}
-				key2 := &models.Key{
-					ID:              "key-2",
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, key1)
-				testutil.Insert(t, db, key2)
-
-				r := httptest.NewRequest(http.MethodGet, "/", nil)
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, err
-				}
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
-
-				return r, nil
-			},
-			wantStatusCode: http.StatusOK,
-			validateResp: func(t *testing.T, keys []*models.Key) {
-				if len(keys) != 3 {
-					t.Errorf("expected 3 keys, got %d", len(keys))
-				}
-			},
-		},
+	// Create auth key
+	secretKey, err := keygen.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey(): %v", err)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			db := testutil.NewTestDB(t)
-			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			keyRepo := private.NewKeyRepository(db, keygen)
-			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+	id, err := secretKey.ID()
+	if err != nil {
+		t.Fatalf("ID(): %v", err)
+	}
 
-			w := httptest.NewRecorder()
-			r, err := tc.setup(db, keygen)
-			if err != nil {
-				t.Fatal(err)
-			}
+	authKey := &models.Key{
+		ID:              id,
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Permissions:     models.PermissionManage,
+	}
+	testutil.Insert(t, db, authKey)
 
-			factoryMiddleware := middleware.FactoryMiddleware(factory)
-			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
-			handler := http.HandlerFunc(listKeys)
+	// Create additional keys for the same marketplace
+	key1 := &models.Key{
+		ID:              "key-1",
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Permissions:     models.PermissionRead,
+	}
+	key2 := &models.Key{
+		ID:              "key-2",
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Permissions:     models.PermissionWrite,
+	}
+	testutil.Insert(t, db, key1, key2)
 
-			finalHandler := factoryMiddleware(
-				middleware.AuthMiddleware(
-					permissionsMiddleware(handler),
-				),
-			)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		t.Fatalf("Format(): %v", err)
+	}
+	r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-			finalHandler.ServeHTTP(w, r)
+	wantKeys := []*models.Key{key2, key1, authKey}
+	wantStatusCode := http.StatusOK
 
-			if w.Code != tc.wantStatusCode {
-				t.Errorf("got status code %d, wanted %d", w.Code, tc.wantStatusCode)
-			}
+	factoryMiddleware := middleware.FactoryMiddleware(factory)
+	permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
+	handler := http.HandlerFunc(listKeys)
 
-			if tc.validateResp != nil {
-				resp := w.Result()
-				defer resp.Body.Close()
+	finalHandler := factoryMiddleware(
+		middleware.AuthMiddleware(
+			permissionsMiddleware(handler),
+		),
+	)
 
-				var keys []*models.Key
-				if err := json.NewDecoder(resp.Body).Decode(&keys); err != nil {
-					t.Fatal(err)
-				}
-				tc.validateResp(t, keys)
-			}
-		})
+	w := httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, r)
+
+	if w.Code != wantStatusCode {
+		t.Errorf("got status code %d, wanted %d", w.Code, wantStatusCode)
+	}
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	var data struct {
+		Data []*models.Key `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(data.Data, wantKeys, cmpopts.IgnoreFields(models.Key{}, "CreatedAt", "UpdatedAt")); diff != "" {
+		t.Fatal(diff)
 	}
 }
 
