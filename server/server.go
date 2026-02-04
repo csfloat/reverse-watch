@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"reverse-watch/api"
 	"reverse-watch/config"
 	"reverse-watch/domain/repository"
 	"reverse-watch/logging"
@@ -37,7 +38,7 @@ func New(cfg config.Config) (*Server, error) {
 
 	r.Use(rwmiddleware.FactoryMiddleware(f))
 
-	// TODO(zach): Define routes
+	r.Mount("/api", api.Router())
 
 	return &Server{
 		r:       r,

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ func TestAuthMiddleware(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
 	keyRepo := private.NewKeyRepository(db, keygen)
+	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
 
 	testCases := []struct {
 		name           string
@@ -26,9 +28,18 @@ func TestAuthMiddleware(t *testing.T) {
 		wantStatusCode int
 	}{
 		{
-			name: "noAuthHeader",
+			name: "noFactory",
 			setup: func() (*http.Request, error) {
 				return httptest.NewRequest(http.MethodGet, "http://testing", nil), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "noAuthHeader",
+			setup: func() (*http.Request, error) {
+				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
+				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
@@ -37,7 +48,9 @@ func TestAuthMiddleware(t *testing.T) {
 			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "test-token")
-				return req, nil
+				
+				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
@@ -46,7 +59,9 @@ func TestAuthMiddleware(t *testing.T) {
 			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "Bearer test-token")
-				return req, nil
+
+				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
 		},
@@ -86,7 +101,9 @@ func TestAuthMiddleware(t *testing.T) {
 				value := fmt.Sprintf("Bearer %s", formattedKey)
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", value)
-				return req, nil
+
+				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusOK,
 		},
@@ -99,8 +116,7 @@ func TestAuthMiddleware(t *testing.T) {
 			}
 			next := http.HandlerFunc(fn)
 
-			middlewareFunc := AuthMiddleware(keyRepo)
-			handler := middlewareFunc(next)
+			handler := AuthMiddleware(next)
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup()
