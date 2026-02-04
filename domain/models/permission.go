@@ -41,7 +41,7 @@ func (p *Permissions) RemovePermission(permission Permissions) {
 	*p = Permissions(uint32(*p) & ^uint32(permission))
 }
 
-func (p *Permissions) MarshalJSON() ([]byte, error) {
+func (p Permissions) MarshalJSON() ([]byte, error) {
 	var permissions []string
 	if p.HasPermissions(PermissionAdmin) {
 		permissions = append(permissions, "admin")
