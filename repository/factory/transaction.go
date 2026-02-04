@@ -2,6 +2,9 @@ package factory
 
 import (
 	"reverse-watch/domain/repository"
+	"reverse-watch/domain/secret"
+	"reverse-watch/repository/private"
+	"reverse-watch/repository/public"
 
 	"gorm.io/gorm"
 )
@@ -13,12 +16,12 @@ type privateTransaction struct {
 	adminAudit  repository.AdminAuditRepository
 }
 
-func newPrivateTransaction(tx *gorm.DB, key repository.KeyRepository, marketplace repository.MarketplaceRepository, adminAudit repository.AdminAuditRepository) *privateTransaction {
+func newPrivateTransaction(tx *gorm.DB, keygen secret.KeyGenerator) *privateTransaction {
 	return &privateTransaction{
 		tx:          tx,
-		key:         key,
-		marketplace: marketplace,
-		adminAudit:  adminAudit,
+		key:         private.NewKeyRepository(tx, keygen),
+		marketplace: private.NewMarketplaceRepository(tx),
+		adminAudit:  private.NewAdminAuditRepository(tx),
 	}
 }
 
@@ -47,10 +50,10 @@ type publicTransaction struct {
 	reversal repository.ReversalRepository
 }
 
-func newPublicTransaction(tx *gorm.DB, reversal repository.ReversalRepository) *publicTransaction {
+func newPublicTransaction(tx *gorm.DB) *publicTransaction {
 	return &publicTransaction{
 		tx:       tx,
-		reversal: reversal,
+		reversal: public.NewReversalRepository(tx),
 	}
 }
 
