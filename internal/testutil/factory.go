@@ -13,6 +13,8 @@ type factory struct {
 	reversal    repository.ReversalRepository
 }
 
+var _ repository.Factory = (*factory)(nil)
+
 func NewTestFactory(t *testing.T) *factory {
 	t.Helper()
 	return &factory{}
@@ -35,6 +37,14 @@ func (f *factory) Reversal() repository.ReversalRepository {
 }
 
 func (f *factory) Close() error {
+	return nil
+}
+
+func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction) error) error {
+	return nil
+}
+
+func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {
 	return nil
 }
 

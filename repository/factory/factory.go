@@ -18,8 +18,8 @@ import (
 )
 
 type factory struct {
-	privateDB *gorm.DB
-	publicDB  *gorm.DB
+	private *gorm.DB
+	public  *gorm.DB
 
 	key         repository.KeyRepository
 	marketplace repository.MarketplaceRepository
@@ -53,8 +53,8 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 	}
 
 	f := &factory{
-		privateDB:   privateDB,
-		publicDB:    publicDB,
+		private:     privateDB,
+		public:      publicDB,
 		key:         private.NewKeyRepository(privateDB, keygen),
 		marketplace: private.NewMarketplaceRepository(privateDB),
 		adminAudit:  private.NewAdminAuditRepository(privateDB),
@@ -119,11 +119,11 @@ func (f *factory) Reversal() repository.ReversalRepository {
 
 func (f *factory) Close() error {
 	var errs []error
-	if err := closeDB(f.privateDB); err != nil {
+	if err := closeDB(f.private); err != nil {
 		logging.Log.Errorf("failed to close private database: %v", err)
 		errs = append(errs, fmt.Errorf("private database: %w", err))
 	}
-	if err := closeDB(f.publicDB); err != nil {
+	if err := closeDB(f.public); err != nil {
 		logging.Log.Errorf("failed to close public database: %v", err)
 		errs = append(errs, fmt.Errorf("public database: %w", err))
 	}
@@ -136,4 +136,26 @@ func closeDB(db *gorm.DB) error {
 		return err
 	}
 	return sqlDB.Close()
+}
+
+func (f *factory) NewPrivateTransaction() repository.PrivateTransaction {
+	return newPrivateTransaction(f.private.Begin(), f.key, f.marketplace, f.adminAudit)
+}
+
+func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction) error) error {
+	return f.private.Transaction(func(gormTx *gorm.DB) error {
+		tx := newPrivateTransaction(gormTx, f.key, f.marketplace, f.adminAudit)
+		return fn(tx)
+	})
+}
+
+func (f *factory) NewPublicTransaction() repository.PublicTransaction {
+	return newPublicTransaction(f.public.Begin(), f.reversal)
+}
+
+func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {
+	return f.public.Transaction(func(gormTx *gorm.DB) error {
+		tx := newPublicTransaction(gormTx, f.reversal)
+		return fn(tx)
+	})
 }
