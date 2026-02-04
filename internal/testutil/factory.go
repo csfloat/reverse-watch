@@ -58,7 +58,7 @@ func (f *factory) Close() error {
 }
 
 func (f *factory) NewPrivateTransaction() repository.PrivateTransaction {
-	return newPrivateTransaction(f.db, f.key, f.marketplace, f.adminAudit)
+	return newPrivateTransaction(f.db.Begin(), f.key, f.marketplace, f.adminAudit)
 }
 
 func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction) error) error {
@@ -68,7 +68,7 @@ func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction)
 }
 
 func (f *factory) NewPublicTransaction() repository.PublicTransaction {
-	return newPublicTransaction(f.db, f.reversal)
+	return newPublicTransaction(f.db.Begin(), f.reversal)
 }
 
 func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {
