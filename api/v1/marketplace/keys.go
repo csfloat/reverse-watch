@@ -75,5 +75,9 @@ func listKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, keysList)
+	render.JSON(w, r, struct {
+		Data []*models.Key `json:"data"`
+	}{
+		Data: keysList,
+	})
 }
