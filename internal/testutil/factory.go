@@ -34,6 +34,10 @@ func (f *factory) Reversal() repository.ReversalRepository {
 	return f.reversal
 }
 
+func (f *factory) Close() error {
+	return nil
+}
+
 func (f *factory) WithKey(key repository.KeyRepository) *factory {
 	f.key = key
 	return f

@@ -40,7 +40,7 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Permissions.HasPermissions(models.PermissionAdmin) && key.MarketplaceSlug != "csfloat" {
+	if req.Permissions.HasPermissions(models.PermissionAdmin) && !key.IsOwnedByCSFloat() {
 		render.Errorf(w, r, errors.BadRequest, "admin scoped keys can only be created for csfloat")
 		return
 	}
