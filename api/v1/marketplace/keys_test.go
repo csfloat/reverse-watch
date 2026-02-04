@@ -451,7 +451,7 @@ func TestListKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(data.Data, wantKeys, cmpopts.IgnoreFields(models.Key{}, "CreatedAt", "UpdatedAt")); diff != "" {
+	if diff := cmp.Diff(wantKeys, data.Data, cmpopts.IgnoreFields(models.Key{}, "CreatedAt", "UpdatedAt")); diff != "" {
 		t.Fatal(diff)
 	}
 }
