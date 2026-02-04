@@ -10,6 +10,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/repository/private"
 	"reverse-watch/secret"
 )
 
@@ -18,7 +19,8 @@ func TestAuthMiddleware(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	factory := testutil.NewTestFactoryWithDB(t, db)
+	keyRepo := private.NewKeyRepository(db, keygen)
+	factory := testutil.NewTestFactoryWithDB(t, db).WithKey(keyRepo)
 
 	testCases := []struct {
 		name           string
