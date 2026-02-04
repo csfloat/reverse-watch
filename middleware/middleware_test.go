@@ -10,7 +10,6 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/internal/testutil"
-	"reverse-watch/repository/private"
 	"reverse-watch/secret"
 )
 
@@ -19,8 +18,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	keyRepo := private.NewKeyRepository(db, keygen)
-	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+	factory := testutil.NewTestFactoryWithDB(t, db)
 
 	testCases := []struct {
 		name           string
@@ -48,7 +46,7 @@ func TestAuthMiddleware(t *testing.T) {
 			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "test-token")
-				
+
 				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
 				return req.WithContext(ctx), nil
 			},

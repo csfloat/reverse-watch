@@ -4,9 +4,13 @@ import (
 	"testing"
 
 	"reverse-watch/domain/repository"
+
+	"gorm.io/gorm"
 )
 
 type factory struct {
+	db *gorm.DB
+
 	key         repository.KeyRepository
 	marketplace repository.MarketplaceRepository
 	adminAudit  repository.AdminAuditRepository
@@ -17,7 +21,16 @@ var _ repository.Factory = (*factory)(nil)
 
 func NewTestFactory(t *testing.T) *factory {
 	t.Helper()
-	return &factory{}
+	return &factory{
+		db: NewTestDB(t),
+	}
+}
+
+func NewTestFactoryWithDB(t *testing.T, db *gorm.DB) *factory {
+	t.Helper()
+	return &factory{
+		db: db,
+	}
 }
 
 func (f *factory) Key() repository.KeyRepository {
@@ -36,16 +49,32 @@ func (f *factory) Reversal() repository.ReversalRepository {
 	return f.reversal
 }
 
+func (f *factory) DB() *gorm.DB {
+	return f.db
+}
+
 func (f *factory) Close() error {
 	return nil
 }
 
+func (f *factory) NewPrivateTransaction() repository.PrivateTransaction {
+	return newPrivateTransaction(f.db, f.key, f.marketplace, f.adminAudit)
+}
+
 func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction) error) error {
-	return nil
+	return f.db.Transaction(func(tx *gorm.DB) error {
+		return fn(newPrivateTransaction(tx, f.key, f.marketplace, f.adminAudit))
+	})
+}
+
+func (f *factory) NewPublicTransaction() repository.PublicTransaction {
+	return newPublicTransaction(f.db, f.reversal)
 }
 
 func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {
-	return nil
+	return f.db.Transaction(func(tx *gorm.DB) error {
+		return fn(newPublicTransaction(tx, f.reversal))
+	})
 }
 
 func (f *factory) WithKey(key repository.KeyRepository) *factory {

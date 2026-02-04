@@ -26,6 +26,9 @@ type Factory interface {
 	AdminAudit() AdminAuditRepository
 	Reversal() ReversalRepository
 
+	NewPrivateTransaction() PrivateTransaction
 	RunInTransactionPrivate(fn func(PrivateTransaction) error) error
+
+	NewPublicTransaction() PublicTransaction
 	RunInTransactionPublic(fn func(PublicTransaction) error) error
 }

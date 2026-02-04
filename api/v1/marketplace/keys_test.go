@@ -15,7 +15,6 @@ import (
 	isecret "reverse-watch/domain/secret"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/middleware"
-	"reverse-watch/repository/private"
 	"reverse-watch/secret"
 
 	"github.com/google/go-cmp/cmp"
@@ -231,8 +230,7 @@ func TestCreateKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
 			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			keyRepo := private.NewKeyRepository(db, keygen)
-			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+			factory := testutil.NewTestFactoryWithDB(t, db)
 
 			factoryMiddleware := middleware.FactoryMiddleware(factory)
 			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
@@ -331,9 +329,7 @@ func TestCreateKey_ContextErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			keyRepo := private.NewKeyRepository(db, keygen)
-			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+			factory := testutil.NewTestFactoryWithDB(t, db)
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup(db, factory)
@@ -356,8 +352,7 @@ func TestListKeys(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	keyRepo := private.NewKeyRepository(db, keygen)
-	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+	factory := testutil.NewTestFactoryWithDB(t, db)
 
 	testMarketplace1 := &models.Marketplace{
 		Slug:     "test-marketplace-1",
@@ -506,9 +501,7 @@ func TestListKeys_ContextErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			keyRepo := private.NewKeyRepository(db, keygen)
-			factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+			factory := testutil.NewTestFactoryWithDB(t, db)
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup(db, factory)
