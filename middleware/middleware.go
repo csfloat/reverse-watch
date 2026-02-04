@@ -29,25 +29,29 @@ func parseBearerToken(authHeader string) (string, bool) {
 	return token, true
 }
 
-func AuthMiddleware(keyRepo repository.KeyRepository) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			secretKey, ok := parseBearerToken(authHeader)
-			if !ok {
-				render.Error(w, r, &errors.InvalidApiKey)
-				return
-			}
-
-			key, err := keyRepo.ValidateKey(secretKey)
-			if err != nil {
-				render.Error(w, r, &errors.InvalidApiKey)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), KeyContextKey, key)
-			next.ServeHTTP(w, r.WithContext(ctx))
+func AuthMiddleware(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		factory, ok := r.Context().Value(FactoryContextKey).(repository.Factory)
+		if !ok {
+			render.Error(w, r, &errors.InternalServerError)
+			return
 		}
-		return http.HandlerFunc(fn)
+
+		authHeader := r.Header.Get("Authorization")
+		secretKey, ok := parseBearerToken(authHeader)
+		if !ok {
+			render.Error(w, r, &errors.InvalidApiKey)
+			return
+		}
+
+		key, err := factory.Key().ValidateKey(secretKey)
+		if err != nil {
+			render.Error(w, r, &errors.InvalidApiKey)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), KeyContextKey, key)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	}
+	return http.HandlerFunc(fn)
 }

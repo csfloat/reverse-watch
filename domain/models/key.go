@@ -33,7 +33,7 @@ func (k *Key) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("at least one permission is required")
 	}
 
-	if k.HasPermissions(PermissionAdmin) && k.MarketplaceSlug != "csfloat" {
+	if k.HasPermissions(PermissionAdmin) && !k.IsOwnedByCSFloat() {
 		return fmt.Errorf("admin scoped keys can only be created for CSFloat")
 	}
 	return nil
@@ -41,4 +41,8 @@ func (k *Key) BeforeCreate(tx *gorm.DB) error {
 
 func (k *Key) HasPermissions(permissions ...Permissions) bool {
 	return k.Permissions.HasPermissions(permissions...)
+}
+
+func (k *Key) IsOwnedByCSFloat() bool {
+	return k.MarketplaceSlug == "csfloat"
 }
