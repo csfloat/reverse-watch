@@ -359,12 +359,17 @@ func TestListKeys(t *testing.T) {
 	keyRepo := private.NewKeyRepository(db, keygen)
 	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
 
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
+	testMarketplace1 := &models.Marketplace{
+		Slug:     "test-marketplace-1",
+		Name:     "Test Marketplace 1",
 		IsActive: true,
 	}
-	testutil.Insert(t, db, testMarketplace)
+	testMarketplace2 := &models.Marketplace{
+		Slug:     "test-marketplace-2",
+		Name:     "Test Marketplace 2",
+		IsActive: true,
+	}
+	testutil.Insert(t, db, testMarketplace1, testMarketplace2)
 
 	// Create auth key
 	secretKey, err := keygen.GenerateSecretKey()
@@ -380,7 +385,7 @@ func TestListKeys(t *testing.T) {
 	authKey := &models.Key{
 		ID:              id,
 		Environment:     keygen.Environment(),
-		MarketplaceSlug: testMarketplace.Slug,
+		MarketplaceSlug: testMarketplace1.Slug,
 		Permissions:     models.PermissionManage,
 	}
 	testutil.Insert(t, db, authKey)
@@ -389,16 +394,28 @@ func TestListKeys(t *testing.T) {
 	key1 := &models.Key{
 		ID:              "key-1",
 		Environment:     keygen.Environment(),
-		MarketplaceSlug: testMarketplace.Slug,
+		MarketplaceSlug: testMarketplace1.Slug,
 		Permissions:     models.PermissionRead,
 	}
 	key2 := &models.Key{
 		ID:              "key-2",
 		Environment:     keygen.Environment(),
-		MarketplaceSlug: testMarketplace.Slug,
+		MarketplaceSlug: testMarketplace1.Slug,
 		Permissions:     models.PermissionWrite,
 	}
 	testutil.Insert(t, db, key1, key2)
+
+	// Create additional keys for different marketplace
+	key3 := &models.Key{
+		ID:              "key-3",
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace2.Slug,
+		Permissions:     models.PermissionExport,
+	}
+	testutil.Insert(t, db, key3)
+
+	wantKeys := []*models.Key{key2, key1, authKey}
+	wantStatusCode := http.StatusOK
 
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	formattedKey, err := secretKey.Format()
@@ -406,9 +423,6 @@ func TestListKeys(t *testing.T) {
 		t.Fatalf("Format(): %v", err)
 	}
 	r.Header.Set("Authorization", "Bearer "+formattedKey)
-
-	wantKeys := []*models.Key{key2, key1, authKey}
-	wantStatusCode := http.StatusOK
 
 	factoryMiddleware := middleware.FactoryMiddleware(factory)
 	permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
