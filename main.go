@@ -19,7 +19,7 @@ import (
 func main() {
 	logging.Initialize()
 	cfg := config.Load()
-	models.InitSnowflakeGenerator(0, 0)
+	models.InitSnowflakeGenerator(0 /* workerID */, 0 /* processID */)
 
 	logging.Log.Info("Starting Reverse Watch")
 
@@ -57,7 +57,6 @@ func main() {
 		panic(err)
 	}
 
-	// Close db connections
 	if err := srv.Close(); err != nil {
 		panic(err)
 	}
