@@ -353,7 +353,7 @@ func TestListKeys(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	factory := factory.NewFactoryWithDBs(db, db, keygen)
+	f := factory.NewFactoryWithDBs(db, db, keygen)
 
 	testMarketplace1 := &models.Marketplace{
 		Slug:     "test-marketplace-1",
@@ -420,7 +420,7 @@ func TestListKeys(t *testing.T) {
 	}
 	r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-	factoryMiddleware := middleware.FactoryMiddleware(factory)
+	factoryMiddleware := middleware.FactoryMiddleware(f)
 	permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
 	handler := http.HandlerFunc(listKeys)
 

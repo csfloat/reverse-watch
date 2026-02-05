@@ -30,8 +30,9 @@ type factory struct {
 
 func NewFactoryWithDBs(privateDB, publicDB *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
 	return &factory{
-		private:   privateDB,
-		public:    publicDB,
+		private:     privateDB,
+		public:      publicDB,
+		keygen:      keygen,
 		key:         private.NewKeyRepository(privateDB, keygen),
 		marketplace: private.NewMarketplaceRepository(privateDB),
 		adminAudit:  private.NewAdminAuditRepository(privateDB),
