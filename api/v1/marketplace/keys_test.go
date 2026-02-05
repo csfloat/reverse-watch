@@ -14,10 +14,12 @@ import (
 	"reverse-watch/domain/repository"
 	isecret "reverse-watch/domain/secret"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gorm.io/gorm"
@@ -515,6 +517,243 @@ func TestListKeys_ContextErrors(t *testing.T) {
 
 			if w.Code != tc.wantStatusCode {
 				t.Errorf("got status code %d, wanted %d", w.Code, tc.wantStatusCode)
+			}
+		})
+	}
+}
+
+func TestDeleteKey(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	testCases := []struct {
+		name           string
+		setup          func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error)
+		wantStatusCode int
+	}{
+		{
+			name: "validRequest",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				keyToDelete := &models.Key{
+					ID:              "key-to-delete",
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, keyToDelete)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, err
+				}
+
+				key := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, key)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, err
+				}
+
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", keyToDelete.ID)
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusNoContent,
+		},
+		{
+			name: "missingID",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				keyToDelete := &models.Key{
+					ID:              "key-to-delete",
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, keyToDelete)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, err
+				}
+
+				key := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, key)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, err
+				}
+
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				return r, nil
+			},
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name: "notFound",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, err
+				}
+
+				key := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, key)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, err
+				}
+
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", "key-to-delete")
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "doesntOwnKey",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace-1",
+					Name:     "Test Marketplace 1",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, err
+				}
+
+				testMarketplace2 := &models.Marketplace{
+					Slug:     "test-marketplace-2",
+					Name:     "Test Marketplace 2",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace2)
+
+				key := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace2.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, key)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, err
+				}
+
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", "key-to-delete")
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f := factory.NewFactoryWithDBs(db, db, keygen)
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
+			handler := http.HandlerFunc(deleteKey)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, err := tc.setup(db, f, keygen)
+			if err != nil {
+				t.Fatalf("setup(): %v", err)
+			}
+
+			finalHandler.ServeHTTP(w, r)
+
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("wanted status code %d, got %d", tc.wantStatusCode, w.Code)
 			}
 		})
 	}
