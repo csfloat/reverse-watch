@@ -19,8 +19,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	keyRepo := private.NewKeyRepository(db, keygen)
-	factory := testutil.NewTestFactoryWithDB(t, db).WithKey(keyRepo)
+	factory := testutil.NewTestFactoryWithDB(t, db).WithKey(private.NewKeyRepository)
 
 	testCases := []struct {
 		name           string
