@@ -20,11 +20,23 @@ import (
 type factory struct {
 	private *gorm.DB
 	public  *gorm.DB
+	keygen  secret.KeyGenerator
 
 	key         repository.KeyRepository
 	marketplace repository.MarketplaceRepository
 	adminAudit  repository.AdminAuditRepository
 	reversal    repository.ReversalRepository
+}
+
+func NewFactoryWithDBs(privateDB, publicDB *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
+	return &factory{
+		private:   privateDB,
+		public:    publicDB,
+		key:         private.NewKeyRepository(privateDB, keygen),
+		marketplace: private.NewMarketplaceRepository(privateDB),
+		adminAudit:  private.NewAdminAuditRepository(privateDB),
+		reversal:    public.NewReversalRepository(publicDB),
+	}
 }
 
 func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
@@ -52,14 +64,7 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
-	f := &factory{
-		private:     privateDB,
-		public:      publicDB,
-		key:         private.NewKeyRepository(privateDB, keygen),
-		marketplace: private.NewMarketplaceRepository(privateDB),
-		adminAudit:  private.NewAdminAuditRepository(privateDB),
-		reversal:    public.NewReversalRepository(publicDB),
-	}
+	f := NewFactoryWithDBs(privateDB, publicDB, keygen)
 
 	// Setup private database
 	if err := privateDB.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
@@ -139,23 +144,23 @@ func closeDB(db *gorm.DB) error {
 }
 
 func (f *factory) NewPrivateTransaction() repository.PrivateTransaction {
-	return newPrivateTransaction(f.private.Begin(), f.key, f.marketplace, f.adminAudit)
+	return newPrivateTransaction(f.private.Begin(), f.keygen)
 }
 
 func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction) error) error {
 	return f.private.Transaction(func(gormTx *gorm.DB) error {
-		tx := newPrivateTransaction(gormTx, f.key, f.marketplace, f.adminAudit)
+		tx := newPrivateTransaction(gormTx, f.keygen)
 		return fn(tx)
 	})
 }
 
 func (f *factory) NewPublicTransaction() repository.PublicTransaction {
-	return newPublicTransaction(f.public.Begin(), f.reversal)
+	return newPublicTransaction(f.public.Begin())
 }
 
 func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {
 	return f.public.Transaction(func(gormTx *gorm.DB) error {
-		tx := newPublicTransaction(gormTx, f.reversal)
+		tx := newPublicTransaction(gormTx)
 		return fn(tx)
 	})
 }

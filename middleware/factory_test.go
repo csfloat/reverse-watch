@@ -5,7 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"reverse-watch/domain/models/constants"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/repository/factory"
+	"reverse-watch/secret"
 )
 
 func TestFactoryMiddleware(t *testing.T) {
@@ -16,8 +19,9 @@ func TestFactoryMiddleware(t *testing.T) {
 	}
 	next := http.HandlerFunc(fn)
 
-	factory := testutil.NewTestFactory(t)
-	factoryMiddleware := FactoryMiddleware(factory)
+	db := testutil.NewTestDB(t)
+	f := factory.NewFactoryWithDBs(db, db, secret.NewKeyGenerator(constants.EnvironmentDevelopment))
+	factoryMiddleware := FactoryMiddleware(f)
 	handler := factoryMiddleware(next)
 
 	w := httptest.NewRecorder()

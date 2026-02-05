@@ -10,7 +10,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/internal/testutil"
-	"reverse-watch/repository/private"
+	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
 )
 
@@ -19,8 +19,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	keyRepo := private.NewKeyRepository(db, keygen)
-	factory := testutil.NewTestFactory(t).WithKey(keyRepo)
+	f := factory.NewFactoryWithDBs(db, db, keygen)
 
 	testCases := []struct {
 		name           string
@@ -38,7 +37,7 @@ func TestAuthMiddleware(t *testing.T) {
 			name: "noAuthHeader",
 			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
-				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				ctx := context.WithValue(req.Context(), FactoryContextKey, f)
 				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
@@ -48,8 +47,8 @@ func TestAuthMiddleware(t *testing.T) {
 			setup: func() (*http.Request, error) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "test-token")
-				
-				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+
+				ctx := context.WithValue(req.Context(), FactoryContextKey, f)
 				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
@@ -60,7 +59,7 @@ func TestAuthMiddleware(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", "Bearer test-token")
 
-				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				ctx := context.WithValue(req.Context(), FactoryContextKey, f)
 				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusUnauthorized,
@@ -102,7 +101,7 @@ func TestAuthMiddleware(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "http://testing", nil)
 				req.Header.Set("Authorization", value)
 
-				ctx := context.WithValue(req.Context(), FactoryContextKey, factory)
+				ctx := context.WithValue(req.Context(), FactoryContextKey, f)
 				return req.WithContext(ctx), nil
 			},
 			wantStatusCode: http.StatusOK,
