@@ -1,21 +1,23 @@
 package repository
 
-import "io"
+import (
+	"io"
+
+	"gorm.io/gorm"
+)
 
 type PrivateTransaction interface {
+	gorm.TxCommitter
+
 	Key() KeyRepository
 	Marketplace() MarketplaceRepository
 	AdminAudit() AdminAuditRepository
-
-	Commit() error
-	Rollback()
 }
 
 type PublicTransaction interface {
-	Reversal() ReversalRepository
+	gorm.TxCommitter
 
-	Commit() error
-	Rollback()
+	Reversal() ReversalRepository
 }
 
 type Factory interface {
