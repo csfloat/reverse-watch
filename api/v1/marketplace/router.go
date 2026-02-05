@@ -15,6 +15,7 @@ func Router() chi.Router {
 	r.Route("/keys", func(r chi.Router) {
 		r.Get("/", listKeys)
 		r.Post("/", createKey)
+		r.Delete("/{id}", deleteKey)
 	})
 	return r
 }
