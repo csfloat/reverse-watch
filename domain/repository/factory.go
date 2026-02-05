@@ -8,14 +8,14 @@ type PrivateTransaction interface {
 	AdminAudit() AdminAuditRepository
 
 	Commit() error
-	Rollback() error
+	Rollback()
 }
 
 type PublicTransaction interface {
 	Reversal() ReversalRepository
 
 	Commit() error
-	Rollback() error
+	Rollback()
 }
 
 type Factory interface {

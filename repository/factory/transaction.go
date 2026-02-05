@@ -41,8 +41,8 @@ func (t *privateTransaction) Commit() error {
 	return t.tx.Commit().Error
 }
 
-func (t *privateTransaction) Rollback() error {
-	return t.tx.Rollback().Error
+func (t *privateTransaction) Rollback() {
+	t.tx.Rollback()
 }
 
 type publicTransaction struct {
@@ -65,6 +65,6 @@ func (t *publicTransaction) Commit() error {
 	return t.tx.Commit().Error
 }
 
-func (t *publicTransaction) Rollback() error {
-	return t.tx.Rollback().Error
+func (t *publicTransaction) Rollback() {
+	t.tx.Rollback()
 }

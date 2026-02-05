@@ -28,6 +28,17 @@ type factory struct {
 	reversal    repository.ReversalRepository
 }
 
+func NewFactoryWithDBs(privateDB, publicDB *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
+	return &factory{
+		private:   privateDB,
+		public:    publicDB,
+		key:         private.NewKeyRepository(privateDB, keygen),
+		marketplace: private.NewMarketplaceRepository(privateDB),
+		adminAudit:  private.NewAdminAuditRepository(privateDB),
+		reversal:    public.NewReversalRepository(publicDB),
+	}
+}
+
 func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
 	rootDir, err := config.GetProjectRootDir()
 	if err != nil {
@@ -53,15 +64,7 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
-	f := &factory{
-		private:     privateDB,
-		public:      publicDB,
-		keygen:      keygen,
-		key:         private.NewKeyRepository(privateDB, keygen),
-		marketplace: private.NewMarketplaceRepository(privateDB),
-		adminAudit:  private.NewAdminAuditRepository(privateDB),
-		reversal:    public.NewReversalRepository(publicDB),
-	}
+	f := NewFactoryWithDBs(privateDB, publicDB, keygen)
 
 	// Setup private database
 	if err := privateDB.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
