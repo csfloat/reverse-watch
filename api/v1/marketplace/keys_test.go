@@ -671,7 +671,7 @@ func TestDeleteKey(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
 				if resp.StatusCode != http.StatusForbidden {
-					t.Errorf("wanted status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
 			},
 		},
