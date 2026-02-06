@@ -61,11 +61,12 @@ func setupTestMarketplaceWithKey(t *testing.T, db *gorm.DB, keygen isecret.KeyGe
 	return testMarketplace, authKey, formattedKey
 }
 
-func setupAuthenticatedRequest(method string, path string, body []byte, token string) (*http.Request, error) {
+// setupAuthenticatedRequest sets up an authenticated request with the given method, path, body, and token.
+func setupAuthenticatedRequest(method string, path string, body []byte, token string) *http.Request {
 	r := httptest.NewRequest(method, path, bytes.NewBuffer(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bearer "+token)
-	return r, nil
+	return r
 }
 
 func TestCreateKey(t *testing.T) {
