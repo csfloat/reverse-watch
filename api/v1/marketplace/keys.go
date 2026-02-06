@@ -115,6 +115,10 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 			return errors.New(errors.BadRequest, "marketplace doesn't own key being deleted")
 		}
 
+		if keyToDelete.Environment != key.Environment {
+			return errors.New(errors.BadRequest, "cannot delete key from a different environment")
+		}
+
 		if err := tx.Key().Delete(id); err != nil {
 			return err
 		}
@@ -122,6 +126,10 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		logging.Log.Errorf("failed to delete key: %v", err)
+		if e, ok := err.(*errors.Error); ok {
+			render.Error(w, r, e)
+			return
+		}
 		render.Errorf(w, r, errors.DBDelete, "failed to delete key")
 		return
 	}
