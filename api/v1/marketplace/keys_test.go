@@ -621,6 +621,61 @@ func TestDeleteKey(t *testing.T) {
 			},
 		},
 		{
+			name: "invalidPermissions",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				keyToDelete := &models.Key{
+					ID:              "key-to-delete",
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionExport,
+				}
+				testutil.Insert(t, db, keyToDelete)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, "", err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, "", err
+				}
+
+				authKey := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, authKey)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, "", err
+				}
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", keyToDelete.ID)
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), keyToDelete.ID, nil
+			},
+			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
+				}
+			},
+		},
+		{
 			name: "missingID",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
 				testMarketplace := &models.Marketplace{
