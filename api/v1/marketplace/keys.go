@@ -111,12 +111,16 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		if keyToDelete.MarketplaceSlug != key.MarketplaceSlug {
+		if key.MarketplaceSlug != keyToDelete.MarketplaceSlug {
 			return errors.New(errors.BadRequest, "marketplace doesn't own key being deleted")
 		}
 
-		if keyToDelete.Environment != key.Environment {
+		if key.Environment != keyToDelete.Environment {
 			return errors.New(errors.BadRequest, "cannot delete key from a different environment")
+		}
+
+		if key.ID == keyToDelete.ID {
+			return errors.New(errors.BadRequest, "cannot delete key used to authenticate")
 		}
 
 		if err := tx.Key().Delete(id); err != nil {
