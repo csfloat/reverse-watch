@@ -13,6 +13,7 @@ import (
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	isecret "reverse-watch/domain/secret"
+	"reverse-watch/errors"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/logging"
 	"reverse-watch/middleware"
@@ -673,6 +674,18 @@ func TestDeleteKey(t *testing.T) {
 				if resp.StatusCode != http.StatusForbidden {
 					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.Forbidden
+				if diff := cmp.Diff(&wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
 			},
 		},
 		{
@@ -725,6 +738,18 @@ func TestDeleteKey(t *testing.T) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.BadRequest, "invalid id")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
 			},
 		},
 		{
@@ -772,6 +797,18 @@ func TestDeleteKey(t *testing.T) {
 			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
 				if resp.StatusCode != http.StatusInternalServerError {
 					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.DBDelete, "failed to delete key")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
 				}
 			},
 		},
@@ -827,6 +864,18 @@ func TestDeleteKey(t *testing.T) {
 			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.BadRequest, "marketplace doesn't own key being deleted")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
 				}
 			},
 		},
@@ -884,6 +933,18 @@ func TestDeleteKey(t *testing.T) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.BadRequest, "cannot delete key from a different environment")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
 			},
 		},
 		{
@@ -931,6 +992,18 @@ func TestDeleteKey(t *testing.T) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.BadRequest, "cannot delete key used for authentication")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
 			},
 		},
 	}
@@ -969,7 +1042,6 @@ func TestDeleteKey(t *testing.T) {
 			resp := w.Result()
 
 			tc.validateFunc(t, id, db, resp)
-
 		})
 	}
 }
@@ -978,16 +1050,32 @@ func TestDeleteKey_ContextErrors(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name           string
-		setup          func(f repository.Factory) (*http.Request, error)
-		wantStatusCode int
+		name         string
+		setup        func(f repository.Factory) (*http.Request, error)
+		validateFunc func(t *testing.T, resp *http.Response)
 	}{
 		{
 			name: "missingFactoryFromContext",
 			setup: func(f repository.Factory) (*http.Request, error) {
 				return httptest.NewRequest(http.MethodDelete, "/", nil), nil
 			},
-			wantStatusCode: http.StatusInternalServerError,
+			validateFunc: func(t *testing.T, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.InternalServerError, "missing factory from context")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
 		},
 		{
 			name: "missingKeyFromContext",
@@ -996,7 +1084,23 @@ func TestDeleteKey_ContextErrors(t *testing.T) {
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				return r.WithContext(ctx), nil
 			},
-			wantStatusCode: http.StatusInternalServerError,
+			validateFunc: func(t *testing.T, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.InternalServerError, "missing key from context")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
 		},
 	}
 
@@ -1021,9 +1125,7 @@ func TestDeleteKey_ContextErrors(t *testing.T) {
 			handler := http.HandlerFunc(deleteKey)
 			handler.ServeHTTP(w, r)
 
-			if w.Code != tc.wantStatusCode {
-				t.Errorf("wanted status code %d, got %d", tc.wantStatusCode, w.Code)
-			}
+			tc.validateFunc(t, w.Result())
 		})
 	}
 }
