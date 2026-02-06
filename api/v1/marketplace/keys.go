@@ -123,6 +123,7 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logging.Log.Errorf("failed to delete key: %v", err)
 		render.Errorf(w, r, errors.DBDelete, "failed to delete key")
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

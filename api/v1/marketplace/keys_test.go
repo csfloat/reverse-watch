@@ -678,12 +678,19 @@ func TestDeleteKey(t *testing.T) {
 		{
 			name: "doesntOwnKey",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace-1",
-					Name:     "Test Marketplace 1",
-					IsActive: true,
+				testMarketplaces := []*models.Marketplace{
+					{Slug: "test-marketplace-1", Name: "Test Marketplace 1", IsActive: true},
+					{Slug: "test-marketplace-2", Name: "Test Marketplace 2", IsActive: true},
 				}
-				testutil.Insert(t, db, testMarketplace)
+				testutil.Insert(t, db, testMarketplaces...)
+
+				keyToDelete := &models.Key{
+					ID:              "authKey-to-delete",
+					MarketplaceSlug: testMarketplaces[0].Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, keyToDelete)
 
 				r := httptest.NewRequest(http.MethodDelete, "/", nil)
 
@@ -697,20 +704,13 @@ func TestDeleteKey(t *testing.T) {
 					return nil, err
 				}
 
-				testMarketplace2 := &models.Marketplace{
-					Slug:     "test-marketplace-2",
-					Name:     "Test Marketplace 2",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace2)
-
-				key := &models.Key{
+				authKey := &models.Key{
 					ID:              id,
-					MarketplaceSlug: testMarketplace2.Slug,
+					MarketplaceSlug: testMarketplaces[1].Slug,
 					Environment:     keygen.Environment(),
 					Permissions:     models.PermissionManage,
 				}
-				testutil.Insert(t, db, key)
+				testutil.Insert(t, db, authKey)
 
 				formattedKey, err := secretKey.Format()
 				if err != nil {
@@ -720,7 +720,7 @@ func TestDeleteKey(t *testing.T) {
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
 				chiContext := chi.NewRouteContext()
-				chiContext.URLParams.Add("id", "key-to-delete")
+				chiContext.URLParams.Add("id", keyToDelete.ID)
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
 				return r.WithContext(ctx), nil
 			},
