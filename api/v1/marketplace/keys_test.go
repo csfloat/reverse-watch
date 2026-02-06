@@ -753,153 +753,19 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 	}
 }
 
-func TestDeleteKey(t *testing.T) {
+func TestDeleteKey_Errors(t *testing.T) {
 	t.Parallel()
 	logging.Initialize()
 
 	testCases := []struct {
 		name         string
-		setup        func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error)
-		validateFunc func(t *testing.T, id string, db *gorm.DB, resp *http.Response)
+		setup        func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error)
+		validateFunc func(t *testing.T, resp *http.Response)
 	}{
 		{
-			name: "validRequest",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				keyToDelete := &models.Key{
-					ID:              "key-to-delete",
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, keyToDelete)
-
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
-
-				chiContext := chi.NewRouteContext()
-				chiContext.URLParams.Add("id", keyToDelete.ID)
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), keyToDelete.ID, nil
-			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusNoContent {
-					t.Errorf("wanted status code %d, got %d", http.StatusNoContent, resp.StatusCode)
-				}
-
-				var key models.Key
-				if err := db.First(&key, "id = ?", id).Error; err == nil {
-					t.Fatal("expected record to be deleted, but it still exists")
-				}
-			},
-		},
-		{
-			name: "invalidPermissions",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				keyToDelete := &models.Key{
-					ID:              "key-to-delete",
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionExport,
-				}
-				testutil.Insert(t, db, keyToDelete)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
-
-				chiContext := chi.NewRouteContext()
-				chiContext.URLParams.Add("id", keyToDelete.ID)
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), keyToDelete.ID, nil
-			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusForbidden {
-					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
-				}
-
-				defer resp.Body.Close()
-
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-					t.Fatalf("failed to decode response body: %v", err)
-				}
-
-				wantErr := errors.Forbidden
-				if diff := cmp.Diff(&wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
-					t.Error(diff)
-				}
-			},
-		},
-		{
 			name: "missingID",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -908,189 +774,112 @@ func TestDeleteKey(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
-				return r, keyToDelete.ID, nil
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
 
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
 				wantErr := errors.New(errors.BadRequest, "invalid id")
-				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+				if diff := cmp.Diff(wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
 					t.Error(diff)
 				}
 			},
 		},
 		{
 			name: "notFound",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				_, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", "key-to-delete")
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), "key-to-delete", nil
+				ctx = context.WithValue(ctx, chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, resp *http.Response) {
 				if resp.StatusCode != http.StatusInternalServerError {
 					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
 
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
 				wantErr := errors.New(errors.DBDelete, "failed to delete key")
-				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+				if diff := cmp.Diff(wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
 					t.Error(diff)
 				}
 			},
 		},
 		{
 			name: "doesntOwnKey",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplaces := []*models.Marketplace{
-					{Slug: "test-marketplace-1", Name: "Test Marketplace 1", IsActive: true},
-					{Slug: "test-marketplace-2", Name: "Test Marketplace 2", IsActive: true},
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				_, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+
+				testMarketplace2 := &models.Marketplace{
+					Slug:     "test-marketplace-2",
+					Name:     "Test Marketplace 2",
+					IsActive: true,
 				}
-				testutil.Insert(t, db, testMarketplaces...)
+				testutil.Insert(t, db, testMarketplace2)
 
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
-					MarketplaceSlug: testMarketplaces[0].Slug,
+					MarketplaceSlug: "test-marketplace-2",
 					Environment:     keygen.Environment(),
 					Permissions:     models.PermissionWrite,
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplaces[1].Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", keyToDelete.ID)
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), keyToDelete.ID, nil
+				ctx = context.WithValue(ctx, chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
 
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
 				wantErr := errors.New(errors.BadRequest, "marketplace doesn't own key being deleted")
-				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+				if diff := cmp.Diff(wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
 					t.Error(diff)
 				}
 			},
 		},
 		{
 			name: "environmentMismatch",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -1099,111 +888,68 @@ func TestDeleteKey(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     constants.EnvironmentDevelopment,
-					Permissions:     models.PermissionManage,
-				}
-				testutil.Insert(t, db, authKey)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", keyToDelete.ID)
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), keyToDelete.ID, nil
+				ctx = context.WithValue(ctx, chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
 
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
 				wantErr := errors.New(errors.BadRequest, "cannot delete key from a different environment")
-				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+				if diff := cmp.Diff(wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
 					t.Error(diff)
 				}
 			},
 		},
 		{
 			name: "deleteKeyUsedForAuth",
-			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, "", err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, "", err
-				}
-
-				authKey := &models.Key{
-					ID:              id,
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				keyToDelete := &models.Key{
+					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
 					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionManage,
+					Permissions:     models.PermissionWrite,
 				}
-				testutil.Insert(t, db, authKey)
+				testutil.Insert(t, db, keyToDelete)
 
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, "", err
-				}
-
-				r := httptest.NewRequest(http.MethodDelete, "/", nil)
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
 				chiContext := chi.NewRouteContext()
-				chiContext.URLParams.Add("id", id)
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), id, nil
+				chiContext.URLParams.Add("id", authKey.ID)
+				ctx = context.WithValue(ctx, chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
 
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
 				wantErr := errors.New(errors.BadRequest, "cannot delete key used for authentication")
-				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+				if diff := cmp.Diff(wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
 					t.Error(diff)
 				}
 			},
@@ -1223,27 +969,16 @@ func TestDeleteKey(t *testing.T) {
 				t.Fatalf("NewFactoryWithConfig(): %v", err)
 			}
 
-			factoryMiddleware := middleware.FactoryMiddleware(f)
-			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
-			handler := http.HandlerFunc(deleteKey)
-
-			finalHandler := factoryMiddleware(
-				middleware.AuthMiddleware(
-					permissionsMiddleware(handler),
-				),
-			)
-
 			w := httptest.NewRecorder()
-			r, id, err := tc.setup(db, keygen)
+			r, err := tc.setup(db, f, keygen)
 			if err != nil {
 				t.Fatalf("setup(): %v", err)
 			}
 
-			finalHandler.ServeHTTP(w, r)
+			handler := http.HandlerFunc(deleteKey)
+			handler.ServeHTTP(w, r)
 
-			resp := w.Result()
-
-			tc.validateFunc(t, id, db, resp)
+			tc.validateFunc(t, w.Result())
 		})
 	}
 }
