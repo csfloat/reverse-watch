@@ -26,6 +26,48 @@ import (
 	"gorm.io/gorm"
 )
 
+// setupTestMarketplaceWithKey sets up a test marketplace and a key with the given permissions.
+func setupTestMarketplaceWithKey(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator, permissions models.Permissions) (*models.Marketplace, *models.Key, string) {
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
+	}
+	testutil.Insert(t, db, testMarketplace)
+
+	secretKey, err := keygen.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey(): %v", err)
+	}
+
+	id, err := secretKey.ID()
+	if err != nil {
+		t.Fatalf("ID(): %v", err)
+	}
+
+	authKey := &models.Key{
+		ID:              id,
+		MarketplaceSlug: testMarketplace.Slug,
+		Environment:     keygen.Environment(),
+		Permissions:     permissions,
+	}
+	testutil.Insert(t, db, authKey)
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		t.Fatalf("Format(): %v", err)
+	}
+
+	return testMarketplace, authKey, formattedKey
+}
+
+func setupAuthenticatedRequest(method string, path string, body []byte, token string) (*http.Request, error) {
+	r := httptest.NewRequest(method, path, bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer "+token)
+	return r, nil
+}
+
 func TestCreateKey(t *testing.T) {
 	t.Parallel()
 
