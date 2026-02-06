@@ -599,12 +599,12 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error)
+		setup        func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error)
 		validateFunc func(t *testing.T, db *gorm.DB, id string, resp *http.Response)
 	}{
 		{
 			name: "successWithAuth",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
 				testMarketplace, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 
@@ -634,7 +634,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		},
 		{
 			name: "missingID",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
 				testMarketplace, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 
 				keyToDelete := &models.Key{
@@ -666,6 +666,55 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "invalidPermissions",
+			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				return r, "", nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.Forbidden
+				if diff := cmp.Diff(&wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "invalidToken",
+			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, "invalid-token")
+				return r, "", nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
+				if resp.StatusCode != http.StatusUnauthorized {
+					t.Errorf("wanted status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var data errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.InvalidApiKey
+				if diff := cmp.Diff(&wantErr, &data, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -692,7 +741,10 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, id, err := tc.setup(db, f, keygen)
+			r, id, err := tc.setup(db, keygen)
+			if err != nil {
+				t.Fatalf("setup(): %v", err)
+			}
 
 			finalHandler.ServeHTTP(w, r)
 
