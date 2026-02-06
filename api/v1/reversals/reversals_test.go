@@ -2,19 +2,22 @@ package reversals
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"testing"
+
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	isecret "reverse-watch/domain/secret"
+	"reverse-watch/errors"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/middleware"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
 	"reverse-watch/util"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -335,6 +338,85 @@ func TestCreateReversal(t *testing.T) {
 			finalHandler.ServeHTTP(w, r)
 
 			tc.validateFunc(t, db, data, w.Result())
+		})
+	}
+}
+
+func TestCreateReversals_ContextErrors(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name         string
+		setup        func(f repository.Factory) *http.Request
+		validateFunc func(t *testing.T, resp *http.Response)
+	}{
+		{
+			name: "missingFactoryFromContext",
+			setup: func(f repository.Factory) *http.Request {
+				return httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("{}")))
+			},
+			validateFunc: func(t *testing.T, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.InternalServerError, "missing factory from context")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "missingKeyFromContext",
+			setup: func(f repository.Factory) *http.Request {
+				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("{}")))
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				return r.WithContext(ctx)
+			},
+			validateFunc: func(t *testing.T, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.InternalServerError, "missing key from context")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			w := httptest.NewRecorder()
+			r := tc.setup(f)
+
+			handler := http.HandlerFunc(createReversals)
+			handler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, w.Result())
 		})
 	}
 }
