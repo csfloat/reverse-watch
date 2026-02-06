@@ -28,34 +28,34 @@ type factory struct {
 	reversal    repository.ReversalRepository
 }
 
-type Options struct {
+type Config struct {
 	PrivateDB *gorm.DB
 	PublicDB  *gorm.DB
 	KeyGen    secret.KeyGenerator
 }
 
-func NewFactoryWithOptions(opts *Options) (repository.Factory, error) {
-	if opts == nil {
+func NewFactoryWithConfig(cfg *Config) (repository.Factory, error) {
+	if cfg == nil {
 		return nil, fmt.Errorf("options cannot be nil")
 	}
-	if opts.PrivateDB == nil {
+	if cfg.PrivateDB == nil {
 		return nil, fmt.Errorf("pivate database is required")
 	}
-	if opts.PublicDB == nil {
+	if cfg.PublicDB == nil {
 		return nil, fmt.Errorf("public database is required")
 	}
-	if opts.KeyGen == nil {
+	if cfg.KeyGen == nil {
 		return nil, fmt.Errorf("key generator is required")
 	}
 
 	return &factory{
-		private:     opts.PrivateDB,
-		public:      opts.PublicDB,
-		keygen:      opts.KeyGen,
-		key:         private.NewKeyRepository(opts.PrivateDB, opts.KeyGen),
-		marketplace: private.NewMarketplaceRepository(opts.PrivateDB),
-		adminAudit:  private.NewAdminAuditRepository(opts.PrivateDB),
-		reversal:    public.NewReversalRepository(opts.PublicDB),
+		private:     cfg.PrivateDB,
+		public:      cfg.PublicDB,
+		keygen:      cfg.KeyGen,
+		key:         private.NewKeyRepository(cfg.PrivateDB, cfg.KeyGen),
+		marketplace: private.NewMarketplaceRepository(cfg.PrivateDB),
+		adminAudit:  private.NewAdminAuditRepository(cfg.PrivateDB),
+		reversal:    public.NewReversalRepository(cfg.PublicDB),
 	}, nil
 }
 
@@ -84,7 +84,7 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
-	f, err := NewFactoryWithOptions(&Options{
+	f, err := NewFactoryWithConfig(&Config{
 		PrivateDB: privateDB,
 		PublicDB:  publicDB,
 		KeyGen:    keygen,

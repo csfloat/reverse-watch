@@ -20,13 +20,13 @@ func TestFactoryMiddleware(t *testing.T) {
 	next := http.HandlerFunc(fn)
 
 	db := testutil.NewTestDB(t)
-	f, err := factory.NewFactoryWithOptions(&factory.Options{
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
 		PrivateDB: db,
 		PublicDB:  db,
 		KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
 	})
 	if err != nil {
-		t.Fatalf("NewFactoryWithOptions(): %v", err)
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
 	}
 	factoryMiddleware := FactoryMiddleware(f)
 	handler := factoryMiddleware(next)
