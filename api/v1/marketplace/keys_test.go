@@ -758,3 +758,50 @@ func TestDeleteKey(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteKey_ContextErrors(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		setup          func(f repository.Factory) (*http.Request, error)
+		wantStatusCode int
+	}{
+		{
+			name: "missingFactoryFromContext",
+			setup: func(f repository.Factory) (*http.Request, error) {
+				return httptest.NewRequest(http.MethodDelete, "/", nil), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+		{
+			name: "missingKeyFromContext",
+			setup: func(f repository.Factory) (*http.Request, error) {
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
+				return r.WithContext(ctx), nil
+			},
+			wantStatusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			f := factory.NewFactoryWithDBs(db, db, secret.NewKeyGenerator(constants.EnvironmentDevelopment))
+
+			w := httptest.NewRecorder()
+			r, err := tc.setup(f)
+			if err != nil {
+				t.Fatalf("setup(): %v", err)
+			}
+
+			handler := http.HandlerFunc(deleteKey)
+			handler.ServeHTTP(w, r)
+
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("wanted status code %d, got %d", tc.wantStatusCode, w.Code)
+			}
+		})
+	}
+}
