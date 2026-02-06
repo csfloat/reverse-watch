@@ -28,16 +28,35 @@ type factory struct {
 	reversal    repository.ReversalRepository
 }
 
-func NewFactoryWithDBs(privateDB, publicDB *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
-	return &factory{
-		private:     privateDB,
-		public:      publicDB,
-		keygen:      keygen,
-		key:         private.NewKeyRepository(privateDB, keygen),
-		marketplace: private.NewMarketplaceRepository(privateDB),
-		adminAudit:  private.NewAdminAuditRepository(privateDB),
-		reversal:    public.NewReversalRepository(publicDB),
+type Options struct {
+	PrivateDB *gorm.DB
+	PublicDB  *gorm.DB
+	KeyGen    secret.KeyGenerator
+}
+
+func NewFactoryWithOptions(opts *Options) (repository.Factory, error) {
+	if opts == nil {
+		return nil, fmt.Errorf("options cannot be nil")
 	}
+	if opts.PrivateDB == nil {
+		return nil, fmt.Errorf("pivate database is required")
+	}
+	if opts.PublicDB == nil {
+		return nil, fmt.Errorf("public database is required")
+	}
+	if opts.KeyGen == nil {
+		return nil, fmt.Errorf("key generator is required")
+	}
+
+	return &factory{
+		private:     opts.PrivateDB,
+		public:      opts.PublicDB,
+		keygen:      opts.KeyGen,
+		key:         private.NewKeyRepository(opts.PrivateDB, opts.KeyGen),
+		marketplace: private.NewMarketplaceRepository(opts.PrivateDB),
+		adminAudit:  private.NewAdminAuditRepository(opts.PrivateDB),
+		reversal:    public.NewReversalRepository(opts.PublicDB),
+	}, nil
 }
 
 func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
@@ -65,7 +84,16 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
-	f := NewFactoryWithDBs(privateDB, publicDB, keygen)
+	f, err := NewFactoryWithOptions(&Options{
+		PrivateDB: privateDB,
+		PublicDB:  publicDB,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		closeDB(publicDB)
+		closeDB(privateDB)
+		return nil, fmt.Errorf("failed to initialize factory: %w", err)
+	}
 
 	// Setup private database
 	if err := privateDB.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {

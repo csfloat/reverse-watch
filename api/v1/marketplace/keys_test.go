@@ -231,7 +231,14 @@ func TestCreateKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
 			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			f := factory.NewFactoryWithDBs(db, db, keygen)
+			f, err := factory.NewFactoryWithOptions(&factory.Options{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithOptions(): %v", err)
+			}
 
 			factoryMiddleware := middleware.FactoryMiddleware(f)
 			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
@@ -330,7 +337,14 @@ func TestCreateKey_ContextErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			f := factory.NewFactoryWithDBs(db, db, secret.NewKeyGenerator(constants.EnvironmentDevelopment))
+			f, err := factory.NewFactoryWithOptions(&factory.Options{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithOptions(): %v", err)
+			}
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup(db, f)
@@ -353,7 +367,14 @@ func TestListKeys(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	f := factory.NewFactoryWithDBs(db, db, keygen)
+	f, err := factory.NewFactoryWithOptions(&factory.Options{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithOptions(): %v", err)
+	}
 
 	testMarketplace1 := &models.Marketplace{
 		Slug:     "test-marketplace-1",
@@ -502,7 +523,14 @@ func TestListKeys_ContextErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			f := factory.NewFactoryWithDBs(db, db, secret.NewKeyGenerator(constants.EnvironmentDevelopment))
+			f, err := factory.NewFactoryWithOptions(&factory.Options{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithOptions(): %v", err)
+			}
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup(db, f)

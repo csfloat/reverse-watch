@@ -19,7 +19,14 @@ func TestAuthMiddleware(t *testing.T) {
 
 	db := testutil.NewTestDB(t)
 	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-	f := factory.NewFactoryWithDBs(db, db, keygen)
+	f, err := factory.NewFactoryWithOptions(&factory.Options{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithOptions(): %v", err)
+	}
 
 	testCases := []struct {
 		name           string
