@@ -28,16 +28,35 @@ type factory struct {
 	reversal    repository.ReversalRepository
 }
 
-func NewFactoryWithDBs(privateDB, publicDB *gorm.DB, keygen secret.KeyGenerator) repository.Factory {
-	return &factory{
-		private:     privateDB,
-		public:      publicDB,
-		keygen:      keygen,
-		key:         private.NewKeyRepository(privateDB, keygen),
-		marketplace: private.NewMarketplaceRepository(privateDB),
-		adminAudit:  private.NewAdminAuditRepository(privateDB),
-		reversal:    public.NewReversalRepository(publicDB),
+type Config struct {
+	PrivateDB *gorm.DB
+	PublicDB  *gorm.DB
+	KeyGen    secret.KeyGenerator
+}
+
+func NewFactoryWithConfig(cfg *Config) (repository.Factory, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("options cannot be nil")
 	}
+	if cfg.PrivateDB == nil {
+		return nil, fmt.Errorf("pivate database is required")
+	}
+	if cfg.PublicDB == nil {
+		return nil, fmt.Errorf("public database is required")
+	}
+	if cfg.KeyGen == nil {
+		return nil, fmt.Errorf("key generator is required")
+	}
+
+	return &factory{
+		private:     cfg.PrivateDB,
+		public:      cfg.PublicDB,
+		keygen:      cfg.KeyGen,
+		key:         private.NewKeyRepository(cfg.PrivateDB, cfg.KeyGen),
+		marketplace: private.NewMarketplaceRepository(cfg.PrivateDB),
+		adminAudit:  private.NewAdminAuditRepository(cfg.PrivateDB),
+		reversal:    public.NewReversalRepository(cfg.PublicDB),
+	}, nil
 }
 
 func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
@@ -65,7 +84,16 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
-	f := NewFactoryWithDBs(privateDB, publicDB, keygen)
+	f, err := NewFactoryWithConfig(&Config{
+		PrivateDB: privateDB,
+		PublicDB:  publicDB,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		closeDB(publicDB)
+		closeDB(privateDB)
+		return nil, fmt.Errorf("failed to initialize factory: %w", err)
+	}
 
 	// Setup private database
 	if err := privateDB.Exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL").Error; err != nil {
