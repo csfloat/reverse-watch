@@ -12,7 +12,7 @@ func Router() chi.Router {
 	r.Use(rwmiddleware.AuthMiddleware)
 	r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
 
-	r.Route("/marketplace/keys", func(r chi.Router) {
+	r.Route("/keys", func(r chi.Router) {
 		r.Get("/", listKeys)
 		r.Post("/", createKey)
 		r.Delete("/{id}", deleteKey)
