@@ -11,7 +11,7 @@ import (
 	"reverse-watch/render"
 )
 
-func createReversal(w http.ResponseWriter, r *http.Request) {
+func createReversals(w http.ResponseWriter, r *http.Request) {
 	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	if !ok {
 		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")

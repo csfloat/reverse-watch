@@ -212,6 +212,95 @@ func TestCreateReversal(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "invalidRequestBody",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				key := &models.Key{
+					ID:              id,
+					Environment:     keygen.Environment(),
+					MarketplaceSlug: testMarketplace.Slug,
+					Permissions:     models.PermissionWrite,
+				}
+				testutil.Insert(t, db, key)
+
+				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("invalid")))
+				r.Header.Set("Content-Type", "application/json")
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("got status code %d, wanted %d", resp.StatusCode, http.StatusBadRequest)
+				}
+			},
+		},
+		{
+			name: "invalidPermissions",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				key := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionExport,
+				}
+				testutil.Insert(t, db, key)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("{}")))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+			},
+		},
 	}
 
 	for _, tc := range testCases {
