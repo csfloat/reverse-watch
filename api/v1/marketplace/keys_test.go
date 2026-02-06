@@ -730,7 +730,7 @@ func TestDeleteKey(t *testing.T) {
 				testutil.Insert(t, db, testMarketplaces...)
 
 				keyToDelete := &models.Key{
-					ID:              "authKey-to-delete",
+					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplaces[0].Slug,
 					Environment:     keygen.Environment(),
 					Permissions:     models.PermissionWrite,
@@ -786,7 +786,7 @@ func TestDeleteKey(t *testing.T) {
 				testutil.Insert(t, db, testMarketplace)
 
 				keyToDelete := &models.Key{
-					ID:              "authKey-to-delete",
+					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
 					Environment:     constants.EnvironmentProduction,
 					Permissions:     models.PermissionWrite,
@@ -824,6 +824,53 @@ func TestDeleteKey(t *testing.T) {
 				chiContext.URLParams.Add("id", keyToDelete.ID)
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
 				return r.WithContext(ctx), keyToDelete.ID, nil
+			},
+			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+			},
+		},
+		{
+			name: "deleteKeyUsedForAuth",
+			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				secretKey, err := keygen.GenerateSecretKey()
+				if err != nil {
+					return nil, "", err
+				}
+
+				id, err := secretKey.ID()
+				if err != nil {
+					return nil, "", err
+				}
+
+				authKey := &models.Key{
+					ID:              id,
+					MarketplaceSlug: testMarketplace.Slug,
+					Environment:     keygen.Environment(),
+					Permissions:     models.PermissionManage,
+				}
+				testutil.Insert(t, db, authKey)
+
+				formattedKey, err := secretKey.Format()
+				if err != nil {
+					return nil, "", err
+				}
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", id)
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+				return r.WithContext(ctx), id, nil
 			},
 			validateFunc: func(t *testing.T, id string, db *gorm.DB, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
