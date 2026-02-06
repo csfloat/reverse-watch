@@ -760,7 +760,14 @@ func TestDeleteKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
 			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-			f := factory.NewFactoryWithDBs(db, db, keygen)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
 
 			factoryMiddleware := middleware.FactoryMiddleware(f)
 			permissionsMiddleware := middleware.RequirePermissions(models.PermissionManage)
@@ -816,7 +823,14 @@ func TestDeleteKey_ContextErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			f := factory.NewFactoryWithDBs(db, db, secret.NewKeyGenerator(constants.EnvironmentDevelopment))
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
 
 			w := httptest.NewRecorder()
 			r, err := tc.setup(f)
