@@ -120,7 +120,7 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if key.ID == keyToDelete.ID {
-			return errors.New(errors.BadRequest, "cannot delete key used to authenticate")
+			return errors.New(errors.BadRequest, "cannot delete key used for authentication")
 		}
 
 		if err := tx.Key().Delete(id); err != nil {
