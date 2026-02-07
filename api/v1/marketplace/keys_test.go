@@ -26,49 +26,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestMarketplaceWithKey sets up a test marketplace and a key with the given permissions.
-func setupTestMarketplaceWithKey(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator, permissions models.Permissions) (*models.Marketplace, *models.Key, string) {
-	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
-		Name:     "Test Marketplace",
-		IsActive: true,
-	}
-	testutil.Insert(t, db, testMarketplace)
-
-	secretKey, err := keygen.GenerateSecretKey()
-	if err != nil {
-		t.Fatalf("GenerateSecretKey(): %v", err)
-	}
-
-	id, err := secretKey.ID()
-	if err != nil {
-		t.Fatalf("ID(): %v", err)
-	}
-
-	authKey := &models.Key{
-		ID:              id,
-		MarketplaceSlug: testMarketplace.Slug,
-		Environment:     keygen.Environment(),
-		Permissions:     permissions,
-	}
-	testutil.Insert(t, db, authKey)
-
-	formattedKey, err := secretKey.Format()
-	if err != nil {
-		t.Fatalf("Format(): %v", err)
-	}
-
-	return testMarketplace, authKey, formattedKey
-}
-
-// setupAuthenticatedRequest sets up an authenticated request with the given method, path, body, and token.
-func setupAuthenticatedRequest(method string, path string, body []byte, token string) *http.Request {
-	r := httptest.NewRequest(method, path, bytes.NewBuffer(body))
-	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Authorization", "Bearer "+token)
-	return r
-}
-
 func TestCreateKey(t *testing.T) {
 	t.Parallel()
 
@@ -605,8 +562,8 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "successWithAuth",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
@@ -635,7 +592,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "missingID",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
@@ -645,7 +602,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				return r, "", nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
@@ -669,8 +626,8 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "invalidPermissions",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				return r, "", nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
@@ -694,7 +651,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "invalidToken",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, "invalid-token")
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, "invalid-token")
 				return r, "", nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
@@ -765,7 +722,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "missingID",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -774,7 +731,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 				return r.WithContext(ctx), nil
@@ -800,9 +757,9 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "notFound",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
@@ -832,7 +789,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "doesntOwnKey",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 
 				testMarketplace2 := &models.Marketplace{
 					Slug:     "test-marketplace-2",
@@ -849,7 +806,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
@@ -879,7 +836,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "environmentMismatch",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -888,7 +845,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
@@ -918,7 +875,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "deleteKeyUsedForAuth",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := setupTestMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -927,7 +884,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 				}
 				testutil.Insert(t, db, keyToDelete)
 
-				r := setupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
+				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
 				ctx = context.WithValue(ctx, middleware.KeyContextKey, authKey)
 
