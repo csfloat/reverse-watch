@@ -24,7 +24,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestCreateReversal(t *testing.T) {
+func TestCreateReversals(t *testing.T) {
 	t.Parallel()
 
 	type reversal struct {
