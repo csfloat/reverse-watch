@@ -37,7 +37,7 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		render.Error(w, r, &errors.BadRequest)
+		render.Error(w, r, &errors.JSONDecode)
 		return
 	}
 

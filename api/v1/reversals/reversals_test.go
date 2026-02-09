@@ -68,7 +68,7 @@ func TestCreateReversals(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
-					t.Errorf("got status code %d, wanted %d", resp.StatusCode, http.StatusOK)
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -132,7 +132,7 @@ func TestCreateReversals(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
-					t.Errorf("got status code %d, wanted %d", resp.StatusCode, http.StatusOK)
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -185,7 +185,45 @@ func TestCreateReversals(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
-					t.Errorf("got status code %d, wanted %d", resp.StatusCode, http.StatusBadRequest)
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+			},
+		},
+		{
+			name: "createFailedInvalidReversal",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
+
+				data := []*reversal{
+					{
+						SteamID:        models.SteamID(76561197960287930),
+						Source:         util.Ptr(models.SourceUserReport),
+						RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
+						ReversedAt:     1717756800,
+					},
+				}
+				body, err := json.Marshal(&req{Data: data})
+				if err != nil {
+					return nil, nil, err
+				}
+				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(body))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "failed to create reversals" {
+					t.Errorf("wanted details %q, got %q", "failed to create reversals", respData.Details)
 				}
 			},
 		},
