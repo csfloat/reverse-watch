@@ -117,6 +117,16 @@ func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLim
 	return reversals, nextCursor, nil
 }
 
+type metadata struct {
+	Count      int         `json:"count"`
+	NextCursor *dto.Cursor `json:"next_cursor,omitempty"`
+}
+
+type listReversalsResponse struct {
+	Data     []*models.Reversal `json:"data"`
+	Metadata metadata           `json:"metadata"`
+}
+
 func listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	if !ok {
@@ -133,17 +143,7 @@ func listReversalsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type metadata struct {
-		Count      int         `json:"count"`
-		NextCursor *dto.Cursor `json:"next_cursor,omitempty"`
-	}
-
-	type resp struct {
-		Data     []*models.Reversal `json:"data"`
-		Metadata metadata           `json:"metadata"`
-	}
-
-	render.JSON(w, r, &resp{
+	render.JSON(w, r, &listReversalsResponse{
 		Data: reversals,
 		Metadata: metadata{
 			Count:      len(reversals),
