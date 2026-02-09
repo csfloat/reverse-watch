@@ -95,7 +95,7 @@ func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLim
 	if cursorStr := values.Get("cursor"); cursorStr != "" {
 		cursor, err := dto.DecodeCursor(cursorStr)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.New(errors.BadRequest, "invalid cursor")
 		}
 		opts.Cursor = cursor
 	}

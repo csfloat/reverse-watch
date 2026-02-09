@@ -74,9 +74,9 @@ func MustRawJsonb(value interface{}) *models.RawJsonb {
 }
 
 // SetupMarketplaceWithKey sets up a test marketplace and a key with the given permissions.
-func SetupMarketplaceWithKey(t *testing.T, db *gorm.DB, keygen secret.KeyGenerator, permissions models.Permissions) (*models.Marketplace, *models.Key, string) {
+func SetupMarketplaceWithKey(t *testing.T, db *gorm.DB, slug string, keygen secret.KeyGenerator, permissions models.Permissions) (*models.Marketplace, *models.Key, string) {
 	testMarketplace := &models.Marketplace{
-		Slug:     "test-marketplace",
+		Slug:     slug,
 		Name:     "Test Marketplace",
 		IsActive: true,
 	}
