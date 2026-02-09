@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
@@ -340,6 +341,111 @@ func TestCreateReversals_ContextErrors(t *testing.T) {
 			handler.ServeHTTP(w, r)
 
 			tc.validateFunc(t, w.Result())
+		})
+	}
+}
+
+func generateReversals(t *testing.T, n int, slug string) []*models.Reversal {
+	t.Helper()
+
+	reversals := make([]*models.Reversal, 0)
+	id := models.Snowflake(1)
+	for i := 0; i < n; i++ {
+		reversals = append(reversals, &models.Reversal{
+			Model: models.Model{
+				ID: id,
+			},
+			SteamID:         models.SteamID(76561197960287930 + uint64(i)),
+			MarketplaceSlug: slug,
+		})
+		id++
+	}
+	return reversals
+}
+
+func TestListReversals(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name         string
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, *dto.Cursor, error)
+		validateFunc func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, expectedCursor *dto.Cursor, resp *http.Response)
+	}{
+		{
+			name: "validListWithDefaults",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, *dto.Cursor, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionExport)
+
+				reversals := generateReversals(t, 1001, testMarketplace.Slug)
+				testutil.Insert(t, db, reversals...)
+
+				cursor := &dto.Cursor{
+					// List returns results in descending order
+					ID: reversals[0].ID,
+				}
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				return r, reversals, cursor, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, expectedCursor *dto.Cursor, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				wantedResult := &listReversalsResponse{
+					Data: expectedReversals,
+					Metadata: metadata{
+						Count:      len(expectedReversals),
+						NextCursor: expectedCursor,
+					},
+				}
+
+				defer resp.Body.Close()
+				var respData listReversalsResponse
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(wantedResult, respData, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionExport)
+			handler := http.HandlerFunc(listReversalsHandler)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, expectedReversals, cursor, err := tc.setup(t, db, f, keygen)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			finalHandler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, db, expectedReversals, cursor, w.Result())
 		})
 	}
 }
