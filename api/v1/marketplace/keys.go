@@ -137,5 +137,5 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 		render.Errorf(w, r, errors.DBDelete, "failed to delete key")
 		return
 	}
-	render.Success(w, r, "successfully deleted key")
+	w.WriteHeader(http.StatusOK)
 }
