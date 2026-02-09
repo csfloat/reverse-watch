@@ -579,8 +579,8 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 				return r.WithContext(ctx), keyToDelete.ID, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, id string, resp *http.Response) {
-				if resp.StatusCode != http.StatusNoContent {
-					t.Errorf("wanted status code %d, got %d", http.StatusNoContent, resp.StatusCode)
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
 
 				var key models.Key
