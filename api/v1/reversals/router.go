@@ -1,9 +1,16 @@
 package reversals
 
-import "github.com/go-chi/chi/v5"
+import (
+	"reverse-watch/domain/models"
+	"reverse-watch/middleware"
+
+	"github.com/go-chi/chi/v5"
+)
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", createReversals)
+	r.Use(middleware.AuthMiddleware)
+
+	r.With(middleware.RequirePermissions(models.PermissionWrite)).Post("/", createReversals)
 	return r
 }
