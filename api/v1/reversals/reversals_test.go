@@ -40,36 +40,13 @@ func TestCreateReversal(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error)
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error)
 		validateFunc func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response)
 	}{
 		{
 			name: "validSingleReversal",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				testKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				id, err := testKey.ID()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				key := &models.Key{
-					ID:              id,
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, key)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
 
 				data := []*reversal{
 					{
@@ -79,13 +56,7 @@ func TestCreateReversal(t *testing.T) {
 						ReversedAt:     1717756800,
 					},
 				}
-
 				body, err := json.Marshal(&req{Data: data})
-				if err != nil {
-					return nil, nil, err
-				}
-
-				formattedKey, err := testKey.Format()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -124,31 +95,8 @@ func TestCreateReversal(t *testing.T) {
 		},
 		{
 			name: "multipleReversals",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				testKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				id, err := testKey.ID()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				key := &models.Key{
-					ID:              id,
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, key)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
 
 				data := []*reversal{
 					{
@@ -172,13 +120,7 @@ func TestCreateReversal(t *testing.T) {
 						ReversedAt: 1717756803,
 					},
 				}
-
 				body, err := json.Marshal(&req{Data: data})
-				if err != nil {
-					return nil, nil, err
-				}
-
-				formattedKey, err := testKey.Format()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -217,36 +159,8 @@ func TestCreateReversal(t *testing.T) {
 		},
 		{
 			name: "invalidPermissions",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				key := &models.Key{
-					ID:              id,
-					MarketplaceSlug: testMarketplace.Slug,
-					Environment:     keygen.Environment(),
-					Permissions:     models.PermissionExport,
-				}
-				testutil.Insert(t, db, key)
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, nil, err
-				}
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionExport)
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("{}")))
 				r.Header.Set("Content-Type", "application/json")
@@ -261,40 +175,11 @@ func TestCreateReversal(t *testing.T) {
 		},
 		{
 			name: "invalidRequestBody",
-			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
-				testMarketplace := &models.Marketplace{
-					Slug:     "test-marketplace",
-					Name:     "Test Marketplace",
-					IsActive: true,
-				}
-				testutil.Insert(t, db, testMarketplace)
-
-				secretKey, err := keygen.GenerateSecretKey()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				id, err := secretKey.ID()
-				if err != nil {
-					return nil, nil, err
-				}
-
-				key := &models.Key{
-					ID:              id,
-					Environment:     keygen.Environment(),
-					MarketplaceSlug: testMarketplace.Slug,
-					Permissions:     models.PermissionWrite,
-				}
-				testutil.Insert(t, db, key)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("invalid")))
 				r.Header.Set("Content-Type", "application/json")
-
-				formattedKey, err := secretKey.Format()
-				if err != nil {
-					return nil, nil, err
-				}
-
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 				return r, nil, nil
 			},
@@ -330,7 +215,7 @@ func TestCreateReversal(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, data, err := tc.setup(db, f, keygen)
+			r, data, err := tc.setup(t, db, f, keygen)
 			if err != nil {
 				t.Fatal(err)
 			}
