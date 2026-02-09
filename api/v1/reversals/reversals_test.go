@@ -915,3 +915,209 @@ func TestListReversals_ContextErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestListReversals_Pagination(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+
+	testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+	reversals := generateReversals(t, 200, testMarketplace.Slug)
+	testutil.Insert(t, db, reversals...)
+
+	sort.Slice(reversals, func(i, j int) bool {
+		return reversals[i].ID > reversals[j].ID
+	})
+
+	testCases := []struct {
+		name     string
+		setup    func(t *testing.T) (*http.Request, *listReversalsResponse, error)
+		validate func(t *testing.T, expectedResult *listReversalsResponse, resp *http.Response)
+	}{
+		{
+			name: "firstPageLimit75",
+			setup: func(t *testing.T) (*http.Request, *listReversalsResponse, error) {
+				r := httptest.NewRequest(http.MethodGet, "/?limit=75", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				expectedResult := &listReversalsResponse{
+					Data: reversals[:75],
+					Metadata: metadata{
+						Count: 75,
+						NextCursor: &dto.Cursor{
+							ID: reversals[74].ID,
+						},
+					},
+				}
+				return r, expectedResult, nil
+			},
+			validate: func(t *testing.T, expectedResult *listReversalsResponse, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData listReversalsResponse
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(expectedResult, &respData); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "secondPageLimit50",
+			setup: func(t *testing.T) (*http.Request, *listReversalsResponse, error) {
+				cursor := &dto.Cursor{
+					ID: reversals[74].ID,
+				}
+				encodedCursor, err := cursor.Encode()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=50&cursor="+*encodedCursor, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				expectedResult := &listReversalsResponse{
+					Data: reversals[75:125],
+					Metadata: metadata{
+						Count: 50,
+						NextCursor: &dto.Cursor{
+							ID: reversals[124].ID,
+						},
+					},
+				}
+				return r, expectedResult, nil
+			},
+			validate: func(t *testing.T, expectedResult *listReversalsResponse, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData listReversalsResponse
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(expectedResult, &respData); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "thirdPageLimit50",
+			setup: func(t *testing.T) (*http.Request, *listReversalsResponse, error) {
+				cursor := &dto.Cursor{
+					ID: reversals[124].ID,
+				}
+				encodedCursor, err := cursor.Encode()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=50&cursor="+*encodedCursor, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				expectedResult := &listReversalsResponse{
+					Data: reversals[125:175],
+					Metadata: metadata{
+						Count: 50,
+						NextCursor: &dto.Cursor{
+							ID: reversals[174].ID,
+						},
+					},
+				}
+				return r, expectedResult, nil
+			},
+			validate: func(t *testing.T, expectedResult *listReversalsResponse, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData listReversalsResponse
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(expectedResult, &respData); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "lastPageLimit50",
+			setup: func(t *testing.T) (*http.Request, *listReversalsResponse, error) {
+				cursor := &dto.Cursor{
+					ID: reversals[174].ID,
+				}
+				encodedCursor, err := cursor.Encode()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=50&cursor="+*encodedCursor, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				expectedResult := &listReversalsResponse{
+					Data: reversals[175:200],
+					Metadata: metadata{
+						Count: 25,
+					},
+				}
+				return r, expectedResult, nil
+			},
+			validate: func(t *testing.T, expectedResult *listReversalsResponse, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData listReversalsResponse
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(expectedResult, &respData); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, expectedResult, err := tc.setup(t)
+			if err != nil {
+				t.Fatalf("setup(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionExport)
+			handler := http.HandlerFunc(listReversalsHandler)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			finalHandler.ServeHTTP(w, r)
+			tc.validate(t, expectedResult, w.Result())
+		})
+	}
+}
