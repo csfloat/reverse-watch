@@ -14,6 +14,7 @@ import (
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
 
@@ -270,6 +271,8 @@ func expungeReversal(w http.ResponseWriter, r *http.Request) {
 		if err := tx.Reversal().Update(snowflake, &dto.ReversalUpdates{ExpungedAt: &now}); err != nil {
 			return err
 		}
+
+		logging.Log.Infof("marketplace %s expunged reversal with id %d", key.MarketplaceSlug, snowflake)
 		return nil
 	})
 	if err != nil {
