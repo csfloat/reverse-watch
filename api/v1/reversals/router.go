@@ -12,6 +12,7 @@ func Router() chi.Router {
 	r.Use(middleware.AuthMiddleware)
 
 	r.With(middleware.RequirePermissions(models.PermissionWrite)).Post("/", createReversals)
+	r.With(middleware.RequirePermissions(models.PermissionDelete)).Delete("/{id}", expungeReversal)
 	r.With(middleware.RequirePermissions(models.PermissionExport)).Route("/", func(r chi.Router) {
 		r.Get("/", listReversalsHandler)
 		r.Get("/export", exportReversals)
