@@ -1402,6 +1402,16 @@ func TestExportReversals(t *testing.T) {
 					t.Error("expected X-Next-Cursor header to be set")
 				}
 
+				decodedCursor, err := dto.DecodeCursor(nextCursor)
+				if err != nil {
+					t.Fatalf("DecodeCursor(%q): %v", nextCursor, err)
+				}
+
+				expectedCursor := &dto.Cursor{ID: expectedReversals[9].ID}
+				if diff := cmp.Diff(expectedCursor, decodedCursor); diff != "" {
+					t.Error(diff)
+				}
+
 				defer resp.Body.Close()
 				reader := csv.NewReader(resp.Body)
 				records, err := reader.ReadAll()
@@ -1518,6 +1528,11 @@ func TestExportReversals(t *testing.T) {
 				records, err := reader.ReadAll()
 				if err != nil {
 					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
 				}
 
 				exportedReversals := decodeExportedCSV(t, records[1:])
@@ -1746,7 +1761,7 @@ func TestExportReversals(t *testing.T) {
 				r := httptest.NewRequest(http.MethodGet, "/", nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, []*models.Reversal{}, nil
+				return r, nil, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
