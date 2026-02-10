@@ -7,13 +7,17 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
+	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func createReversals(w http.ResponseWriter, r *http.Request) {
@@ -220,4 +224,57 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Write(buf.Bytes())
+}
+
+func expungeReversal(w http.ResponseWriter, r *http.Request) {
+	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
+		return
+	}
+
+	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing key from context")
+		return
+	}
+
+	if key.Environment != constants.EnvironmentProduction {
+		render.Errorf(w, r, errors.InternalServerError, "key environment not supported")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	snowflake, err := models.ToSnowflake(id)
+	if err != nil {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	err = factory.RunInTransactionPublic(func(tx repository.PublicTransaction) error {
+		reversal, err := tx.Reversal().Read(snowflake)
+		if err != nil {
+			return err
+		}
+
+		if key.MarketplaceSlug != reversal.MarketplaceSlug {
+			return errors.New(errors.BadRequest, "cannot expunge reversal report of another marketplace")
+		}
+
+		now := uint64(time.Now().UnixMilli())
+		if err := tx.Reversal().Update(snowflake, &dto.ReversalUpdates{ExpungedAt: &now}); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to expunge reversal")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
