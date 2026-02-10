@@ -3,11 +3,13 @@ package reversals
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strconv"
 	"testing"
 
 	"reverse-watch/domain/dto"
@@ -1118,6 +1120,765 @@ func TestListReversals_Pagination(t *testing.T) {
 			w := httptest.NewRecorder()
 			finalHandler.ServeHTTP(w, r)
 			tc.validate(t, expectedResult, w.Result())
+		})
+	}
+}
+
+func decodeExportedCSV(t *testing.T, records [][]string) []*models.Reversal {
+	t.Helper()
+
+	headers := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+	reversals := make([]*models.Reversal, 0)
+
+	for i := 0; i < len(records); i++ {
+		row := records[i]
+		reversal := &models.Reversal{
+			Model: models.Model{},
+		}
+		for j := 0; j < len(row); j++ {
+			column := row[j]
+
+			switch headers[j] {
+			case "id":
+				if column != "" {
+					id, err := models.ToSnowflake(column)
+					if err != nil {
+						t.Fatalf("ToSnowflake(%q): %v", column, err)
+					}
+					reversal.Model.ID = id
+				}
+			case "created_at":
+				if column != "" {
+					timestamp, err := strconv.ParseUint(column, 10, 64)
+					if err != nil {
+						t.Fatalf("ParseUint(%q): %v", column, err)
+					}
+					reversal.Model.CreatedAt = timestamp
+				}
+			case "updated_at":
+				if column != "" {
+					timestamp, err := strconv.ParseUint(column, 10, 64)
+					if err != nil {
+						t.Fatalf("ParseUint(%q): %v", column, err)
+					}
+					reversal.Model.UpdatedAt = timestamp
+				}
+			case "steam_id":
+				if column != "" {
+					steamId, err := models.ToSteamID(column)
+					if err != nil {
+						t.Fatalf("ToSteamID(%q): %v", column, err)
+					}
+					reversal.SteamID = *steamId
+				}
+			case "marketplace_slug":
+				if column != "" {
+					reversal.MarketplaceSlug = column
+				}
+			case "source":
+				if column != "" {
+					switch column {
+					case "direct":
+						reversal.Source = util.Ptr(models.SourceDirect)
+					case "related_user":
+						reversal.Source = util.Ptr(models.SourceRelatedUser)
+					case "user_report":
+						reversal.Source = util.Ptr(models.SourceUserReport)
+					default:
+						t.Fatalf("unknown source column: %q", column)
+					}
+				}
+			case "related_steam_id":
+				if column != "" {
+					steamId, err := models.ToSteamID(column)
+					if err != nil {
+						t.Fatalf("ToSteamID(%q): %v", column, err)
+					}
+					reversal.RelatedSteamID = steamId
+				}
+			case "reversed_at":
+				if column != "" {
+					timestamp, err := strconv.ParseUint(column, 10, 64)
+					if err != nil {
+						t.Fatalf("ParseUint(%q): %v", column, err)
+					}
+					reversal.ReversedAt = timestamp
+				}
+			case "expunged_at":
+				if column != "" {
+					timestamp, err := strconv.ParseUint(column, 10, 64)
+					if err != nil {
+						t.Fatalf("ParseUint(%q): %v", column, err)
+					}
+					reversal.ExpungedAt = &timestamp
+				}
+			default:
+				t.Fatalf("unknown column: %q", headers[j])
+			}
+		}
+
+		reversals = append(reversals, reversal)
+	}
+	return reversals
+}
+
+func TestExportReversals(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name         string
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error)
+		validateFunc func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response)
+	}{
+		{
+			name: "validExportWithDefaults",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := generateReversals(t, 100, testMarketplace.Slug)
+				testutil.Insert(t, db, reversals...)
+
+				sort.Slice(reversals, func(i, j int) bool {
+					return reversals[i].ID > reversals[j].ID
+				})
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				contentType := resp.Header.Get("Content-Type")
+				if contentType != "text/csv; charset=utf-8" {
+					t.Errorf("wanted Content-Type %q, got %q", "text/csv; charset=utf-8", contentType)
+				}
+
+				nextCursor := resp.Header.Get("X-Next-Cursor")
+				if nextCursor != "" {
+					t.Error("expected no X-Next-Cursor header for data less than default limit")
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "singleReversalExport",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := []*models.Reversal{
+					{
+						Model:           models.Model{ID: 1},
+						SteamID:         models.SteamID(76561197960287930),
+						MarketplaceSlug: testMarketplace.Slug,
+						Source:          util.Ptr(models.SourceRelatedUser),
+						RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
+						ReversedAt:      1717756800,
+					},
+				}
+				testutil.Insert(t, db, reversals...)
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				if len(records) != 2 {
+					t.Fatalf("expected 2 rows (header + 1 data), got %d", len(records))
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "exportWithNullFields",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := []*models.Reversal{
+					{
+						Model:           models.Model{ID: 1},
+						SteamID:         models.SteamID(76561197960287930),
+						MarketplaceSlug: testMarketplace.Slug,
+						Source:          nil,
+						RelatedSteamID:  nil,
+						ReversedAt:      1717756800,
+						ExpungedAt:      nil,
+					},
+				}
+				testutil.Insert(t, db, reversals...)
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "customLimit",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := generateReversals(t, 20, testMarketplace.Slug)
+				testutil.Insert(t, db, reversals...)
+
+				sort.Slice(reversals, func(i, j int) bool {
+					return reversals[i].ID > reversals[j].ID
+				})
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=10", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals[:10], nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				nextCursor := resp.Header.Get("X-Next-Cursor")
+				if nextCursor == "" {
+					t.Error("expected X-Next-Cursor header to be set")
+				}
+
+				decodedCursor, err := dto.DecodeCursor(nextCursor)
+				if err != nil {
+					t.Fatalf("DecodeCursor(%q): %v", nextCursor, err)
+				}
+
+				expectedCursor := &dto.Cursor{ID: expectedReversals[9].ID}
+				if diff := cmp.Diff(expectedCursor, decodedCursor); diff != "" {
+					t.Error(diff)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "filterBySteamID",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := []*models.Reversal{
+					{
+						Model:           models.Model{ID: 1},
+						SteamID:         models.SteamID(76561197960287930),
+						Source:          util.Ptr(models.SourceUserReport),
+						MarketplaceSlug: testMarketplace.Slug,
+					},
+					{
+						Model:           models.Model{ID: 2},
+						SteamID:         models.SteamID(76561197960287931),
+						MarketplaceSlug: testMarketplace.Slug,
+					},
+					{
+						Model:           models.Model{ID: 3},
+						SteamID:         models.SteamID(76561197960287930),
+						MarketplaceSlug: testMarketplace.Slug,
+					},
+				}
+				testutil.Insert(t, db, reversals...)
+
+				r := httptest.NewRequest(http.MethodGet, "/?steam_id=76561197960287930", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, []*models.Reversal{reversals[2], reversals[0]}, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "filterByMarketplaceSlug",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				otherMarketplace := &models.Marketplace{
+					Slug:     "other-marketplace",
+					Name:     "Other Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, otherMarketplace)
+
+				reversals := []*models.Reversal{
+					{
+						Model:           models.Model{ID: 1},
+						SteamID:         models.SteamID(76561197960287930),
+						MarketplaceSlug: testMarketplace.Slug,
+					},
+					{
+						Model:           models.Model{ID: 2},
+						SteamID:         models.SteamID(76561197960287931),
+						MarketplaceSlug: otherMarketplace.Slug,
+					},
+					{
+						Model:           models.Model{ID: 3},
+						SteamID:         models.SteamID(76561197960287932),
+						MarketplaceSlug: testMarketplace.Slug,
+					},
+				}
+				testutil.Insert(t, db, reversals...)
+
+				r := httptest.NewRequest(http.MethodGet, "/?marketplace_slug="+testMarketplace.Slug, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, []*models.Reversal{reversals[2], reversals[0]}, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "paginationWithCursor",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := generateReversals(t, 20, testMarketplace.Slug)
+				testutil.Insert(t, db, reversals...)
+
+				sort.Slice(reversals, func(i, j int) bool {
+					return reversals[i].ID > reversals[j].ID
+				})
+
+				cursor := &dto.Cursor{ID: reversals[9].ID}
+				encodedCursor, err := cursor.Encode()
+				if err != nil {
+					return nil, nil, err
+				}
+
+				target := fmt.Sprintf("/?limit=10&cursor=%s", *encodedCursor)
+				r := httptest.NewRequest(http.MethodGet, target, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals[10:], nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "lastPageNoNextCursor",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				reversals := generateReversals(t, 5, testMarketplace.Slug)
+				testutil.Insert(t, db, reversals...)
+
+				sort.Slice(reversals, func(i, j int) bool {
+					return reversals[i].ID > reversals[j].ID
+				})
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=10", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversals, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				nextCursor := resp.Header.Get("X-Next-Cursor")
+				if nextCursor != "" {
+					t.Errorf("expected no X-Next-Cursor header on last page, got %q", nextCursor)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+
+				exportedReversals := decodeExportedCSV(t, records[1:])
+				if diff := cmp.Diff(expectedReversals, exportedReversals); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "invalidSteamID",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				r := httptest.NewRequest(http.MethodGet, "/?steam_id=invalid", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "invalid steam id" {
+					t.Errorf("wanted details %q, got %q", "invalid steam id", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidLimit",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=abc", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "invalid limit" {
+					t.Errorf("wanted details %q, got %q", "invalid limit", respData.Details)
+				}
+			},
+		},
+		{
+			name: "limitExceedsMax",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				r := httptest.NewRequest(http.MethodGet, "/?limit=60000", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "limit exceeds max limit of 50000" {
+					t.Errorf("wanted details %q, got %q", "limit exceeds max limit of 50000", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidCursor",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				r := httptest.NewRequest(http.MethodGet, "/?cursor=invalid-base64", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "invalid cursor" {
+					t.Errorf("wanted details %q, got %q", "invalid cursor", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidPermissions",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+			},
+		},
+		{
+			name: "emptyResults",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*models.Reversal, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionExport)
+
+				r := httptest.NewRequest(http.MethodGet, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, expectedReversals []*models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				reader := csv.NewReader(resp.Body)
+				records, err := reader.ReadAll()
+				if err != nil {
+					t.Fatalf("failed to read CSV: %v", err)
+				}
+
+				if len(records) != 1 {
+					t.Errorf("expected only header row, got %d rows", len(records))
+				}
+
+				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionExport)
+			handler := http.HandlerFunc(exportReversals)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, expectedReversals, err := tc.setup(t, db, f, keygen)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			finalHandler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, db, expectedReversals, w.Result())
+		})
+	}
+}
+
+func TestExportReversals_ContextErrors(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name         string
+		setup        func(db *gorm.DB, factory repository.Factory) (*http.Request, error)
+		validateFunc func(t *testing.T, resp *http.Response)
+	}{
+		{
+			name: "missingFactoryFromContext",
+			setup: func(db *gorm.DB, factory repository.Factory) (*http.Request, error) {
+				return httptest.NewRequest(http.MethodGet, "/", nil), nil
+			},
+			validateFunc: func(t *testing.T, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				wantErr := errors.New(errors.InternalServerError, "missing factory from context")
+				if diff := cmp.Diff(wantErr, &respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    secret.NewKeyGenerator(constants.EnvironmentDevelopment),
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			w := httptest.NewRecorder()
+			r, err := tc.setup(db, f)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := http.HandlerFunc(exportReversals)
+			handler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, w.Result())
 		})
 	}
 }
