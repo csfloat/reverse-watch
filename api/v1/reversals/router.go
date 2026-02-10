@@ -12,5 +12,6 @@ func Router() chi.Router {
 	r.Use(middleware.AuthMiddleware)
 
 	r.With(middleware.RequirePermissions(models.PermissionWrite)).Post("/", createReversals)
+	r.With(middleware.RequirePermissions(models.PermissionExport)).Get("/", listReversalsHandler)
 	return r
 }

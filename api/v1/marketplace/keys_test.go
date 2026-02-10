@@ -562,7 +562,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "successWithAuth",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 
 				keyToDelete := &models.Key{
@@ -592,7 +592,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "missingID",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
@@ -626,7 +626,7 @@ func TestDeleteKey_WithMiddlewares(t *testing.T) {
 		{
 			name: "invalidPermissions",
 			setup: func(db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionWrite)
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
 				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				return r, "", nil
 			},
@@ -722,7 +722,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "missingID",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -757,7 +757,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "notFound",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 
 				r := testutil.SetupAuthenticatedRequest(http.MethodDelete, "/", nil, formattedKey)
 				ctx := context.WithValue(r.Context(), middleware.FactoryContextKey, f)
@@ -789,7 +789,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "doesntOwnKey",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 
 				testMarketplace2 := &models.Marketplace{
 					Slug:     "test-marketplace-2",
@@ -836,7 +836,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "environmentMismatch",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
@@ -875,7 +875,7 @@ func TestDeleteKey_Errors(t *testing.T) {
 		{
 			name: "deleteKeyUsedForAuth",
 			setup: func(db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, keygen, models.PermissionManage)
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 				keyToDelete := &models.Key{
 					ID:              "key-to-delete",
 					MarketplaceSlug: testMarketplace.Slug,
