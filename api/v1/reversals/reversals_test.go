@@ -1182,7 +1182,7 @@ func decodeExportedCSV(t *testing.T, records [][]string) []*models.Reversal {
 						reversal.Source = util.Ptr(models.SourceDirect)
 					case "related_user":
 						reversal.Source = util.Ptr(models.SourceRelatedUser)
-					case "user_reported":
+					case "user_report":
 						reversal.Source = util.Ptr(models.SourceUserReport)
 					default:
 						t.Fatalf("unknown source column: %q", column)
@@ -1439,6 +1439,7 @@ func TestExportReversals(t *testing.T) {
 					{
 						Model:           models.Model{ID: 1},
 						SteamID:         models.SteamID(76561197960287930),
+						Source:          util.Ptr(models.SourceUserReport),
 						MarketplaceSlug: testMarketplace.Slug,
 					},
 					{
