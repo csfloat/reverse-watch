@@ -193,6 +193,7 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 			reversal.ID.String(),
 			strconv.FormatUint(reversal.CreatedAt, 10),
 			strconv.FormatUint(reversal.UpdatedAt, 10),
+			reversal.SteamID.String(),
 			reversal.MarketplaceSlug,
 			source,
 			relatedSteamID,
