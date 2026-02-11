@@ -11,7 +11,6 @@ import (
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
-	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
 	"reverse-watch/logging"
@@ -237,11 +236,6 @@ func expungeReversal(w http.ResponseWriter, r *http.Request) {
 	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 	if !ok {
 		render.Errorf(w, r, errors.InternalServerError, "missing key from context")
-		return
-	}
-
-	if key.Environment != constants.EnvironmentProduction {
-		render.Errorf(w, r, errors.InternalServerError, "key environment not supported")
 		return
 	}
 

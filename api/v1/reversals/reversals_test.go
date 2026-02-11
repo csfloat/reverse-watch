@@ -2168,61 +2168,12 @@ func TestExpungeReversal(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "nonProductionEnvironment",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
-				keygen = secret.NewKeyGenerator(constants.EnvironmentDevelopment)
-				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
-
-				reversal := &models.Reversal{
-					Model:           models.Model{ID: 1},
-					SteamID:         models.SteamID(76561197960287930),
-					MarketplaceSlug: testMarketplace.Slug,
-					ReversedAt:      1717756800,
-				}
-				testutil.Insert(t, db, reversal)
-
-				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
-				r.Header.Set("Authorization", "Bearer "+formattedKey)
-
-				chiContext := chi.NewRouteContext()
-				chiContext.URLParams.Add("id", reversal.ID.String())
-				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-
-				return r.WithContext(ctx), reversal
-			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
-				}
-
-				defer resp.Body.Close()
-				var respData errors.Error
-				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-					t.Fatalf("failed to decode response body: %v", err)
-				}
-
-				if respData.Details != "key environment not supported" {
-					t.Errorf("wanted details %q, got %q", "key environment not supported", respData.Details)
-				}
-
-				// Verify reversal was NOT expunged
-				var storedReversal models.Reversal
-				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
-					t.Fatalf("failed to read reversal: %v", err)
-				}
-
-				if storedReversal.ExpungedAt != nil {
-					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
-				}
-			},
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
-			keygen := secret.NewKeyGenerator(constants.EnvironmentProduction)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
 			f, err := factory.NewFactoryWithConfig(&factory.Config{
 				PrivateDB: db,
 				PublicDB:  db,
