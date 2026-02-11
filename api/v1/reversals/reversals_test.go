@@ -1892,12 +1892,12 @@ func TestExpungeReversal(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake)
-		validateFunc func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response)
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal)
+		validateFunc func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response)
 	}{
 		{
 			name: "validExpunge",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				reversal := &models.Reversal{
@@ -1914,29 +1914,28 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", reversal.ID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, reversal.ID
+				return r.WithContext(ctx), reversal
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
 
 				// Verify reversal was expunged
-				var reversal models.Reversal
-				if err := db.First(&reversal, reversalId).Error; err != nil {
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if reversal.ExpungedAt == nil {
+				if storedReversal.ExpungedAt == nil {
 					t.Error("expected reversal to be expunged, but ExpungedAt is nil")
 				}
 			},
 		},
 		{
 			name: "reversalNotFound",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				nonExistentID := models.Snowflake(999999)
@@ -1946,11 +1945,10 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", nonExistentID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, nonExistentID
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusInternalServerError {
 					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
 				}
@@ -1968,7 +1966,7 @@ func TestExpungeReversal(t *testing.T) {
 		},
 		{
 			name: "reversalAlreadyExpunged",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				reversal := &models.Reversal{
@@ -1986,9 +1984,10 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", reversal.ID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				return r.WithContext(ctx), reversal.ID
+
+				return r.WithContext(ctx), reversal
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -2002,11 +2001,21 @@ func TestExpungeReversal(t *testing.T) {
 				if respData.Details != "reversal has already been expunged" {
 					t.Fatalf("wanted details %q, got %q", "reversal has already been expunged", respData.Details)
 				}
+
+				// Verify expunged at was NOT updated
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if *storedReversal.ExpungedAt != *reversal.ExpungedAt {
+					t.Errorf("expected expunged at %d, got %d", reversal.ExpungedAt, storedReversal.ExpungedAt)
+				}
 			},
 		},
 		{
 			name: "cannotExpungeOtherMarketplaceReversal",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				// Create another marketplace
@@ -2032,13 +2041,12 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", reversal.ID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, reversal.ID
+				return r.WithContext(ctx), reversal
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -2047,24 +2055,24 @@ func TestExpungeReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "failed to expunge reversal" {
-					t.Errorf("wanted details %q, got %q", "failed to expunge reversal", respData.Details)
+				if respData.Details != "cannot expunge reversal report of another marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot expunge reversal report of another marketplace", respData.Details)
 				}
 
 				// Verify reversal was NOT expunged
-				var reversal models.Reversal
-				if err := db.First(&reversal, reversalId).Error; err != nil {
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&reversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if reversal.ExpungedAt != nil {
+				if storedReversal.ExpungedAt != nil {
 					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
 				}
 			},
 		},
 		{
 			name: "invalidID",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				r := httptest.NewRequest(http.MethodDelete, "/invalid", nil)
@@ -2073,11 +2081,10 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", "invalid")
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, 0
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -2095,7 +2102,7 @@ func TestExpungeReversal(t *testing.T) {
 		},
 		{
 			name: "emptyID",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				r := httptest.NewRequest(http.MethodDelete, "/", nil)
@@ -2104,11 +2111,10 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", "")
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, 0
+				return r.WithContext(ctx), nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -2126,7 +2132,7 @@ func TestExpungeReversal(t *testing.T) {
 		},
 		{
 			name: "invalidPermissions",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
 
 				reversal := &models.Reversal{
@@ -2143,29 +2149,28 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", reversal.ID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, reversal.ID
+				return r.WithContext(ctx), reversal
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusForbidden {
 					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
 
 				// Verify reversal was NOT expunged
-				var reversal models.Reversal
-				if err := db.First(&reversal, reversalId).Error; err != nil {
+				var storedReversal models.Reversal
+				if err := db.First(&reversal, reversal.ID).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if reversal.ExpungedAt != nil {
+				if storedReversal.ExpungedAt != nil {
 					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
 				}
 			},
 		},
 		{
 			name: "nonProductionEnvironment",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, models.Snowflake) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				keygen = secret.NewKeyGenerator(constants.EnvironmentDevelopment)
 				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
@@ -2183,11 +2188,10 @@ func TestExpungeReversal(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("id", reversal.ID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				r = r.WithContext(ctx)
 
-				return r, reversal.ID
+				return r.WithContext(ctx), reversal
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, reversalId models.Snowflake, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusInternalServerError {
 					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
 				}
@@ -2203,12 +2207,12 @@ func TestExpungeReversal(t *testing.T) {
 				}
 
 				// Verify reversal was NOT expunged
-				var reversal models.Reversal
-				if err := db.First(&reversal, reversalId).Error; err != nil {
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if reversal.ExpungedAt != nil {
+				if storedReversal.ExpungedAt != nil {
 					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
 				}
 			},
@@ -2239,10 +2243,7 @@ func TestExpungeReversal(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, reversalID, err := tc.setup(t, db, f, keygen)
-			if err != nil {
-				t.Fatal(err)
-			}
+			r, reversalID := tc.setup(t, db, f, keygen)
 
 			finalHandler.ServeHTTP(w, r)
 
