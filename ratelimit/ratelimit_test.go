@@ -25,7 +25,7 @@ func TestThrottleByIP(t *testing.T) {
 			limit:          10,
 			duration:       time.Minute,
 			numRequests:    5,
-			remoteAddr:     "127.0.0.1",
+			remoteAddr:     "192.168.0.1:1234",
 			wantStatusCode: http.StatusOK,
 			checkHeaders: func(t *testing.T, w *http.Response) {
 				limit, err := strconv.ParseUint(w.Header.Get("X-RateLimit-Limit"), 10, 64)
@@ -63,7 +63,7 @@ func TestThrottleByIP(t *testing.T) {
 			limit:          10,
 			duration:       time.Minute,
 			numRequests:    10,
-			remoteAddr:     "127.0.0.1:1234",
+			remoteAddr:     "192.168.0.2:1234",
 			wantStatusCode: http.StatusOK,
 			checkHeaders: func(t *testing.T, w *http.Response) {
 				limit, err := strconv.ParseUint(w.Header.Get("X-RateLimit-Limit"), 10, 64)
@@ -101,7 +101,7 @@ func TestThrottleByIP(t *testing.T) {
 			limit:          10,
 			duration:       time.Minute,
 			numRequests:    11,
-			remoteAddr:     "127.0.0.1:2345",
+			remoteAddr:     "192.168.0.3:1234",
 			wantStatusCode: http.StatusTooManyRequests,
 			checkHeaders: func(t *testing.T, w *http.Response) {
 				limit, err := strconv.ParseUint(w.Header.Get("X-RateLimit-Limit"), 10, 64)
