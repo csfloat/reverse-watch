@@ -138,13 +138,13 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted Retry-After header, got empty string")
 				}
 
-				retryAfter, err := strconv.ParseFloat(retryAfterStr, 64)
+				retryAfter, err := strconv.ParseInt(retryAfterStr, 10, 64)
 				if err != nil {
 					t.Fatalf("failed to parse Retry-After header: %v", err)
 				}
 
 				if retryAfter > 60 {
-					t.Errorf("wanted Retry-After <= %d, got %f", 60, retryAfter)
+					t.Errorf("wanted Retry-After <= %d, got %d", 60, retryAfter)
 				}
 			},
 		},
