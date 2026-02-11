@@ -46,7 +46,7 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted remaining %d, got %d", 5, remaining)
 				}
 
-				resetTimeStr, err := strconv.ParseInt(w.Header.Get("X-RateLimit-Limit"), 10, 64)
+				resetTimeStr, err := strconv.ParseInt(w.Header.Get("X-RateLimit-Reset"), 10, 64)
 				if err != nil {
 					t.Fatalf("failed to parse reset time: %v", err)
 				}
@@ -84,7 +84,7 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted remaining %d, got %d", 0, remaining)
 				}
 
-				resetTimeStr, err := strconv.ParseInt(w.Header.Get("X-RateLimit-Limit"), 10, 64)
+				resetTimeStr, err := strconv.ParseInt(w.Header.Get("X-RateLimit-Reset"), 10, 64)
 				if err != nil {
 					t.Fatalf("failed to parse reset time: %v", err)
 				}
