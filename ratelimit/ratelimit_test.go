@@ -46,14 +46,14 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted remaining %d, got %d", 5, remaining)
 				}
 
-				resetTime := w.Header.Get("X-RateLimit-Reset")
-				reset, err := time.Parse(time.RFC1123, resetTime)
+				resetTimeStr := w.Header.Get("X-RateLimit-Reset")
+				resetTime, err := time.Parse(time.RFC1123, resetTimeStr)
 				if err != nil {
 					t.Fatalf("failed to parse reset time: %v", err)
 				}
 
 				maxReset := time.Now().Add(time.Minute + 5*time.Second)
-				if reset.After(maxReset) {
+				if resetTime.After(maxReset) {
 					t.Errorf("X-RateLimit-Reset time is too far in the future")
 				}
 			},
@@ -84,14 +84,14 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted remaining %d, got %d", 0, remaining)
 				}
 
-				resetTime := w.Header.Get("X-RateLimit-Reset")
-				reset, err := time.Parse(time.RFC1123, resetTime)
+				resetTimeStr := w.Header.Get("X-RateLimit-Reset")
+				resetTime, err := time.Parse(time.RFC1123, resetTimeStr)
 				if err != nil {
 					t.Fatalf("failed to parse reset time: %v", err)
 				}
 
 				maxReset := time.Now().Add(time.Minute + 5*time.Second)
-				if reset.After(maxReset) {
+				if resetTime.After(maxReset) {
 					t.Errorf("X-RateLimit-Reset time is too far in the future")
 				}
 			},
@@ -122,24 +122,29 @@ func TestThrottleByIP(t *testing.T) {
 					t.Errorf("wanted remaining %d, got %d", 0, remaining)
 				}
 
-				resetTime := w.Header.Get("X-RateLimit-Reset")
-				reset, err := time.Parse(time.RFC1123, resetTime)
+				resetTimeStr := w.Header.Get("X-RateLimit-Reset")
+				resetTime, err := time.Parse(time.RFC1123, resetTimeStr)
 				if err != nil {
 					t.Fatalf("failed to parse reset time: %v", err)
 				}
 
 				maxReset := time.Now().Add(time.Minute + 5*time.Second)
-				if reset.After(maxReset) {
+				if resetTime.After(maxReset) {
 					t.Errorf("X-RateLimit-Reset time is too far in the future")
 				}
 
-				retryAfter := w.Header.Get("Retry-After")
-				if retryAfter == "" {
+				retryAfterStr := w.Header.Get("Retry-After")
+				if retryAfterStr == "" {
 					t.Errorf("wanted Retry-After header, got empty string")
 				}
 
-				if retryAfter != resetTime {
-					t.Errorf("wanted Retry-After %s, got %s", resetTime, retryAfter)
+				retryAfter, err := strconv.ParseInt(retryAfterStr, 10, 64)
+				if err != nil {
+					t.Fatalf("failed to parse Retry-After header: %v", err)
+				}
+
+				if retryAfter > 60 {
+					t.Errorf("wanted Retry-After <= %d, got %d", 60, retryAfter)
 				}
 			},
 		},
