@@ -46,7 +46,7 @@ func newThrottlerWithLimiter(keyFunc httplimit.KeyFunc, store limiter.Store) fun
 				return
 			}
 
-			resetTime := time.Unix(0, int64(reset)).UTC().Format(time.RFC1123)
+			resetTime := strconv.FormatInt(time.Unix(0, int64(reset)).UTC().Unix(), 10)
 
 			w.Header().Set("X-RateLimit-Limit", strconv.FormatUint(limit, 10))
 			w.Header().Set("X-RateLimit-Remaining", strconv.FormatUint(remaining, 10))
