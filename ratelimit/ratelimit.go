@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,7 +16,11 @@ import (
 )
 
 func keyByIP(r *http.Request) (string, error) {
-	return r.RemoteAddr, nil
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "", err
+	}
+	return ip, nil
 }
 
 func ThrottleByIP(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
