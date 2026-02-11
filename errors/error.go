@@ -67,4 +67,6 @@ var (
 	DBUpdate            = Error{Code: 10, status: http.StatusInternalServerError, Message: "failed to update resource"}
 	DBDelete            = Error{Code: 11, status: http.StatusInternalServerError, Message: "failed to delete resource"}
 	JSONDecode          = Error{Code: 12, status: http.StatusBadRequest, Message: "failed to decode JSON"}
+	Limiter             = Error{Code: 13, status: http.StatusInternalServerError, Message: "unable to process request"}
+	RateLimited         = Error{Code: 14, status: http.StatusTooManyRequests, Message: "rate limited"}
 )
