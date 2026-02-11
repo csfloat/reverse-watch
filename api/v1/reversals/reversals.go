@@ -263,12 +263,12 @@ func expungeReversal(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		if reversal.ExpungedAt != nil {
-			return errors.New(errors.BadRequest, "reversal has already been expunged")
-		}
-
 		if key.MarketplaceSlug != reversal.MarketplaceSlug {
 			return errors.New(errors.BadRequest, "cannot expunge reversal report of another marketplace")
+		}
+
+		if reversal.ExpungedAt != nil {
+			return errors.New(errors.BadRequest, "reversal has already been expunged")
 		}
 
 		now := uint64(time.Now().UnixMilli())
