@@ -2061,7 +2061,7 @@ func TestExpungeReversal(t *testing.T) {
 
 				// Verify reversal was NOT expunged
 				var storedReversal models.Reversal
-				if err := db.Where("id = ?", reversal.ID).First(&reversal).Error; err != nil {
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
@@ -2159,7 +2159,7 @@ func TestExpungeReversal(t *testing.T) {
 
 				// Verify reversal was NOT expunged
 				var storedReversal models.Reversal
-				if err := db.First(&reversal, reversal.ID).Error; err != nil {
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
