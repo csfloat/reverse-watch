@@ -331,7 +331,7 @@ func TestFetchUserStatus(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, expectedResp *fetchUserStatusResponse, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -357,8 +357,8 @@ func TestFetchUserStatus(t *testing.T) {
 				return r.WithContext(ctx), nil
 			},
 			validateFunc: func(t *testing.T, expectedResp *fetchUserStatusResponse, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -409,7 +409,7 @@ func TestFetchUserStatus(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("steamId", steamID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-				
+
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
