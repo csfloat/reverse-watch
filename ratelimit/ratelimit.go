@@ -1,13 +1,16 @@
 package ratelimit
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
 	"time"
 
+	"reverse-watch/domain/models"
 	"reverse-watch/errors"
 	"reverse-watch/logging"
+	"reverse-watch/middleware"
 	"reverse-watch/render"
 
 	"github.com/sethvargo/go-limiter"
@@ -15,7 +18,7 @@ import (
 	"github.com/sethvargo/go-limiter/memorystore"
 )
 
-func keyByIP(r *http.Request) (string, error) {
+func byIP(r *http.Request) (string, error) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return "", err
@@ -24,7 +27,19 @@ func keyByIP(r *http.Request) (string, error) {
 }
 
 func ThrottleByIP(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
-	return newLimiter(dur, limit, keyByIP)
+	return newLimiter(dur, limit, byIP)
+}
+
+func byAPIKey(r *http.Request) (string, error) {
+	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	if !ok {
+		return "", fmt.Errorf("key not found in context")
+	}
+	return key.ID, nil
+}
+
+func ThrottleByAPIKey(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
+	return newLimiter(dur, limit, byAPIKey)
 }
 
 func newThrottlerWithLimiter(keyFunc httplimit.KeyFunc, store limiter.Store) func(http.Handler) http.Handler {
@@ -52,9 +67,9 @@ func newThrottlerWithLimiter(keyFunc httplimit.KeyFunc, store limiter.Store) fun
 			w.Header().Set("X-RateLimit-Remaining", strconv.FormatUint(remaining, 10))
 			w.Header().Set("X-RateLimit-Reset", resetTime.Format(time.RFC1123))
 
-			retryAfter := strconv.FormatInt(int64(time.Until(resetTime).Round(time.Second).Seconds()), 10)
+			retryAfter := int64(time.Until(resetTime).Round(time.Second).Seconds())
 			if !ok {
-				w.Header().Set("Retry-After", retryAfter)
+				w.Header().Set("Retry-After", strconv.FormatInt(retryAfter, 10))
 				render.Error(w, r, &errors.RateLimited)
 				return
 			}
