@@ -330,7 +330,7 @@ func TestFetchUserStatus(t *testing.T) {
 				return r.WithContext(ctx), nil
 			},
 			validateFunc: func(t *testing.T, expectedResp *fetchUserStatusResponse, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
+				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
 				}
 

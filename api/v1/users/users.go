@@ -26,7 +26,7 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 	steamIdStr := chi.URLParam(r, "steamId")
 	steamId, err := models.ToSteamID(steamIdStr)
 	if err != nil {
-		render.Errorf(w, r, errors.InternalServerError, "invalid steam id")
+		render.Errorf(w, r, errors.BadRequest, "invalid steam id")
 		return
 	}
 
