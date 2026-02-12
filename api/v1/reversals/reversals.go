@@ -227,17 +227,8 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 }
 
 func expungeReversal(w http.ResponseWriter, r *http.Request) {
-	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-	if !ok {
-		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
-		return
-	}
-
-	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
-	if !ok {
-		render.Errorf(w, r, errors.InternalServerError, "missing key from context")
-		return
-	}
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
