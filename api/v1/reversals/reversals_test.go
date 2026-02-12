@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"testing"
+	"time"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
@@ -19,11 +20,13 @@ import (
 	isecret "reverse-watch/domain/secret"
 	"reverse-watch/errors"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
 	"reverse-watch/util"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gorm.io/gorm"
@@ -1879,6 +1882,323 @@ func TestExportReversals_ContextErrors(t *testing.T) {
 			handler.ServeHTTP(w, r)
 
 			tc.validateFunc(t, w.Result())
+		})
+	}
+}
+
+func TestExpungeReversal(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	testCases := []struct {
+		name         string
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal)
+		validateFunc func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response)
+	}{
+		{
+			name: "validExpunge",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: testMarketplace.Slug,
+					ReversedAt:      1717756800,
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", reversal.ID.String())
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), reversal
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				// Verify reversal was expunged
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if storedReversal.ExpungedAt == nil {
+					t.Error("expected reversal to be expunged, but ExpungedAt is nil")
+				}
+			},
+		},
+		{
+			name: "reversalNotFound",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				nonExistentID := models.Snowflake(999999)
+				r := httptest.NewRequest(http.MethodDelete, "/"+nonExistentID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", nonExistentID.String())
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "failed to expunge reversal" {
+					t.Errorf("wanted details %q, got %q", "failed to expunge reversal", respData.Details)
+				}
+			},
+		},
+		{
+			name: "reversalAlreadyExpunged",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: "test-marketplace",
+					ReversedAt:      1717756800,
+					ExpungedAt:      util.Ptr(uint64(time.Now().UnixMilli())),
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", reversal.ID.String())
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), reversal
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "reversal has already been expunged" {
+					t.Fatalf("wanted details %q, got %q", "reversal has already been expunged", respData.Details)
+				}
+
+				// Verify expunged at was NOT updated
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if *storedReversal.ExpungedAt != *reversal.ExpungedAt {
+					t.Errorf("expected expunged at %d, got %d", reversal.ExpungedAt, storedReversal.ExpungedAt)
+				}
+			},
+		},
+		{
+			name: "cannotExpungeOtherMarketplaceReversal",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				// Create another marketplace
+				otherMarketplace := &models.Marketplace{
+					Slug:     "other-marketplace",
+					Name:     "Other Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, otherMarketplace)
+
+				// Create reversal for other marketplace
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: otherMarketplace.Slug,
+					ReversedAt:      1717756800,
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", reversal.ID.String())
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), reversal
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "cannot expunge reversal report of another marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot expunge reversal report of another marketplace", respData.Details)
+				}
+
+				// Verify reversal was NOT expunged
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if storedReversal.ExpungedAt != nil {
+					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
+				}
+			},
+		},
+		{
+			name: "invalidID",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				r := httptest.NewRequest(http.MethodDelete, "/invalid", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", "invalid")
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "invalid id" {
+					t.Errorf("wanted details %q, got %q", "invalid id", respData.Details)
+				}
+			},
+		},
+		{
+			name: "emptyID",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", "")
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "invalid id" {
+					t.Errorf("wanted details %q, got %q", "invalid id", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidPermissions",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
+				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: testMarketplace.Slug,
+					ReversedAt:      1717756800,
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				chiContext := chi.NewRouteContext()
+				chiContext.URLParams.Add("id", reversal.ID.String())
+				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+
+				return r.WithContext(ctx), reversal
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				// Verify reversal was NOT expunged
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if storedReversal.ExpungedAt != nil {
+					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionDelete)
+			handler := http.HandlerFunc(expungeReversal)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, reversalID := tc.setup(t, db, f, keygen)
+
+			finalHandler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, db, reversalID, w.Result())
 		})
 	}
 }

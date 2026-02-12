@@ -7,13 +7,17 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func createReversals(w http.ResponseWriter, r *http.Request) {
@@ -220,4 +224,53 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Write(buf.Bytes())
+}
+
+func expungeReversal(w http.ResponseWriter, r *http.Request) {
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	snowflake, err := models.ToSnowflake(id)
+	if err != nil {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	err = factory.RunInTransactionPublic(func(tx repository.PublicTransaction) error {
+		reversal, err := tx.Reversal().Read(snowflake)
+		if err != nil {
+			return err
+		}
+
+		if key.MarketplaceSlug != reversal.MarketplaceSlug {
+			return errors.New(errors.BadRequest, "cannot expunge reversal report of another marketplace")
+		}
+
+		if reversal.ExpungedAt != nil {
+			return errors.New(errors.BadRequest, "reversal has already been expunged")
+		}
+
+		now := uint64(time.Now().UnixMilli())
+		if err := tx.Reversal().Update(snowflake, &dto.ReversalUpdates{ExpungedAt: &now}); err != nil {
+			return err
+		}
+
+		logging.Log.Infof("marketplace %s expunged reversal with id %d", key.MarketplaceSlug, snowflake)
+		return nil
+	})
+	if err != nil {
+		if e, ok := err.(*errors.Error); ok {
+			render.Error(w, r, e)
+			return
+		}
+		render.Errorf(w, r, errors.InternalServerError, "failed to expunge reversal")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
