@@ -13,6 +13,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type fetchUserStatusResponse struct {
+	SteamID               models.SteamID `json:"steam_id"`
+	HasReversed           bool           `json:"has_reversed"`
+	IsExpunged            bool           `json:"is_expunged"`
+	LastReversalTimestamp *uint64        `json:"last_reversal_timestamp,omitempty"`
+}
+
 func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 
@@ -31,22 +38,17 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := struct {
-		SteamID               models.SteamID `json:"steam_id"`
-		HasReversed           bool           `json:"has_reversed"`
-		IsExpunged            bool           `json:"is_expunged"`
-		LastReversalTimestamp *uint64        `json:"last_reversal_timestamp,omitempty"`
-	}{
+	data := &fetchUserStatusResponse{
 		SteamID: *steamId,
 	}
 
 	if len(reversals) > 0 {
-		resp.HasReversed = true
+		data.HasReversed = true
 		// Reversals are sorted in descending order by ID
 		if reversals[0].ExpungedAt != nil && *reversals[0].ExpungedAt > 0 {
-			resp.IsExpunged = true
+			data.IsExpunged = true
 		}
-		resp.LastReversalTimestamp = &reversals[0].ReversedAt
+		data.LastReversalTimestamp = &reversals[0].ReversedAt
 	}
-	render.JSON(w, r, resp)
+	render.JSON(w, r, data)
 }
