@@ -46,7 +46,7 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	if len(reversals) > 0 {
 		data.HasReversed = true
-		if reversals[0].ExpungedAt != nil && *reversals[0].ExpungedAt > 0 {
+		if reversals[0].ExpungedAt != nil {
 			data.IsExpunged = true
 		}
 		data.LastReversalTimestamp = &reversals[0].ReversedAt
