@@ -9,6 +9,7 @@ import (
 	"reverse-watch/errors"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
+	"reverse-watch/util"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -32,6 +33,7 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	reversals, err := factory.Reversal().List(&dto.ReversalListOptions{
 		SteamID: steamId,
+		Limit:   util.Ptr(uint(1)),
 	})
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list reversals for steam id %q", steamId)
@@ -44,7 +46,6 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	if len(reversals) > 0 {
 		data.HasReversed = true
-		// Reversals are sorted in descending order by ID
 		if reversals[0].ExpungedAt != nil && *reversals[0].ExpungedAt > 0 {
 			data.IsExpunged = true
 		}
