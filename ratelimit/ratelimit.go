@@ -18,7 +18,7 @@ import (
 	"github.com/sethvargo/go-limiter/memorystore"
 )
 
-func keyByIP(r *http.Request) (string, error) {
+func byIP(r *http.Request) (string, error) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return "", err
@@ -27,10 +27,10 @@ func keyByIP(r *http.Request) (string, error) {
 }
 
 func ThrottleByIP(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
-	return newLimiter(dur, limit, keyByIP)
+	return newLimiter(dur, limit, byIP)
 }
 
-func keyByAPIKey(r *http.Request) (string, error) {
+func byAPIKey(r *http.Request) (string, error) {
 	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 	if !ok {
 		return "", fmt.Errorf("key not found in context")
@@ -39,7 +39,7 @@ func keyByAPIKey(r *http.Request) (string, error) {
 }
 
 func ThrottleByAPIKey(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
-	return newLimiter(dur, limit, keyByAPIKey)
+	return newLimiter(dur, limit, byAPIKey)
 }
 
 func newThrottlerWithLimiter(keyFunc httplimit.KeyFunc, store limiter.Store) func(http.Handler) http.Handler {
