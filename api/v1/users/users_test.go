@@ -409,8 +409,7 @@ func TestFetchUserStatus(t *testing.T) {
 				chiContext := chi.NewRouteContext()
 				chiContext.URLParams.Add("steamId", steamID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
-
-				// Should return all reversals across marketplaces, most recent first
+				
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
