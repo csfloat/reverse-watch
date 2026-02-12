@@ -2,7 +2,6 @@ package users
 
 import (
 	"net/http"
-	"sort"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
@@ -15,11 +14,7 @@ import (
 )
 
 func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
-	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-	if !ok {
-		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
-		return
-	}
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 
 	steamIdStr := chi.URLParam(r, "steamId")
 	steamId, err := models.ToSteamID(steamIdStr)
