@@ -36,6 +36,10 @@ func New(cfg config.Config) (*Server, error) {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 
+	if cfg.TrustProxy {
+		r.Use(rwmiddleware.CloudflareIP)
+	}
+	
 	r.Use(rwmiddleware.FactoryMiddleware(f))
 
 	r.Mount("/api", api.Router())
