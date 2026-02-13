@@ -23,6 +23,7 @@ type Config struct {
 	}
 
 	Environment constants.Environment
+	TrustProxy  bool
 }
 
 func Load() Config {
@@ -51,6 +52,7 @@ func load() Config {
 	v.SetDefault("StaticDir", "./static")
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
+	v.SetDefault("TrustProxy", false)
 
 	dir, err := GetProjectRootDir()
 	if err != nil {
