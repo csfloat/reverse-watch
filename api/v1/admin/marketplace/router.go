@@ -17,6 +17,6 @@ func Router() chi.Router {
 	r.Use(ratelimit.ThrottleByAPIKey(time.Hour, 2_000))
 
 	r.Post("/", onboardMarketplace)
-	r.Post("/{slug}", updateMarketplace)
+	r.Patch("/{slug}", updateMarketplace)
 	return r
 }
