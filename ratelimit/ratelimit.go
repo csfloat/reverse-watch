@@ -19,11 +19,10 @@ import (
 )
 
 func byIP(r *http.Request) (string, error) {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return "", err
+	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return ip, nil
 	}
-	return ip, nil
+	return r.RemoteAddr, nil
 }
 
 func ThrottleByIP(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
