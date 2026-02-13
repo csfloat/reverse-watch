@@ -1,6 +1,8 @@
 package public
 
 import (
+	"fmt"
+
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
@@ -67,9 +69,13 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 }
 
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{}).Order("id DESC")
+	query := r.conn.Model(&models.Reversal{})
 	if opts == nil {
 		return query
+	}
+	if opts.OrderParam != nil {
+		orderBy := fmt.Sprintf("reversals.%q %s", opts.OrderParam.Column, opts.OrderParam.Direction)
+		query = query.Order(orderBy)
 	}
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)
