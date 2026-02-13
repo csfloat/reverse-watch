@@ -134,3 +134,34 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, updatedMarketplace)
 }
+
+func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		render.Errorf(w, r, errors.BadRequest, "slug cannot be empty")
+		return
+	}
+
+	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
+		if err := tx.Marketplace().Delete(slug); err != nil {
+			return errors.New(errors.DBDelete, "failed to delete marketplace")
+		}
+
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, nil)
+		if err := tx.AdminAudit().Create(audit); err != nil {
+			return errors.New(errors.DBCreate, "failed to create admin audit")
+		}
+		return nil
+	})
+	if err != nil {
+		if e, ok := err.(*errors.Error); ok {
+			render.Error(w, r, e)
+			return
+		}
+		render.Errorf(w, r, errors.DBDelete, "failed to delete marketplace")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
