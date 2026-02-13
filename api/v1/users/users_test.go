@@ -43,7 +43,6 @@ func TestFetchUserStatus(t *testing.T) {
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           false,
-					IsExpunged:            false,
 					LastReversalTimestamp: nil,
 				}
 
@@ -94,7 +93,6 @@ func TestFetchUserStatus(t *testing.T) {
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
-					IsExpunged:            false,
 					LastReversalTimestamp: &reversal.ReversedAt,
 				}
 
@@ -175,7 +173,6 @@ func TestFetchUserStatus(t *testing.T) {
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
-					IsExpunged:            false,
 					LastReversalTimestamp: &reversals[2].ReversedAt,
 				}
 
@@ -226,8 +223,7 @@ func TestFetchUserStatus(t *testing.T) {
 
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
-					HasReversed:           true,
-					IsExpunged:            true,
+					HasReversed:           false,
 					LastReversalTimestamp: &reversal.ReversedAt,
 				}
 
@@ -292,11 +288,10 @@ func TestFetchUserStatus(t *testing.T) {
 				chiContext.URLParams.Add("steamId", steamID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
 
-				// Should use most recent reversal (ID 2), which is not expunged
+				// User is considered to have reversed if not all reversal reports have been expunged
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
-					IsExpunged:            false,
 					LastReversalTimestamp: &reversals[1].ReversedAt,
 				}
 
@@ -413,7 +408,6 @@ func TestFetchUserStatus(t *testing.T) {
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,
-					IsExpunged:            false,
 					LastReversalTimestamp: &reversals[1].ReversedAt,
 				}
 
