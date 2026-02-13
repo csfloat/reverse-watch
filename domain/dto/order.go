@@ -1,13 +1,13 @@
 package dto
 
-type direction string
+type Direction string
 
 const (
-	DESC direction = "DESC"
-	ASC  direction = "ASC"
+	DESC Direction = "DESC"
+	ASC  Direction = "ASC"
 )
 
 type OrderParam struct {
 	Column    string
-	Direction direction
+	Direction Direction
 }
