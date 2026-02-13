@@ -72,13 +72,18 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 	if opts == nil {
 		return query
 	}
+
+	var desc bool
 	if opts.OrderParam != nil {
+		desc = opts.OrderParam.Direction == dto.DESC
 		orderBy := clause.OrderByColumn{
 			Column: clause.Column{Name: opts.OrderParam.Column},
-			Desc:   opts.OrderParam.Direction == dto.DESC,
+			Desc:   desc,
 		}
+
 		query = query.Order(orderBy)
 	}
+
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)
 	}
@@ -86,7 +91,12 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("id < ?", opts.Cursor.ID)
+		// Adjust direction based on order specified
+		if desc {
+			query = query.Where("id < ?", opts.Cursor.ID)
+		} else {
+			query = query.Where("id > ?", opts.Cursor.ID)
+		}
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))
