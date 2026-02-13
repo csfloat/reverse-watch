@@ -1,13 +1,12 @@
 package public
 
 import (
-	"fmt"
-
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type reversalRepository struct {
@@ -74,7 +73,10 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		return query
 	}
 	if opts.OrderParam != nil {
-		orderBy := fmt.Sprintf("reversals.%q %s", opts.OrderParam.Column, opts.OrderParam.Direction)
+		orderBy := clause.OrderByColumn{
+			Column: clause.Column{Name: opts.OrderParam.Column},
+			Desc:   opts.OrderParam.Direction == dto.DESC,
+		}
 		query = query.Order(orderBy)
 	}
 	if opts.SteamID.IsValid() {
