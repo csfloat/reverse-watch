@@ -10,8 +10,6 @@ import (
 	"reverse-watch/errors"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type onboardMarketplaceRequest struct {
@@ -81,56 +79,4 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 		Marketplace: storedMarketplace,
 		Key:         rawKey,
 	})
-}
-
-func updateMarketplace(w http.ResponseWriter, r *http.Request) {
-	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-
-	slug := chi.URLParam(r, "slug")
-	if slug == "" {
-		render.Errorf(w, r, errors.BadRequest, "slug cannot be empty")
-		return
-	}
-
-	var opts dto.MarketplaceUpdates
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
-		render.Error(w, r, &errors.JSONDecode)
-		return
-	}
-
-	var updatedMarketplace *models.Marketplace
-	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
-		if err := tx.Marketplace().Update(slug, &opts); err != nil {
-			return errors.New(errors.DBUpdate, "failed to update marketplace")
-		}
-
-		var details *models.RawJsonb
-		var err error
-		details, err = models.ToRawJsonb(opts)
-		if err != nil {
-			return errors.New(errors.InternalServerError, "failed to convert to raw jsonb")
-		}
-
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, details)
-		if err := tx.AdminAudit().Create(audit); err != nil {
-			return errors.New(errors.DBCreate, "failed to create admin audit")
-		}
-
-		updatedMarketplace, err = tx.Marketplace().Read(slug)
-		if err != nil {
-			return errors.New(errors.DBRead, "failed to find marketplace")
-		}
-		return nil
-	})
-	if err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			render.Error(w, r, e)
-			return
-		}
-		render.Errorf(w, r, errors.DBUpdate, "failed to update marketplace")
-		return
-	}
-
-	render.JSON(w, r, updatedMarketplace)
 }
