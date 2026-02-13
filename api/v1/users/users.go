@@ -42,17 +42,16 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 		SteamID: *steamId,
 	}
 
-	if len(reversals) > 0 {
-		var lastReversalTime uint64
-		for _, reversal := range reversals {
-			lastReversalTime = max(lastReversalTime, reversal.ReversedAt)
-			if reversal.ExpungedAt == nil {
-				data.HasReversed = true
-			}
+	var lastReversalTime uint64
+	for _, reversal := range reversals {
+		lastReversalTime = max(lastReversalTime, reversal.ReversedAt)
+		if reversal.ExpungedAt == nil {
+			data.HasReversed = true
+			break
 		}
-		if data.HasReversed {
-			data.LastReversalTimestamp = &lastReversalTime
-		}
+	}
+	if data.HasReversed {
+		data.LastReversalTimestamp = &lastReversalTime
 	}
 	render.JSON(w, r, data)
 }
