@@ -72,7 +72,7 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 		return query
 	}
 	if opts.SteamID.IsValid() {
-		query = query.Where("steam_id = ? OR related_steam_id = ?", opts.SteamID, opts.SteamID)
+		query = query.Where("steam_id = ?", opts.SteamID)
 	}
 	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
