@@ -2,7 +2,7 @@ package middleware
 
 import "net/http"
 
-func IP(next http.Handler) http.Handler {
+func CloudflareIP(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ip := r.Header.Get("CF-Connecting-IP")
 		if ip != "" {
