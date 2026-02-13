@@ -72,6 +72,10 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
 	opts := &dto.ReversalListOptions{
 		Limit: &defaultLimit,
+		OrderParam: &dto.OrderParam{
+			Column:    "id",
+			Direction: dto.DESC,
+		},
 	}
 
 	if steamIdStr := values.Get("steam_id"); steamIdStr != "" {
