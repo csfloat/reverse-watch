@@ -16,19 +16,19 @@ func Router() chi.Router {
 
 	r.With(
 		middleware.RequirePermissions(models.PermissionWrite),
-		ratelimit.ThrottleByAPIKey(time.Hour, 2_000),
+		ratelimit.ThrottleByAPIKey(time.Minute, 15),
 	).Post("/", createReversals)
 
 	r.With(
 		middleware.RequirePermissions(models.PermissionDelete),
-		ratelimit.ThrottleByAPIKey(time.Hour, 2_000),
+		ratelimit.ThrottleByAPIKey(time.Minute, 15),
 	).Delete("/{id}", expungeReversal)
 
 	r.Route("/", func(r chi.Router) {
 		r.Use(middleware.RequirePermissions(models.PermissionExport))
 
 		r.With(ratelimit.ThrottleByAPIKey(time.Minute, 300)).Get("/", listReversalsHandler)
-		r.With(ratelimit.ThrottleByAPIKey(time.Minute, 60)).Get("/export", exportReversals)
+		r.With(ratelimit.ThrottleByAPIKey(time.Minute, 10)).Get("/export", exportReversals)
 	})
 	return r
 }
