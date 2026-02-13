@@ -2,7 +2,6 @@ package public
 
 import (
 	"errors"
-	"sort"
 	"testing"
 	"time"
 
@@ -705,7 +704,21 @@ func TestReversalRepository_List(t *testing.T) {
 				Limit: util.Ptr(uint(1)),
 			},
 			want: []*models.Reversal{
+				testReversals[0],
+			},
+		},
+		{
+			name: "withOrder",
+			opts: &dto.ReversalListOptions{
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+			},
+			want: []*models.Reversal{
 				testReversals[2],
+				testReversals[1],
+				testReversals[0],
 			},
 		},
 	}
@@ -716,10 +729,6 @@ func TestReversalRepository_List(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List(): %v", err)
 			}
-
-			sort.Slice(got, func(i, j int) bool {
-				return got[i].ID < got[j].ID
-			})
 
 			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
 				t.Error(diff)
@@ -815,6 +824,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 			got, err := reversalRepo.List(&dto.ReversalListOptions{
 				Cursor: tc.cursor,
 				Limit:  &tc.limit,
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
 			})
 			if err != nil {
 				t.Fatalf("List(): %v", err)
