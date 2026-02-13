@@ -7,8 +7,8 @@ import (
 )
 
 type MarketplaceUpdates struct {
-	Name     *string
-	IsActive *bool
+	Name     *string `json:"name,omitempty"`
+	IsActive *bool   `json:"is_active,omitempty"`
 }
 
 func (u *MarketplaceUpdates) ToFields() map[string]interface{} {
