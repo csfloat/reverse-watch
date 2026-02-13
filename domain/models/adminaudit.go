@@ -26,7 +26,7 @@ const (
 type AdminAudit struct {
 	Model
 	TargetAction       TargetAction       `json:"target_action"`
-	TargetResourceType TargetResourceType `json:"resource_type"`
+	TargetResourceType TargetResourceType `json:"target_resource_type"`
 	TargetResource     string             `json:"target_resource"`
 	Details            *RawJsonb          `json:"details"`
 }
