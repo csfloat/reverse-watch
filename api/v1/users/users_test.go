@@ -222,9 +222,8 @@ func TestFetchUserStatus(t *testing.T) {
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
 
 				expectedResp := &fetchUserStatusResponse{
-					SteamID:               steamID,
-					HasReversed:           false,
-					LastReversalTimestamp: &reversal.ReversedAt,
+					SteamID:     steamID,
+					HasReversed: false,
 				}
 
 				return r.WithContext(ctx), expectedResp
