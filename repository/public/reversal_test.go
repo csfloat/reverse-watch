@@ -2,7 +2,6 @@ package public
 
 import (
 	"errors"
-	"sort"
 	"testing"
 	"time"
 
@@ -688,15 +687,35 @@ func TestReversalRepository_List(t *testing.T) {
 			},
 		},
 		{
-			name: "withCursor",
+			name: "withCursorDesc",
 			opts: &dto.ReversalListOptions{
 				Cursor: &dto.Cursor{
 					ID: 3,
 				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
 			},
 			want: []*models.Reversal{
-				testReversals[0],
 				testReversals[1],
+				testReversals[0],
+			},
+		},
+		{
+			name: "withCursorAsc",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID: 1,
+				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.ASC,
+				},
+			},
+			want: []*models.Reversal{
+				testReversals[1],
+				testReversals[2],
 			},
 		},
 		{
@@ -705,7 +724,21 @@ func TestReversalRepository_List(t *testing.T) {
 				Limit: util.Ptr(uint(1)),
 			},
 			want: []*models.Reversal{
+				testReversals[0],
+			},
+		},
+		{
+			name: "withOrder",
+			opts: &dto.ReversalListOptions{
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+			},
+			want: []*models.Reversal{
 				testReversals[2],
+				testReversals[1],
+				testReversals[0],
 			},
 		},
 	}
@@ -716,10 +749,6 @@ func TestReversalRepository_List(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List(): %v", err)
 			}
-
-			sort.Slice(got, func(i, j int) bool {
-				return got[i].ID < got[j].ID
-			})
 
 			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
 				t.Error(diff)
@@ -774,48 +803,108 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 	testutil.Insert(t, db, testReversals...)
 
 	testCases := []struct {
-		name   string
-		cursor *dto.Cursor
-		limit  uint
-		want   []*models.Reversal
+		name string
+		opts *dto.ReversalListOptions
+		want []*models.Reversal
 	}{
 		{
-			name:  "firstPage",
-			limit: 2,
+			name: "firstPageDESC",
+			opts: &dto.ReversalListOptions{
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+				Limit: util.Ptr[uint](2),
+			},
 			want: []*models.Reversal{
 				testReversals[0],
 				testReversals[1],
 			},
 		},
 		{
-			name: "secondPage",
-			cursor: &dto.Cursor{
-				ID: 50,
+			name: "secondPageDESC",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID: 50,
+				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+				Limit: util.Ptr[uint](2),
 			},
-			limit: 2,
 			want: []*models.Reversal{
 				testReversals[2],
 				testReversals[3],
 			},
 		},
 		{
-			name: "thirdPage",
-			cursor: &dto.Cursor{
-				ID: 30,
+			name: "thirdPageDESC",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID: 30,
+				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+				Limit: util.Ptr[uint](2),
 			},
-			limit: 2,
 			want: []*models.Reversal{
 				testReversals[4],
+			},
+		},
+		{
+			name: "firstPageASC",
+			opts: &dto.ReversalListOptions{
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.ASC,
+				},
+				Limit: util.Ptr[uint](2),
+			},
+			want: []*models.Reversal{
+				testReversals[4],
+				testReversals[3],
+			},
+		},
+		{
+			name: "secondPageASC",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID: 30,
+				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.ASC,
+				},
+				Limit: util.Ptr[uint](2),
+			},
+			want: []*models.Reversal{
+				testReversals[2],
+				testReversals[1],
+			},
+		},
+		{
+			name: "thirdPageASC",
+			opts: &dto.ReversalListOptions{
+				Cursor: &dto.Cursor{
+					ID: 50,
+				},
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.ASC,
+				},
+			},
+			want: []*models.Reversal{
+				testReversals[0],
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := reversalRepo.List(&dto.ReversalListOptions{
-				Cursor: tc.cursor,
-				Limit:  &tc.limit,
-			})
+			got, err := reversalRepo.List(tc.opts)
 			if err != nil {
 				t.Fatalf("List(): %v", err)
 			}
