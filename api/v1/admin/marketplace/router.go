@@ -10,6 +10,7 @@ import (
 func Router() chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.AuthMiddleware)
+
 	r.With(middleware.RequirePermissions(models.PermissionAdmin)).Post("/", onboardMarketplace)
 	return r
 }

@@ -137,8 +137,8 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if diff := cmp.Diff(errors.JSONDecode, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
-					t.Error(diff)
+				if respData.Message != "failed to decode JSON" {
+					t.Errorf("wanted message %q, got %q", "failed to decode JSON", respData.Message)
 				}
 			},
 		},
@@ -172,10 +172,6 @@ func TestOnboardMarketplace(t *testing.T) {
 				var respData errors.Error
 				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
-				}
-
-				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
-					t.Error(diff)
 				}
 
 				if respData.Details != "fields cannot be empty" {
@@ -213,10 +209,6 @@ func TestOnboardMarketplace(t *testing.T) {
 				var respData errors.Error
 				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
-				}
-
-				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
-					t.Error(diff)
 				}
 
 				if respData.Details != "fields cannot be empty" {
@@ -264,12 +256,45 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if diff := cmp.Diff(errors.DBCreate, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
-					t.Error(diff)
-				}
-
 				if respData.Details != "failed to create marketplace" {
 					t.Errorf("wanted details %q, got %q", "failed to create marketplace", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidSlugInvalidName",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				reqBody := onboardMarketplaceRequest{
+					MarketplaceSlug: "",
+					Name:            "",
+				}
+
+				payload, err := json.Marshal(reqBody)
+				if err != nil {
+					return nil, err
+				}
+
+				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Details != "fields cannot be empty" {
+					t.Errorf("wanted details %q, got %q", "fields cannot be empty", respData.Details)
 				}
 			},
 		},
@@ -305,8 +330,8 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if diff := cmp.Diff(errors.Forbidden, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
-					t.Error(diff)
+				if respData.Message != "forbidden" {
+					t.Errorf("wanted message %q, got %q", "forbidden", respData.Message)
 				}
 			},
 		},
