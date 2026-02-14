@@ -52,11 +52,6 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 			return errors.Newf(errors.DBCreate, err, "failed to create key for marketplace %q", marketplace.Slug)
 		}
 
-		storedMarketplace, err = tx.Marketplace().Read(marketplace.Slug)
-		if err != nil {
-			return errors.Newf(errors.DBRead, err, "failed to fetch newly created marketplace %q", marketplace.Slug)
-		}
-
 		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return errors.New(errors.DBCreate, "failed to create admin audit")
@@ -69,6 +64,12 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		render.Errorf(w, r, errors.DBCreate, "failed to create marketplace %q", marketplace.Slug)
+		return
+	}
+
+	storedMarketplace, err = factory.Marketplace().Read(marketplace.Slug)
+	if err != nil {
+		render.Errorf(w, r, errors.DBRead, "failed to read marketplace %q", marketplace.Slug)
 		return
 	}
 
