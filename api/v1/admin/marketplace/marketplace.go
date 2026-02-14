@@ -59,7 +59,8 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		render.Errorf(w, r, errors.DBCreate, "failed to create marketplace: %v", err)
+		// TODO(zach): fix rendering non-application error
+		render.Error(w, r, err)
 		return
 	}
 
