@@ -248,8 +248,8 @@ func TestOnboardMarketplace(t *testing.T) {
 				return r, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
