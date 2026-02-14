@@ -43,33 +43,30 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 
 	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
 		if err := tx.Marketplace().Create(marketplace); err != nil {
-			return errors.New(errors.DBCreate, "failed to create marketplace")
+			return err
 		}
 
 		var err error
 		rawKey, err = tx.Key().Create(marketplace.Slug, models.PermissionManage)
 		if err != nil {
-			return errors.Newf(errors.DBCreate, err, "failed to create key for marketplace %q", marketplace.Slug)
+			return err
 		}
 
 		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
-			return errors.New(errors.DBCreate, "failed to create admin audit")
+			return err
 		}
 		return nil
 	})
 	if err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			render.Error(w, r, e)
-			return
-		}
-		render.Errorf(w, r, errors.DBCreate, "failed to create marketplace %q", marketplace.Slug)
+		render.Errorf(w, r, errors.DBCreate, "failed to create marketplace: %v", err)
 		return
 	}
 
 	storedMarketplace, err = factory.Marketplace().Read(marketplace.Slug)
 	if err != nil {
-		render.Errorf(w, r, errors.DBRead, "failed to read marketplace %q", marketplace.Slug)
+		// TODO(zach): fix rendering non-application error
+		render.Error(w, r, err)
 		return
 	}
 

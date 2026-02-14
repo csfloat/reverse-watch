@@ -10,17 +10,15 @@ import (
 	"github.com/go-chi/render"
 )
 
-var log = logging.Log
-
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var e *errors.Error
 	if !stderrors.As(err, &e) {
-		log.Warnf("attempting to render non-server error: %v", err)
+		logging.Log.Warnf("attempting to render non-server error: %v", err)
 		e = errors.New(errors.Unknown, err.Error())
 	}
 
 	if err := render.Render(w, r, e); err != nil {
-		log.Errorf("failed to render error: %v", err)
+		logging.Log.Errorf("failed to render error: %v", err)
 	}
 }
 
