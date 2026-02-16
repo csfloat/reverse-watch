@@ -8,6 +8,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
 )
@@ -59,14 +60,14 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		// TODO(zach): fix rendering non-application error
+		logging.Log.Errorf("failed to onboard marketplace: %v", err)
 		render.Error(w, r, err)
 		return
 	}
 
 	storedMarketplace, err = factory.Marketplace().Read(marketplace.Slug)
 	if err != nil {
-		// TODO(zach): fix rendering non-application error
+		logging.Log.Errorf("failed to read newly onboarded marketplace: %v", err)
 		render.Error(w, r, err)
 		return
 	}

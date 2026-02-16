@@ -248,8 +248,8 @@ func TestOnboardMarketplace(t *testing.T) {
 				return r, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusBadRequest {
-					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				if resp.StatusCode != http.StatusConflict {
+					t.Errorf("wanted status code %d, got %d", http.StatusConflict, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -258,8 +258,8 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "failed to create marketplace: UNIQUE constraint failed: marketplaces.slug" {
-					t.Errorf("wanted details %q, got %q", "failed to create marketplace: UNIQUE constraint failed: marketplaces.slug", respData.Details)
+				if respData.Details != "UNIQUE constraint failed: marketplaces.slug" {
+					t.Errorf("wanted details %q, got %q", "UNIQUE constraint failed: marketplaces.slug", respData.Details)
 				}
 			},
 		},

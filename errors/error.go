@@ -17,13 +17,11 @@ type Error struct {
 
 // Render satisfies the render.Renderer interface
 func (e *Error) Render(w http.ResponseWriter, r *http.Request) error {
-	var err error
 	if e.Code == 0 {
-		err = New(Unknown, "unknown server status code")
+		return fmt.Errorf("unknown server status code")
 	}
-
 	render.Status(r, e.status)
-	return err
+	return nil
 }
 
 func (e *Error) Error() string {
@@ -69,4 +67,5 @@ var (
 	JSONDecode          = Error{Code: 12, status: http.StatusBadRequest, Message: "failed to decode JSON"}
 	Limiter             = Error{Code: 13, status: http.StatusInternalServerError, Message: "unable to process request"}
 	RateLimited         = Error{Code: 14, status: http.StatusTooManyRequests, Message: "rate limited"}
+	Conflict            = Error{Code: 15, status: http.StatusConflict, Message: "resource already exists"}
 )
