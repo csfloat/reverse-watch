@@ -2,6 +2,7 @@ package dto
 
 import (
 	"reflect"
+	rwerrors "reverse-watch/errors"
 	"slices"
 	"testing"
 
@@ -104,8 +105,14 @@ func TestMarketplaceUpdates_Validate_Errors(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Validate(): got nil error, want %s", tc.wantErr)
 			}
-			if err.Error() != tc.wantErr {
-				t.Errorf("Validate(): got error %s, want %s", err.Error(), tc.wantErr)
+			if e, ok := err.(*rwerrors.Error); ok {
+				if e.Details != tc.wantErr {
+					t.Fatalf("got error %v, wanted %v", e, tc.wantErr)
+				}
+			} else {
+				if err.Error() != tc.wantErr {
+					t.Fatalf("got error: %v, wanted error: %v", err, tc.wantErr)
+				}
 			}
 		})
 	}
