@@ -14,5 +14,6 @@ func Router() chi.Router {
 
 	r.Post("/", onboardMarketplace)
 	r.Patch("/{slug}", updateMarketplace)
+	r.Delete("/{slug}", deleteMarketplace)
 	return r
 }

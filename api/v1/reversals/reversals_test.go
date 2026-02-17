@@ -1969,12 +1969,13 @@ func TestExpungeReversal(t *testing.T) {
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
+				createdAt := uint64(time.Now().Add(-1 * time.Minute).UnixMilli())
 				reversal := &models.Reversal{
-					Model:           models.Model{ID: 1},
+					Model:           models.Model{ID: 1, CreatedAt: createdAt},
 					SteamID:         models.SteamID(76561197960287930),
 					MarketplaceSlug: "test-marketplace",
 					ReversedAt:      1717756800,
-					ExpungedAt:      util.Ptr(uint64(time.Now().UnixMilli())),
+					ExpungedAt:      &createdAt,
 				}
 				testutil.Insert(t, db, reversal)
 

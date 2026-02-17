@@ -844,3 +844,364 @@ func TestUpdateMarketplace(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteMarketplace(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	testCases := []struct {
+		name         string
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error)
+		validateFunc func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response)
+	}{
+		{
+			name: "validRequest",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				// Setup CSFloat marketplace with admin key
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				// Create marketplace to delete
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				r := httptest.NewRequest(http.MethodDelete, "/test-marketplace", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "test-marketplace", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				// Verify marketplace was deleted from database
+				var storedMarketplace models.Marketplace
+				err := db.Where("slug = ?", "test-marketplace").First(&storedMarketplace).Error
+				if err == nil {
+					t.Error("expected marketplace to be deleted, but it still exists")
+				}
+
+				// Verify admin audit was created
+				var audit models.AdminAudit
+				if err := db.Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionRemoveMarketplace, models.TargetResourceTypeMarketplace, "test-marketplace").First(&audit).Error; err != nil {
+					t.Fatalf("First(): %v", err)
+				}
+
+				if audit.Details == nil {
+					t.Fatalf("expected audit details to be set, got nil")
+				}
+
+				var details struct {
+					Key string `json:"key"`
+				}
+				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
+					t.Fatalf("Unmarshal(): %v", err)
+				}
+
+				if details.Key != keyID {
+					t.Errorf("wanted key ID %q, got %q", keyID, details.Key)
+				}
+			},
+		},
+		{
+			name: "emptySlug",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "slug cannot be empty" {
+					t.Errorf("wanted details %q, got %q", "slug cannot be empty", respData.Details)
+				}
+			},
+		},
+		{
+			name: "deleteCSFloatMarketplace",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/csfloat", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "csfloat", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.Forbidden, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "cannot delete csfloat marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot delete csfloat marketplace", respData.Details)
+				}
+			},
+		},
+		{
+			name: "marketplaceNotFound",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/nonexistent-marketplace", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "nonexistent-marketplace", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.NotFound, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "record not found" {
+					t.Errorf("wanted details %q, got %q", "record not found", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidPermissions",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
+
+				testMarketplace := &models.Marketplace{
+					Slug:     "test-marketplace",
+					Name:     "Test Marketplace",
+					IsActive: true,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				r := httptest.NewRequest(http.MethodDelete, "/test-marketplace", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "test-marketplace", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.Forbidden, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+
+				// Verify marketplace was NOT deleted
+				var storedMarketplace models.Marketplace
+				if err := db.Where("slug = ?", "test-marketplace").First(&storedMarketplace).Error; err != nil {
+					t.Fatalf("expected marketplace to still exist: %v", err)
+				}
+			},
+		},
+		{
+			name: "deleteInactiveMarketplace",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				// Create inactive marketplace to delete
+				testMarketplace := &models.Marketplace{
+					Slug:     "inactive-marketplace",
+					Name:     "Inactive Marketplace",
+					IsActive: false,
+				}
+				testutil.Insert(t, db, testMarketplace)
+
+				r := httptest.NewRequest(http.MethodDelete, "/inactive-marketplace", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "inactive-marketplace", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				// Verify marketplace was deleted from database
+				var storedMarketplace models.Marketplace
+				err := db.Where("slug = ?", "inactive-marketplace").First(&storedMarketplace).Error
+				if err == nil {
+					t.Error("expected marketplace to be deleted, but it still exists")
+				}
+
+				// Verify admin audit was created
+				var audit models.AdminAudit
+				if err := db.Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionRemoveMarketplace, models.TargetResourceTypeMarketplace, "inactive-marketplace").First(&audit).Error; err != nil {
+					t.Fatalf("First(): %v", err)
+				}
+
+				if audit.Details == nil {
+					t.Fatalf("expected audit details to be set, got nil")
+				}
+
+				var details struct {
+					Key string `json:"key"`
+				}
+				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
+					t.Fatalf("Unmarshal(): %v", err)
+				}
+
+				if details.Key != keyID {
+					t.Errorf("wanted key ID %q, got %q", keyID, details.Key)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
+			handler := http.HandlerFunc(deleteMarketplace)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, slug, keyID, err := tc.setup(t, db, f, keygen)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Add URL parameter using chi's context
+			chiContext := chi.NewRouteContext()
+			chiContext.URLParams.Add("slug", slug)
+			ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+			r = r.WithContext(ctx)
+
+			finalHandler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, db, keyID, w.Result())
+		})
+	}
+}
+
+func TestDeleteMarketplace_AssociatedKeysAndReversals(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+	testMarketplace, _, _ := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+
+	testReversal := &models.Reversal{
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: testMarketplace.Slug,
+		ReversedAt:      1717756800,
+	}
+	testutil.Insert(t, db, testReversal)
+
+	r := httptest.NewRequest(http.MethodDelete, "/"+testMarketplace.Slug, nil)
+	r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+	chiContext := chi.NewRouteContext()
+	chiContext.URLParams.Add("slug", testMarketplace.Slug)
+	ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+	r = r.WithContext(ctx)
+
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+	factoryMiddleware := middleware.FactoryMiddleware(f)
+	permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
+	handler := http.HandlerFunc(deleteMarketplace)
+
+	finalHandler := factoryMiddleware(
+		middleware.AuthMiddleware(
+			permissionsMiddleware(handler),
+		),
+	)
+
+	w := httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, r)
+
+	// Verify marketplace was deleted from database
+	var storedMarketplace models.Marketplace
+	if err := db.Where("slug = ?", testMarketplace.Slug).First(&storedMarketplace).Error; err == nil {
+		t.Error("expected marketplace to be deleted, but it still exists")
+	}
+
+	// Verify associated keys were deleted from database
+	var storedKeys []*models.Key
+	if err := db.Where("marketplace_slug = ?", testMarketplace.Slug).Find(&storedKeys).Error; err != nil {
+		t.Fatalf("expected keys to still exist: %v", err)
+	}
+	if len(storedKeys) > 0 {
+		t.Errorf("expected keys to be deleted, but %d still exist: %v", len(storedKeys), storedKeys)
+	}
+
+	// Verify reversal was NOT deleted from database
+	var storedReversal models.Reversal
+	if err := db.Where("id = ?", testReversal.ID).First(&storedReversal).Error; err != nil {
+		t.Fatalf("expected reversal to still exist: %v", err)
+	}
+
+	if diff := cmp.Diff(testReversal, &storedReversal); diff != "" {
+		t.Error(diff)
+	}
+}

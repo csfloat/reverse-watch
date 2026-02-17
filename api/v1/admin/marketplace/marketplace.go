@@ -131,3 +131,47 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, updatedMarketplace)
 }
+
+func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		render.Errorf(w, r, errors.BadRequest, "slug cannot be empty")
+		return
+	}
+
+	if slug == "csfloat" {
+		render.Errorf(w, r, errors.Forbidden, "cannot delete csfloat marketplace")
+		return
+	}
+
+	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
+		if err := tx.Marketplace().Delete(slug); err != nil {
+			return err
+		}
+
+		data := struct {
+			Key string `json:"key"`
+		}{
+			Key: key.ID,
+		}
+		details, err := models.ToRawJsonb(data)
+		if err != nil {
+			return err
+		}
+
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, details)
+		if err := tx.AdminAudit().Create(audit); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logging.Log.Errorf("failed to remove marketplace: %v", err)
+		render.Error(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
