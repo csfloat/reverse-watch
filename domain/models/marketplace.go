@@ -8,11 +8,12 @@ import (
 )
 
 type Marketplace struct {
-	Slug      string `gorm:"primaryKey" json:"slug"`
-	CreatedAt uint64 `gorm:"autoCreateTime:milli" json:"created_at"`
-	UpdatedAt uint64 `gorm:"autoUpdateTime:milli" json:"updated_at"`
-	Name      string `json:"name"`
-	IsActive  bool   `json:"is_active"`
+	Slug      string         `gorm:"primaryKey" json:"slug"`
+	CreatedAt uint64         `gorm:"autoCreateTime:milli" json:"created_at"`
+	UpdatedAt uint64         `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"softDelete:milli" json:"deleted_at"`
+	Name      string         `json:"name"`
+	IsActive  bool           `json:"is_active"`
 }
 
 func (m *Marketplace) BeforeCreate(tx *gorm.DB) error {
