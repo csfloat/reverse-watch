@@ -1,16 +1,18 @@
 package marketplace
 
 import (
-	"reverse-watch/domain/models"
-	"reverse-watch/middleware"
+	"time"
+
+	"reverse-watch/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.AuthMiddleware)
+	r.Use(ratelimit.ThrottleByAPIKey(time.Hour, 2_000))
 
-	r.With(middleware.RequirePermissions(models.PermissionAdmin)).Post("/", onboardMarketplace)
+	r.Post("/", onboardMarketplace)
+	r.Patch("/{slug}", updateMarketplace)
 	return r
 }
