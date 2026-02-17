@@ -6,6 +6,7 @@ import (
 	"reverse-watch/domain/repository"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type reversalRepository struct {
@@ -67,18 +68,35 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 }
 
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
-	query := r.conn.Model(&models.Reversal{}).Order("id DESC")
+	query := r.conn.Model(&models.Reversal{})
 	if opts == nil {
 		return query
 	}
+
+	var desc bool
+	if opts.OrderParam != nil {
+		desc = opts.OrderParam.Direction == dto.DESC
+		orderBy := clause.OrderByColumn{
+			Column: clause.Column{Name: opts.OrderParam.Column},
+			Desc:   desc,
+		}
+
+		query = query.Order(orderBy)
+	}
+
 	if opts.SteamID.IsValid() {
-		query = query.Where("steam_id = ? OR related_steam_id = ?", opts.SteamID, opts.SteamID)
+		query = query.Where("steam_id = ?", opts.SteamID)
 	}
 	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
 	if opts.Cursor != nil {
-		query = query.Where("id < ?", opts.Cursor.ID)
+		// Adjust direction based on order specified
+		if desc {
+			query = query.Where("id < ?", opts.Cursor.ID)
+		} else {
+			query = query.Where("id > ?", opts.Cursor.ID)
+		}
 	}
 	if opts.Limit != nil {
 		query = query.Limit(int(*opts.Limit))

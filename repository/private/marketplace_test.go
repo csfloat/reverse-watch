@@ -7,6 +7,7 @@ import (
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
+	rwerrors "reverse-watch/errors"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/util"
 
@@ -307,8 +308,14 @@ func TestMarketplaceRepository_Update_Errors(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Update(): got nil error, wanted error")
 			}
-			if err.Error() != tc.wantErr {
-				t.Fatalf("got error: %v, wanted error: %v", err, tc.wantErr)
+			if e, ok := err.(*rwerrors.Error); ok {
+				if e.Details != tc.wantErr {
+					t.Fatalf("got error %v, wanted %v", e, tc.wantErr)
+				}
+			} else {
+				if err.Error() != tc.wantErr {
+					t.Fatalf("got error: %v, wanted error: %v", err, tc.wantErr)
+				}
 			}
 		})
 	}
