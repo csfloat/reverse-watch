@@ -160,6 +160,7 @@ func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logging.Log.Errorf("failed to remove marketplace: %v", err)
 		render.Error(w, r, err)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
