@@ -847,6 +847,7 @@ func TestUpdateMarketplace(t *testing.T) {
 
 func TestDeleteMarketplace(t *testing.T) {
 	t.Parallel()
+	logging.Initialize()
 
 	testCases := []struct {
 		name         string
@@ -927,6 +928,36 @@ func TestDeleteMarketplace(t *testing.T) {
 			},
 		},
 		{
+			name: "deleteCSFloatMarketplace",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/csfloat", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "csfloat", nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.Forbidden, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "cannot delete csfloat marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot delete csfloat marketplace", respData.Details)
+				}
+			},
+		},
+		{
 			name: "marketplaceNotFound",
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
@@ -937,8 +968,8 @@ func TestDeleteMarketplace(t *testing.T) {
 				return r, "nonexistent-marketplace", nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -947,12 +978,12 @@ func TestDeleteMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if diff := cmp.Diff(errors.DBDelete, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+				if diff := cmp.Diff(errors.NotFound, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
 					t.Error(diff)
 				}
 
-				if respData.Details != "failed to delete marketplace" {
-					t.Errorf("wanted details %q, got %q", "failed to delete marketplace", respData.Details)
+				if respData.Details != "record not found" {
+					t.Errorf("wanted details %q, got %q", "record not found", respData.Details)
 				}
 			},
 		},

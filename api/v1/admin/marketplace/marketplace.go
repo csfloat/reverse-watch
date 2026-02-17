@@ -141,24 +141,25 @@ func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if slug == "csfloat" {
+		render.Errorf(w, r, errors.Forbidden, "cannot delete csfloat marketplace")
+		return
+	}
+
 	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
 		if err := tx.Marketplace().Delete(slug); err != nil {
-			return errors.New(errors.DBDelete, "failed to delete marketplace")
+			return err
 		}
 
 		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
-			return errors.New(errors.DBCreate, "failed to create admin audit")
+			return err
 		}
 		return nil
 	})
 	if err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			render.Error(w, r, e)
-			return
-		}
-		render.Errorf(w, r, errors.DBDelete, "failed to delete marketplace")
-		return
+		logging.Log.Errorf("failed to remove marketplace: %v", err)
+		render.Error(w, r, err)
 	}
 	w.WriteHeader(http.StatusOK)
 }
