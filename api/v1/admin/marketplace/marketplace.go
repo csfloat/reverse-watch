@@ -134,6 +134,7 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 
 func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
@@ -151,7 +152,17 @@ func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, nil)
+		data := struct {
+			Key string `json:"key"`
+		}{
+			Key: key.ID,
+		}
+		details, err := models.ToRawJsonb(data)
+		if err != nil {
+			return err
+		}
+
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, details)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}

@@ -13,6 +13,7 @@ type Key struct {
 	ID              string                `gorm:"primaryKey" json:"id"`
 	CreatedAt       uint64                `gorm:"autoCreateTime:milli" json:"created_at"`
 	UpdatedAt       uint64                `gorm:"autoUpdateTime:milli" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt        `gorm:"softDelete:milli" json:"deleted_at"`
 	Environment     constants.Environment `json:"environment"`
 	MarketplaceSlug string                `json:"marketplace_slug"`
 	Marketplace     *Marketplace          `gorm:"foreignKey:MarketplaceSlug;references:Slug" json:"-"`
