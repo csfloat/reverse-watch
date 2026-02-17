@@ -12,6 +12,7 @@ type ReversalListOptions struct {
 	MarketplaceSlug *string
 	Cursor          *Cursor
 	Limit           *uint
+	OrderParam      *OrderParam
 }
 
 type ReversalUpdates struct {
