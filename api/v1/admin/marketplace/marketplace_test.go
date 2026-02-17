@@ -1107,3 +1107,75 @@ func TestDeleteMarketplace(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteMarketplace_AssociatedKeysAndReversals(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+	testMarketplace, _, _ := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+
+	testReversal := &models.Reversal{
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: testMarketplace.Slug,
+		ReversedAt:      1717756800,
+	}
+	testutil.Insert(t, db, testReversal)
+
+	r := httptest.NewRequest(http.MethodDelete, "/"+testMarketplace.Slug, nil)
+	r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+	chiContext := chi.NewRouteContext()
+	chiContext.URLParams.Add("slug", testMarketplace.Slug)
+	ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+	r = r.WithContext(ctx)
+
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+	factoryMiddleware := middleware.FactoryMiddleware(f)
+	permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
+	handler := http.HandlerFunc(deleteMarketplace)
+
+	finalHandler := factoryMiddleware(
+		middleware.AuthMiddleware(
+			permissionsMiddleware(handler),
+		),
+	)
+
+	w := httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, r)
+
+	// Verify marketplace was deleted from database
+	var storedMarketplace models.Marketplace
+	if err := db.Where("slug = ?", testMarketplace.Slug).First(&storedMarketplace).Error; err == nil {
+		t.Error("expected marketplace to be deleted, but it still exists")
+	}
+
+	// Verify associated keys were deleted from database
+	var storedKeys []*models.Key
+	if err := db.Where("marketplace_slug = ?", testMarketplace.Slug).Find(&storedKeys).Error; err != nil {
+		t.Fatalf("expected keys to still exist: %v", err)
+	}
+	if len(storedKeys) > 0 {
+		t.Errorf("expected keys to be deleted, but %d still exist: %v", len(storedKeys), storedKeys)
+	}
+
+	// Verify reversal was NOT deleted from database
+	var storedReversal models.Reversal
+	if err := db.Where("id = ?", testReversal.ID).First(&storedReversal).Error; err != nil {
+		t.Fatalf("expected reversal to still exist: %v", err)
+	}
+
+	if diff := cmp.Diff(testReversal, &storedReversal); diff != "" {
+		t.Error(diff)
+	}
+}
