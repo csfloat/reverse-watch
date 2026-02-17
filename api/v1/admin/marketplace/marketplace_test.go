@@ -379,6 +379,7 @@ func TestOnboardMarketplace(t *testing.T) {
 
 func TestUpdateMarketplace(t *testing.T) {
 	t.Parallel()
+	logging.Initialize()
 
 	testCases := []struct {
 		name         string
@@ -737,8 +738,8 @@ func TestUpdateMarketplace(t *testing.T) {
 				return r, "nonexistent-marketplace", nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -747,8 +748,12 @@ func TestUpdateMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if diff := cmp.Diff(errors.DBUpdate, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+				if diff := cmp.Diff(errors.NotFound, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
 					t.Error(diff)
+				}
+
+				if respData.Details != "record not found" {
+					t.Errorf("wanted details %q, got %q", "record not found", respData.Details)
 				}
 			},
 		},

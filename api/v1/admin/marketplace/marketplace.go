@@ -102,33 +102,30 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 	var updatedMarketplace *models.Marketplace
 	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
 		if err := tx.Marketplace().Update(slug, &opts); err != nil {
-			return errors.New(errors.DBUpdate, "failed to update marketplace")
+			return err
 		}
 
 		var details *models.RawJsonb
 		var err error
 		details, err = models.ToRawJsonb(opts)
 		if err != nil {
-			return errors.New(errors.InternalServerError, "failed to convert to raw jsonb")
+			return err
 		}
 
 		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, details)
 		if err := tx.AdminAudit().Create(audit); err != nil {
-			return errors.New(errors.DBCreate, "failed to create admin audit")
+			return err
 		}
 
 		updatedMarketplace, err = tx.Marketplace().Read(slug)
 		if err != nil {
-			return errors.New(errors.DBRead, "failed to find marketplace")
+			return err
 		}
 		return nil
 	})
 	if err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			render.Error(w, r, e)
-			return
-		}
-		render.Errorf(w, r, errors.DBUpdate, "failed to update marketplace")
+		logging.Log.Errorf("failed to update marketplace: %v", err)
+		render.Error(w, r, err)
 		return
 	}
 
