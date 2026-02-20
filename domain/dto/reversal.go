@@ -1,10 +1,10 @@
 package dto
 
 import (
-	"fmt"
 	"time"
 
 	"reverse-watch/domain/models"
+	"reverse-watch/errors"
 )
 
 type ReversalListOptions struct {
@@ -46,26 +46,26 @@ func (u *ReversalUpdates) ToFields() map[string]interface{} {
 
 func (u *ReversalUpdates) Validate() error {
 	if u == nil {
-		return fmt.Errorf("reversal updates cannot be nil")
+		return errors.New(errors.BadRequest, "reversal updates cannot be nil")
 	}
 	if len(u.ToFields()) == 0 {
-		return fmt.Errorf("reversal updates must have at least one field")
+		return errors.New(errors.BadRequest, "reversal updates must have at least one field")
 	}
 
 	if err := models.ValidateSourceAndRelatedID(u.Source, u.RelatedSteamID); err != nil {
-		return err
+		return errors.New(errors.BadRequest, err.Error())
 	}
 
 	now := uint64(time.Now().UnixMilli())
 	if u.ReversedAt != nil {
 		if *u.ReversedAt == 0 || *u.ReversedAt < models.Epoch || *u.ReversedAt > now {
-			return fmt.Errorf("reversed_at is invalid")
+			return errors.New(errors.BadRequest, "reversed_at is invalid")
 		}
 	}
 
 	if u.ExpungedAt != nil {
 		if *u.ExpungedAt == 0 || *u.ExpungedAt < models.Epoch || *u.ExpungedAt > now {
-			return fmt.Errorf("expunged_at is invalid")
+			return errors.New(errors.BadRequest, "expunged_at is invalid")
 		}
 	}
 	return nil

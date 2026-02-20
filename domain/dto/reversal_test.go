@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"reverse-watch/domain/models"
+	"reverse-watch/errors"
 	"reverse-watch/util"
 
 	"github.com/google/go-cmp/cmp"
@@ -151,12 +152,12 @@ func TestReversalUpdates_Validate_Errors(t *testing.T) {
 		{
 			name:    "nilUpdates",
 			updates: nil,
-			wantErr: "reversal updates cannot be nil",
+			wantErr: errors.New(errors.BadRequest, "reversal updates cannot be nil").Error(),
 		},
 		{
 			name:    "emptyUpdates",
 			updates: &ReversalUpdates{},
-			wantErr: "reversal updates must have at least one field",
+			wantErr: errors.New(errors.BadRequest, "reversal updates must have at least one field").Error(),
 		},
 		{
 			name: "invalidSourceAndRelatedSteamID",
@@ -164,35 +165,35 @@ func TestReversalUpdates_Validate_Errors(t *testing.T) {
 				Source:         util.Ptr(models.SourceDirect),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 			},
-			wantErr: "invalid related_steam_id and source combination",
+			wantErr: errors.New(errors.BadRequest, "invalid related_steam_id and source combination").Error(),
 		},
 		{
 			name: "invalidReversedAt",
 			updates: &ReversalUpdates{
 				ReversedAt: util.Ptr(uint64(0)),
 			},
-			wantErr: "reversed_at is invalid",
+			wantErr: errors.New(errors.BadRequest, "reversed_at is invalid").Error(),
 		},
 		{
 			name: "reversedAtInFuture",
 			updates: &ReversalUpdates{
 				ReversedAt: util.Ptr(uint64(99999999999999999)),
 			},
-			wantErr: "reversed_at is invalid",
+			wantErr: errors.New(errors.BadRequest, "reversed_at is invalid").Error(),
 		},
 		{
 			name: "invalidExpungedAt",
 			updates: &ReversalUpdates{
 				ExpungedAt: util.Ptr(uint64(0)),
 			},
-			wantErr: "expunged_at is invalid",
+			wantErr: errors.New(errors.BadRequest, "expunged_at is invalid").Error(),
 		},
 		{
 			name: "expungedAtInFuture",
 			updates: &ReversalUpdates{
 				ExpungedAt: util.Ptr(uint64(99999999999999999)),
 			},
-			wantErr: "expunged_at is invalid",
+			wantErr: errors.New(errors.BadRequest, "expunged_at is invalid").Error(),
 		},
 	}
 
