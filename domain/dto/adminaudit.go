@@ -9,3 +9,8 @@ type AdminAuditListOptions struct {
 	TargetResourceType *models.TargetResourceType
 	TargetResource     *string
 }
+
+type DeleteKeyDetails struct {
+	MarketplaceSlug string             `json:"marketplace_slug"`
+	Permissions     models.Permissions `json:"permissions"`
+}
