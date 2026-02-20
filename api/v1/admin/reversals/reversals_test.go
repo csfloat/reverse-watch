@@ -532,3 +532,247 @@ func TestModifyReversal(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteReversal(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	testCases := []struct {
+		name         string
+		setup        func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error)
+		validateFunc func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response)
+	}{
+		{
+			name: "validRequest",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error) {
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: testMarketplace.Slug,
+					Source:          util.Ptr(models.SourceDirect),
+					ReversedAt:      1717756800,
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversal, authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+				}
+
+				var storedReversal models.Reversal
+				err := db.Where("id = ?", originalReversal.ID).First(&storedReversal).Error
+				if err != gorm.ErrRecordNotFound {
+					t.Errorf("wanted reversal to be deleted, got error: %v", err)
+				}
+
+				var audit models.AdminAudit
+				if err := db.Model(&models.AdminAudit{}).Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionRemoveReversal, models.TargetResourceTypeReversal, originalReversal.ID.String()).First(&audit).Error; err != nil {
+					t.Fatalf("failed to find admin audit: %v", err)
+				}
+
+				var gotDetails struct {
+					Key string `json:"key"`
+				}
+				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
+					t.Fatalf("failed to unmarshal audit details: %v", err)
+				}
+
+				if gotDetails.Key != key {
+					t.Errorf("wanted key %q, got %q", key, gotDetails.Key)
+				}
+			},
+		},
+		{
+			name: "emptyID",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "id must not be empty" {
+					t.Errorf("wanted details %q, got %q", "id must not be empty", respData.Details)
+				}
+			},
+		},
+		{
+			name: "invalidID",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/invalid-id", nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "invalid id" {
+					t.Errorf("wanted details %q, got %q", "invalid id", respData.Details)
+				}
+			},
+		},
+		{
+			name: "nonExistentReversal",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				nonExistentID := models.Snowflake(999999)
+				r := httptest.NewRequest(http.MethodDelete, "/"+nonExistentID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, nil, authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response) {
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.NotFound, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "record not found" {
+					t.Errorf("wanted details %q, got %q", "record not found", respData.Details)
+				}
+			},
+		},
+		{
+			name: "insufficientPermissions",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal, string, error) {
+				testMarketplace, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
+
+				reversal := &models.Reversal{
+					Model:           models.Model{ID: 1},
+					SteamID:         models.SteamID(76561197960287930),
+					MarketplaceSlug: testMarketplace.Slug,
+					ReversedAt:      1717756800,
+				}
+				testutil.Insert(t, db, reversal)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, reversal, authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, originalReversal *models.Reversal, key string, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if respData.Message != "forbidden" {
+					t.Errorf("wanted message %q, got %q", "forbidden", respData.Message)
+				}
+
+				var storedReversal models.Reversal
+				if err := db.Where("id = ?", originalReversal.ID).First(&storedReversal).Error; err != nil {
+					t.Fatalf("failed to read reversal: %v", err)
+				}
+
+				if storedReversal.ID != originalReversal.ID {
+					t.Error("expected reversal to not be deleted due to insufficient permissions")
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testutil.NewTestDB(t)
+			keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+			f, err := factory.NewFactoryWithConfig(&factory.Config{
+				PrivateDB: db,
+				PublicDB:  db,
+				KeyGen:    keygen,
+			})
+			if err != nil {
+				t.Fatalf("NewFactoryWithConfig(): %v", err)
+			}
+
+			factoryMiddleware := middleware.FactoryMiddleware(f)
+			permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
+			handler := http.HandlerFunc(deleteReversal)
+
+			finalHandler := factoryMiddleware(
+				middleware.AuthMiddleware(
+					permissionsMiddleware(handler),
+				),
+			)
+
+			w := httptest.NewRecorder()
+			r, reversal, key, err := tc.setup(t, db, keygen)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			chiContext := chi.NewRouteContext()
+			if reversal != nil {
+				chiContext.URLParams.Add("id", reversal.ID.String())
+			} else {
+				urlID := chi.URLParam(r, "id")
+				if urlID == "" {
+					if r.URL.Path != "/" {
+						urlID = r.URL.Path[1:]
+					}
+				}
+				chiContext.URLParams.Add("id", urlID)
+			}
+			ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+			r = r.WithContext(ctx)
+
+			finalHandler.ServeHTTP(w, r)
+
+			tc.validateFunc(t, db, reversal, key, w.Result())
+		})
+	}
+}

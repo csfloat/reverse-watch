@@ -62,3 +62,44 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, reversal)
 }
+
+func deleteReversal(w http.ResponseWriter, r *http.Request) {
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		render.Errorf(w, r, errors.BadRequest, "id must not be empty")
+		return
+	}
+
+	snowflake, err := models.ToSnowflake(id)
+	if err != nil {
+		render.Errorf(w, r, errors.BadRequest, "invalid id")
+		return
+	}
+
+	if err := factory.Reversal().Delete(snowflake); err != nil {
+		render.Error(w, r, err)
+		return
+	}
+
+	details := struct {
+		Key string `json:"key"`
+	}{
+		Key: key.ID,
+	}
+
+	jsonb, err := models.ToRawJsonb(details)
+	if err != nil {
+		render.Error(w, r, err)
+		return
+	}
+
+	audit := models.NewReversalAdminAudit(models.TargetActionRemoveReversal, snowflake, jsonb)
+	if err := factory.AdminAudit().Create(audit); err != nil {
+		render.Error(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
