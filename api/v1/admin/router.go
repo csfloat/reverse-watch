@@ -3,6 +3,7 @@ package admin
 import (
 	"reverse-watch/api/v1/admin/keys"
 	"reverse-watch/api/v1/admin/marketplace"
+	"reverse-watch/api/v1/admin/reversals"
 	"reverse-watch/domain/models"
 	"reverse-watch/middleware"
 
@@ -16,5 +17,6 @@ func Router() chi.Router {
 
 	r.Mount("/marketplace", marketplace.Router())
 	r.Mount("/keys", keys.Router())
+	r.Mount("/reversals", reversals.Router())
 	return r
 }
