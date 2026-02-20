@@ -7,6 +7,7 @@ import (
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
+	rwerrors "reverse-watch/errors"
 	"reverse-watch/internal/testutil"
 	"reverse-watch/util"
 
@@ -549,7 +550,7 @@ func TestReversalRepository_Update_Errors(t *testing.T) {
 			name:    "nilUpdates",
 			id:      models.Snowflake(1),
 			updates: nil,
-			wantErr: "reversal updates cannot be nil",
+			wantErr: rwerrors.New(rwerrors.BadRequest, "reversal updates cannot be nil").Error(),
 		},
 	}
 
