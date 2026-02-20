@@ -11,6 +11,8 @@ import (
 	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func createKey(w http.ResponseWriter, r *http.Request) {
@@ -63,4 +65,48 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, rawKey)
+}
+
+func deleteKey(w http.ResponseWriter, r *http.Request) {
+	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		render.Errorf(w, r, errors.BadRequest, "id must not be empty")
+		return
+	}
+
+	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
+		key, err := tx.Key().Read(id)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Key().Delete(id); err != nil {
+			return err
+		}
+
+		details := &dto.DeleteKeyDetails{
+			MarketplaceSlug: key.MarketplaceSlug,
+			Permissions:     key.Permissions,
+		}
+
+		jsonb, err := models.ToRawJsonb(details)
+		if err != nil {
+			return err
+		}
+
+		audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, jsonb)
+		if err := tx.AdminAudit().Create(audit); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logging.Log.Errorf("failed to delete key: %v", err)
+		render.Error(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
