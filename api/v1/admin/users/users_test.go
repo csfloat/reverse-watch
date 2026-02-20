@@ -76,7 +76,7 @@ func TestPurgeUser(t *testing.T) {
 				}
 
 				var reversals []models.Reversal
-				err := db.Unscoped().Where("steam_id = ?", steamID).Find(&reversals).Error
+				err := db.Unscoped().Where("steam_id = ?", *steamID).Find(&reversals).Error
 				if err != nil {
 					t.Fatalf("failed to query reversals: %v", err)
 				}
