@@ -11,5 +11,6 @@ type ReversalRepository interface {
 	Read(id models.Snowflake) (*models.Reversal, error)
 	Update(id models.Snowflake, updates *dto.ReversalUpdates) error
 	Delete(id models.Snowflake) error
+	DeleteUser(steamId models.SteamID) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
 }
