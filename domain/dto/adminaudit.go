@@ -10,7 +10,8 @@ type AdminAuditListOptions struct {
 	TargetResource     *string
 }
 
-type DeleteKeyDetails struct {
+type KeyAuditDetails struct {
 	MarketplaceSlug string             `json:"marketplace_slug"`
 	Permissions     models.Permissions `json:"permissions"`
+	AdminKey        string             `json:"admin_key"`
 }

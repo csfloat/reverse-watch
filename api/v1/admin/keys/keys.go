@@ -17,6 +17,7 @@ import (
 
 func createKey(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	var req struct {
 		MarketplaceSlug string             `json:"marketplace_slug"`
@@ -47,7 +48,13 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		jsonb, err := models.ToRawJsonb(req)
+		details := &dto.KeyAuditDetails{
+			MarketplaceSlug: req.MarketplaceSlug,
+			Permissions:     req.Permissions,
+			AdminKey:        authKey.ID,
+		}
+
+		jsonb, err := models.ToRawJsonb(details)
 		if err != nil {
 			return err
 		}
