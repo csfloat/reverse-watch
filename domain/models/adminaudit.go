@@ -28,32 +28,36 @@ type AdminAudit struct {
 	TargetAction       TargetAction       `json:"target_action"`
 	TargetResourceType TargetResourceType `json:"target_resource_type"`
 	TargetResource     string             `json:"target_resource"`
+	InitiatorKey       string             `json:"initiator_key"`
 	Details            *RawJsonb          `json:"details"`
 }
 
-func NewMarketplaceAdminAudit(action TargetAction, slug string, details *RawJsonb) *AdminAudit {
+func NewMarketplaceAdminAudit(action TargetAction, slug, initiatorKey string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeMarketplace,
 		TargetResource:     slug,
+		InitiatorKey:       initiatorKey,
 		Details:            details,
 	}
 }
 
-func NewKeyAdminAudit(action TargetAction, id string, details *RawJsonb) *AdminAudit {
+func NewKeyAdminAudit(action TargetAction, id, initiatorKey string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeKey,
 		TargetResource:     id,
+		InitiatorKey:       initiatorKey,
 		Details:            details,
 	}
 }
 
-func NewReversalAdminAudit(action TargetAction, id Snowflake, details *RawJsonb) *AdminAudit {
+func NewReversalAdminAudit(action TargetAction, id Snowflake, initiatorKey string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeReversal,
 		TargetResource:     id.String(),
+		InitiatorKey:       initiatorKey,
 		Details:            details,
 	}
 }

@@ -56,14 +56,7 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		details, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-			AdminKey: authKey.ID,
-		})
-		if err != nil {
-			return err
-		}
-
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, details)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, authKey.ID, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
@@ -114,15 +107,12 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		details, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-			MarketplaceUpdates: opts,
-			AdminKey:           authKey.ID,
-		})
+		details, err := models.ToRawJsonb(opts)
 		if err != nil {
 			return err
 		}
 
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, details)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, authKey.ID, details)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
@@ -162,14 +152,7 @@ func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		details, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-			AdminKey: authKey.ID,
-		})
-		if err != nil {
-			return err
-		}
-
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, details)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, authKey.ID, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}

@@ -556,7 +556,6 @@ func TestDeleteKey(t *testing.T) {
 				wantDetails := &dto.KeyAuditDetails{
 					MarketplaceSlug: "test-marketplace",
 					Permissions:     models.PermissionManage,
-					AdminKey:        authKeyID,
 				}
 
 				var details *dto.KeyAuditDetails
@@ -566,6 +565,10 @@ func TestDeleteKey(t *testing.T) {
 
 				if diff := cmp.Diff(wantDetails, details); diff != "" {
 					t.Error(diff)
+				}
+
+				if audit.InitiatorKey != authKeyID {
+					t.Errorf("wanted initiator key %q, got %q", authKeyID, audit.InitiatorKey)
 				}
 			},
 		},

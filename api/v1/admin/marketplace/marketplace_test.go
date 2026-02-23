@@ -19,6 +19,7 @@ import (
 	"reverse-watch/middleware"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
+	"reverse-watch/util"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/go-cmp/cmp"
@@ -118,13 +119,8 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				var details *dto.MarketplaceAuditDetails
-				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
-					t.Fatalf("Unmarshal(): %v", err)
-				}
-
-				if details.AdminKey != authKeyID {
-					t.Errorf("wanted key ID %q, got %q", authKeyID, details.AdminKey)
+				if audit.InitiatorKey != authKeyID {
+					t.Errorf("wanted initiator key %q, got %q", authKeyID, audit.InitiatorKey)
 				}
 			},
 		},
@@ -467,22 +463,12 @@ func TestUpdateMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				wantName := "Updated Marketplace Name"
-				wantActive := false
-				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-					MarketplaceUpdates: dto.MarketplaceUpdates{
-						Name:     &wantName,
-						IsActive: &wantActive,
-					},
-					AdminKey: authKeyID,
-				})
-				if err != nil {
-					t.Fatalf("ToRawJsonb(): %v", err)
+				wantDetails := &dto.MarketplaceUpdates{
+					Name:     util.Ptr("Updated Marketplace Name"),
+					IsActive: util.Ptr(false),
 				}
 
-				gotDetails := models.RawJsonb{
-					Raw: make(json.RawMessage, 0),
-				}
+				var gotDetails dto.MarketplaceUpdates
 				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
 					t.Fatalf("Unmarshal(): %v", err)
 				}
@@ -556,20 +542,11 @@ func TestUpdateMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				wantName := "New Name Only"
-				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-					MarketplaceUpdates: dto.MarketplaceUpdates{
-						Name: &wantName,
-					},
-					AdminKey: authKeyID,
-				})
-				if err != nil {
-					t.Fatalf("ToRawJsonb(): %v", err)
+				wantDetails := &dto.MarketplaceUpdates{
+					Name: util.Ptr("New Name Only"),
 				}
 
-				gotDetails := models.RawJsonb{
-					Raw: make(json.RawMessage, 0),
-				}
+				var gotDetails dto.MarketplaceUpdates
 				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
 					t.Fatalf("Unmarshal(): %v", err)
 				}
@@ -643,20 +620,11 @@ func TestUpdateMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				wantActive := false
-				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
-					MarketplaceUpdates: dto.MarketplaceUpdates{
-						IsActive: &wantActive,
-					},
-					AdminKey: authKeyID,
-				})
-				if err != nil {
-					t.Fatalf("ToRawJsonb(): %v", err)
+				wantDetails := &dto.MarketplaceUpdates{
+					IsActive: util.Ptr(false),
 				}
 
-				gotDetails := models.RawJsonb{
-					Raw: make(json.RawMessage, 0),
-				}
+				var gotDetails dto.MarketplaceUpdates
 				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
 					t.Fatalf("Unmarshal(): %v", err)
 				}
@@ -910,17 +878,8 @@ func TestDeleteMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				if audit.Details == nil {
-					t.Fatalf("expected audit details to be set, got nil")
-				}
-
-				var details *dto.MarketplaceAuditDetails
-				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
-					t.Fatalf("Unmarshal(): %v", err)
-				}
-
-				if details.AdminKey != keyID {
-					t.Errorf("wanted key ID %q, got %q", keyID, details.AdminKey)
+				if audit.InitiatorKey != keyID {
+					t.Errorf("wanted initiator key %q, got %q", keyID, audit.InitiatorKey)
 				}
 			},
 		},
@@ -1090,17 +1049,8 @@ func TestDeleteMarketplace(t *testing.T) {
 					t.Fatalf("First(): %v", err)
 				}
 
-				if audit.Details == nil {
-					t.Fatalf("expected audit details to be set, got nil")
-				}
-
-				var details *dto.MarketplaceAuditDetails
-				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
-					t.Fatalf("Unmarshal(): %v", err)
-				}
-
-				if details.AdminKey != keyID {
-					t.Errorf("wanted key ID %q, got %q", keyID, details.AdminKey)
+				if audit.InitiatorKey != keyID {
+					t.Errorf("wanted initiator key %q, got %q", keyID, audit.InitiatorKey)
 				}
 			},
 		},
