@@ -11,7 +11,7 @@ type Error struct {
 	Code    uint64 `json:"code"`
 	status  int
 	Message string `json:"message"`
-	Details string `json:"detail,omitempty"`
+	Details string `json:"details,omitempty"`
 	wrapped error
 }
 
