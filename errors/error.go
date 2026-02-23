@@ -68,4 +68,5 @@ var (
 	Limiter             = Error{Code: 13, status: http.StatusInternalServerError, Message: "unable to process request"}
 	RateLimited         = Error{Code: 14, status: http.StatusTooManyRequests, Message: "rate limited"}
 	Conflict            = Error{Code: 15, status: http.StatusConflict, Message: "resource already exists"}
+	InvalidReference    = Error{Code: 16, status: http.StatusBadRequest, Message: "invalid resource reference"}
 )
