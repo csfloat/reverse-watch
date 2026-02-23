@@ -519,21 +519,21 @@ func TestDeleteKey(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error)
-		validateFunc func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response)
+		setup        func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error)
+		validateFunc func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response)
 	}{
 		{
 			name: "validRequest",
-			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 				_, keyToDelete, _ := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 
 				r := httptest.NewRequest(http.MethodDelete, "/"+keyToDelete.ID, nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, keyToDelete.ID, nil
+				return r, keyToDelete.ID, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
@@ -553,12 +553,13 @@ func TestDeleteKey(t *testing.T) {
 					t.Fatalf("failed to find admin audit: %v", err)
 				}
 
-				wantDetails := &dto.DeleteKeyDetails{
+				wantDetails := &dto.KeyAuditDetails{
 					MarketplaceSlug: "test-marketplace",
 					Permissions:     models.PermissionManage,
+					AdminKey:        authKeyID,
 				}
 
-				var details *dto.DeleteKeyDetails
+				var details *dto.KeyAuditDetails
 				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
 					t.Fatalf("failed to unmarshal audit details: %v", err)
 				}
@@ -570,15 +571,15 @@ func TestDeleteKey(t *testing.T) {
 		},
 		{
 			name: "emptyID",
-			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				r := httptest.NewRequest(http.MethodDelete, "/", nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "", nil
+				return r, "", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -600,15 +601,15 @@ func TestDeleteKey(t *testing.T) {
 		},
 		{
 			name: "nonExistentKey",
-			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				r := httptest.NewRequest(http.MethodDelete, "/nonexistent-key-id", nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "nonexistent-key-id", nil
+				return r, "nonexistent-key-id", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusNotFound {
 					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
@@ -626,16 +627,16 @@ func TestDeleteKey(t *testing.T) {
 		},
 		{
 			name: "insufficientPermissions",
-			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
 				_, keyToDelete, _ := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionManage)
 
 				r := httptest.NewRequest(http.MethodDelete, "/"+keyToDelete.ID, nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, keyToDelete.ID, nil
+				return r, keyToDelete.ID, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, keyID string, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusForbidden {
 					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
@@ -686,7 +687,7 @@ func TestDeleteKey(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, keyID, err := tc.setup(t, db, keygen)
+			r, keyID, authKeyID, err := tc.setup(t, db, keygen)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -698,7 +699,7 @@ func TestDeleteKey(t *testing.T) {
 
 			finalHandler.ServeHTTP(w, r)
 
-			tc.validateFunc(t, db, keyID, w.Result())
+			tc.validateFunc(t, db, keyID, authKeyID, w.Result())
 		})
 	}
 }

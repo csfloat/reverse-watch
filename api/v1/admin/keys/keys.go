@@ -76,6 +76,7 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 
 func deleteKey(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -93,9 +94,10 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		details := &dto.DeleteKeyDetails{
+		details := &dto.KeyAuditDetails{
 			MarketplaceSlug: key.MarketplaceSlug,
 			Permissions:     key.Permissions,
+			AdminKey:        authKey.ID,
 		}
 
 		jsonb, err := models.ToRawJsonb(details)
