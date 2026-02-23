@@ -15,3 +15,8 @@ type KeyAuditDetails struct {
 	Permissions     models.Permissions `json:"permissions"`
 	AdminKey        string             `json:"admin_key"`
 }
+
+type MarketplaceAuditDetails struct {
+	MarketplaceUpdates
+	AdminKey string `json:"admin_key"`
+}

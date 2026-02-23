@@ -32,14 +32,14 @@ func TestOnboardMarketplace(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error)
-		validateFunc func(t *testing.T, db *gorm.DB, resp *http.Response)
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error)
+		validateFunc func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response)
 	}{
 		{
 			name: "validRequest",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
 				// Setup CSFloat marketplace with admin key
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				reqBody := onboardMarketplaceRequest{
 					MarketplaceSlug: "test-marketplace",
@@ -48,16 +48,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
@@ -117,20 +117,29 @@ func TestOnboardMarketplace(t *testing.T) {
 					models.TargetActionAddMarketplace, models.TargetResourceTypeMarketplace, "test-marketplace").First(&audit).Error; err != nil {
 					t.Fatalf("First(): %v", err)
 				}
+
+				var details *dto.MarketplaceAuditDetails
+				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
+					t.Fatalf("Unmarshal(): %v", err)
+				}
+
+				if details.AdminKey != authKeyID {
+					t.Errorf("wanted key ID %q, got %q", authKeyID, details.AdminKey)
+				}
 			},
 		},
 		{
 			name: "invalidRequestBody",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte("invalid json")))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -148,8 +157,8 @@ func TestOnboardMarketplace(t *testing.T) {
 		},
 		{
 			name: "emptyMarketplaceSlug",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				reqBody := onboardMarketplaceRequest{
 					MarketplaceSlug: "",
@@ -158,16 +167,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -185,8 +194,8 @@ func TestOnboardMarketplace(t *testing.T) {
 		},
 		{
 			name: "emptyName",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				reqBody := onboardMarketplaceRequest{
 					MarketplaceSlug: "test-marketplace",
@@ -195,16 +204,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -222,8 +231,8 @@ func TestOnboardMarketplace(t *testing.T) {
 		},
 		{
 			name: "duplicateMarketplaceSlug",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				// Pre-create marketplace with same slug
 				existingMarketplace := &models.Marketplace{
@@ -240,16 +249,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusConflict {
 					t.Errorf("wanted status code %d, got %d", http.StatusConflict, resp.StatusCode)
 				}
@@ -267,8 +276,8 @@ func TestOnboardMarketplace(t *testing.T) {
 		},
 		{
 			name: "invalidSlugInvalidName",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				reqBody := onboardMarketplaceRequest{
 					MarketplaceSlug: "",
@@ -277,16 +286,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -304,8 +313,8 @@ func TestOnboardMarketplace(t *testing.T) {
 		},
 		{
 			name: "invalidPermissions",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
 
 				reqBody := onboardMarketplaceRequest{
 					MarketplaceSlug: "new-marketplace",
@@ -314,16 +323,16 @@ func TestOnboardMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, err
+					return nil, "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, nil
+				return r, authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusForbidden {
 					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
@@ -365,14 +374,14 @@ func TestOnboardMarketplace(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, err := tc.setup(t, db, f, keygen)
+			r, authKeyID, err := tc.setup(t, db, f, keygen)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			finalHandler.ServeHTTP(w, r)
 
-			tc.validateFunc(t, db, w.Result())
+			tc.validateFunc(t, db, authKeyID, w.Result())
 		})
 	}
 }
@@ -383,14 +392,14 @@ func TestUpdateMarketplace(t *testing.T) {
 
 	testCases := []struct {
 		name         string
-		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error)
-		validateFunc func(t *testing.T, db *gorm.DB, resp *http.Response)
+		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error)
+		validateFunc func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response)
 	}{
 		{
 			name: "validRequest",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
 				// Setup CSFloat marketplace with admin key
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				// Create marketplace to update
 				testMarketplace := &models.Marketplace{
@@ -409,16 +418,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/test-marketplace", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "test-marketplace", nil
+				return r, "test-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
@@ -460,9 +469,12 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				wantName := "Updated Marketplace Name"
 				wantActive := false
-				wantDetails, err := models.ToRawJsonb(dto.MarketplaceUpdates{
-					Name:     &wantName,
-					IsActive: &wantActive,
+				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
+					MarketplaceUpdates: dto.MarketplaceUpdates{
+						Name:     &wantName,
+						IsActive: &wantActive,
+					},
+					AdminKey: authKeyID,
 				})
 				if err != nil {
 					t.Fatalf("ToRawJsonb(): %v", err)
@@ -482,8 +494,8 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "updateNameOnly",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				testMarketplace := &models.Marketplace{
 					Slug:     "test-marketplace",
@@ -499,16 +511,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/test-marketplace", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "test-marketplace", nil
+				return r, "test-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
@@ -545,8 +557,11 @@ func TestUpdateMarketplace(t *testing.T) {
 				}
 
 				wantName := "New Name Only"
-				wantDetails, err := models.ToRawJsonb(dto.MarketplaceUpdates{
-					Name: &wantName,
+				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
+					MarketplaceUpdates: dto.MarketplaceUpdates{
+						Name: &wantName,
+					},
+					AdminKey: authKeyID,
 				})
 				if err != nil {
 					t.Fatalf("ToRawJsonb(): %v", err)
@@ -566,8 +581,8 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "updateIsActiveOnly",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				testMarketplace := &models.Marketplace{
 					Slug:     "test-marketplace",
@@ -583,16 +598,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/test-marketplace", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "test-marketplace", nil
+				return r, "test-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
@@ -629,8 +644,11 @@ func TestUpdateMarketplace(t *testing.T) {
 				}
 
 				wantActive := false
-				wantDetails, err := models.ToRawJsonb(dto.MarketplaceUpdates{
-					IsActive: &wantActive,
+				wantDetails, err := models.ToRawJsonb(&dto.MarketplaceAuditDetails{
+					MarketplaceUpdates: dto.MarketplaceUpdates{
+						IsActive: &wantActive,
+					},
+					AdminKey: authKeyID,
 				})
 				if err != nil {
 					t.Fatalf("ToRawJsonb(): %v", err)
@@ -650,8 +668,8 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "emptySlug",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				newName := "Updated Name"
 				reqBody := dto.MarketplaceUpdates{
@@ -660,16 +678,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "", nil
+				return r, "", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -691,16 +709,16 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "invalidRequestBody",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				r := httptest.NewRequest(http.MethodPatch, "/test-marketplace", bytes.NewBuffer([]byte("invalid json")))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "test-marketplace", nil
+				return r, "test-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
 					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
 				}
@@ -718,8 +736,8 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "marketplaceNotFound",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
 
 				newName := "Updated Name"
 				reqBody := dto.MarketplaceUpdates{
@@ -728,16 +746,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/nonexistent-marketplace", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "nonexistent-marketplace", nil
+				return r, "nonexistent-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusNotFound {
 					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
@@ -759,8 +777,8 @@ func TestUpdateMarketplace(t *testing.T) {
 		},
 		{
 			name: "invalidPermissions",
-			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, error) {
-				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionWrite)
 
 				testMarketplace := &models.Marketplace{
 					Slug:     "test-marketplace",
@@ -776,16 +794,16 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				payload, err := json.Marshal(reqBody)
 				if err != nil {
-					return nil, "", err
+					return nil, "", "", err
 				}
 
 				r := httptest.NewRequest(http.MethodPatch, "/test-marketplace", bytes.NewBuffer(payload))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
 
-				return r, "test-marketplace", nil
+				return r, "test-marketplace", authKey.ID, nil
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB, resp *http.Response) {
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusForbidden {
 					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
 				}
@@ -827,7 +845,7 @@ func TestUpdateMarketplace(t *testing.T) {
 			)
 
 			w := httptest.NewRecorder()
-			r, slug, err := tc.setup(t, db, f, keygen)
+			r, slug, authKeyID, err := tc.setup(t, db, f, keygen)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -840,7 +858,7 @@ func TestUpdateMarketplace(t *testing.T) {
 
 			finalHandler.ServeHTTP(w, r)
 
-			tc.validateFunc(t, db, w.Result())
+			tc.validateFunc(t, db, authKeyID, w.Result())
 		})
 	}
 }
@@ -896,15 +914,13 @@ func TestDeleteMarketplace(t *testing.T) {
 					t.Fatalf("expected audit details to be set, got nil")
 				}
 
-				var details struct {
-					Key string `json:"key"`
-				}
+				var details *dto.MarketplaceAuditDetails
 				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
 					t.Fatalf("Unmarshal(): %v", err)
 				}
 
-				if details.Key != keyID {
-					t.Errorf("wanted key ID %q, got %q", keyID, details.Key)
+				if details.AdminKey != keyID {
+					t.Errorf("wanted key ID %q, got %q", keyID, details.AdminKey)
 				}
 			},
 		},
@@ -1078,15 +1094,13 @@ func TestDeleteMarketplace(t *testing.T) {
 					t.Fatalf("expected audit details to be set, got nil")
 				}
 
-				var details struct {
-					Key string `json:"key"`
-				}
+				var details *dto.MarketplaceAuditDetails
 				if err := json.Unmarshal(audit.Details.Raw, &details); err != nil {
 					t.Fatalf("Unmarshal(): %v", err)
 				}
 
-				if details.Key != keyID {
-					t.Errorf("wanted key ID %q, got %q", keyID, details.Key)
+				if details.AdminKey != keyID {
+					t.Errorf("wanted key ID %q, got %q", keyID, details.AdminKey)
 				}
 			},
 		},
