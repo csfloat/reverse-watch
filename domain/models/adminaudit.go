@@ -1,5 +1,11 @@
 package models
 
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
+
 type TargetAction uint
 
 const (
@@ -29,7 +35,18 @@ type AdminAudit struct {
 	TargetResourceType TargetResourceType `json:"target_resource_type"`
 	TargetResource     string             `json:"target_resource"`
 	InitiatorKey       string             `json:"initiator_key"`
-	Details            *RawJsonb          `json:"details"`
+	Details            *RawJsonb          `json:"details,omitempty"`
+}
+
+func (a *AdminAudit) BeforeCreate(tx *gorm.DB) error {
+	if err := a.Model.BeforeCreate(tx); err != nil {
+		return err
+	}
+
+	if a.InitiatorKey == "" {
+		return fmt.Errorf("initiator_key is required")
+	}
+	return nil
 }
 
 func NewMarketplaceAdminAudit(action TargetAction, slug, initiatorKey string, details *RawJsonb) *AdminAudit {
