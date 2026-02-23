@@ -476,6 +476,10 @@ func TestUpdateMarketplace(t *testing.T) {
 				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
 					t.Error(diff)
 				}
+
+				if authKeyID != audit.InitiatorKey {
+					t.Errorf("wanted initiator key %s, got %s", authKeyID, audit.InitiatorKey)
+				}
 			},
 		},
 		{
@@ -554,6 +558,10 @@ func TestUpdateMarketplace(t *testing.T) {
 				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
 					t.Error(diff)
 				}
+
+				if authKeyID != audit.InitiatorKey {
+					t.Errorf("wanted initiator key %s, got %s", authKeyID, audit.InitiatorKey)
+				}
 			},
 		},
 		{
@@ -631,6 +639,10 @@ func TestUpdateMarketplace(t *testing.T) {
 
 				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
 					t.Error(diff)
+				}
+
+				if authKeyID != audit.InitiatorKey {
+					t.Errorf("wanted initiator key %s, got %s", authKeyID, audit.InitiatorKey)
 				}
 			},
 		},
