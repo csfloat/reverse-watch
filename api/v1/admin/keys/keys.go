@@ -46,11 +46,7 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		details := struct {
-			MarketplaceSlug string             `json:"marketplace_slug"`
-			Permissions     models.Permissions `json:"permissions"`
-			AdminKey        string             `json:"admin_key"`
-		}{
+		details := &dto.KeyAuditDetails{
 			MarketplaceSlug: req.MarketplaceSlug,
 			Permissions:     req.Permissions,
 			AdminKey:        authKey.ID,
