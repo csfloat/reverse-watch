@@ -606,8 +606,8 @@ func TestDeleteKey(t *testing.T) {
 
 				r := httptest.NewRequest(http.MethodDelete, "/"+authKey.ID, nil)
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
-				
-				return r, authKey.ID, formattedKey, nil
+
+				return r, authKey.ID, authKey.ID, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
 				if resp.StatusCode != http.StatusBadRequest {
