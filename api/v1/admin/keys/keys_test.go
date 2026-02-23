@@ -600,6 +600,36 @@ func TestDeleteKey(t *testing.T) {
 			},
 		},
 		{
+			name: "selfDeleteKey",
+			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				r := httptest.NewRequest(http.MethodDelete, "/"+authKey.ID, nil)
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+				
+				return r, authKey.ID, formattedKey, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, keyID, authKeyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusBadRequest {
+					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.BadRequest, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "cannot delete key used for authentication" {
+					t.Errorf("wanted details %q, got %q", "cannot delete key used for authentication", respData.Details)
+				}
+			},
+		},
+		{
 			name: "nonExistentKey",
 			setup: func(t *testing.T, db *gorm.DB, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
 				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)

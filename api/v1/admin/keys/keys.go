@@ -84,6 +84,11 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if authKey.ID == id {
+		render.Errorf(w, r, errors.BadRequest, "cannot delete key used for authentication")
+		return
+	}
+
 	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
 		key, err := tx.Key().Read(id)
 		if err != nil {
