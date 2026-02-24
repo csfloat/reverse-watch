@@ -51,7 +51,6 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 		details := &dto.KeyAuditDetails{
 			MarketplaceSlug: req.MarketplaceSlug,
 			Permissions:     req.Permissions,
-			AdminKey:        authKey.ID,
 		}
 
 		jsonb, err := models.ToRawJsonb(details)
@@ -59,7 +58,7 @@ func createKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		audit := models.NewKeyAdminAudit(models.TargetActionAddKey, rawKey.ID, jsonb)
+		audit := models.NewKeyAdminAudit(models.TargetActionAddKey, rawKey.ID, authKey.ID, jsonb)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
@@ -102,7 +101,6 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 		details := &dto.KeyAuditDetails{
 			MarketplaceSlug: key.MarketplaceSlug,
 			Permissions:     key.Permissions,
-			AdminKey:        authKey.ID,
 		}
 
 		jsonb, err := models.ToRawJsonb(details)
@@ -110,7 +108,7 @@ func deleteKey(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, jsonb)
+		audit := models.NewKeyAdminAudit(models.TargetActionRemoveKey, id, authKey.ID, jsonb)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}

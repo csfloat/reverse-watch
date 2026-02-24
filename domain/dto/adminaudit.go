@@ -13,5 +13,4 @@ type AdminAuditListOptions struct {
 type KeyAuditDetails struct {
 	MarketplaceSlug string             `json:"marketplace_slug"`
 	Permissions     models.Permissions `json:"permissions"`
-	AdminKey        string             `json:"admin_key"`
 }
