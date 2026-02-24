@@ -27,6 +27,7 @@ const (
 	TargetResourceTypeMarketplace TargetResourceType = 1
 	TargetResourceTypeKey         TargetResourceType = 2
 	TargetResourceTypeReversal    TargetResourceType = 3
+	TargetResourceTypeUser        TargetResourceType = 4
 )
 
 type AdminAudit struct {
@@ -74,6 +75,16 @@ func NewReversalAdminAudit(action TargetAction, id Snowflake, initiatorKey strin
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeReversal,
 		TargetResource:     id.String(),
+		InitiatorKey:       initiatorKey,
+		Details:            details,
+	}
+}
+
+func NewUserAdminAudit(action TargetAction, steamId SteamID, initiatorKey string, details *RawJsonb) *AdminAudit {
+	return &AdminAudit{
+		TargetAction:       action,
+		TargetResourceType: TargetResourceTypeUser,
+		TargetResource:     steamId.String(),
 		InitiatorKey:       initiatorKey,
 		Details:            details,
 	}

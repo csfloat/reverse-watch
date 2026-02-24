@@ -67,6 +67,17 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 	return nil
 }
 
+func (r *reversalRepository) DeleteAllUserReports(steamId models.SteamID) error {
+	tx := r.conn.Unscoped().Where("steam_id = ?", steamId).Delete(&models.Reversal{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm.DB {
 	query := r.conn.Model(&models.Reversal{})
 	if opts == nil {

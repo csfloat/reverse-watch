@@ -621,6 +621,60 @@ func TestReversalRepository_Delete_NotFound(t *testing.T) {
 	}
 }
 
+func TestReversalRepository_DeleteUser(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	testReversals := []*models.Reversal{
+		{
+			Model:           models.Model{ID: 1},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "test-slug",
+		},
+		{
+			Model:           models.Model{ID: 2},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "test-slug",
+		},
+		{
+			Model:           models.Model{ID: 3},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "another-test-slug",
+		},
+	}
+	testutil.Insert(t, db, testReversals...)
+
+	if err := reversalRepo.DeleteAllUserReports(testReversals[0].SteamID); err != nil {
+		t.Fatalf("DeleteAllUserReports(): %v", err)
+	}
+
+	var deletedReversals []*models.Reversal
+	if err := db.Unscoped().Where("steam_id = ?", testReversals[0].SteamID).Find(&deletedReversals).Error; err != nil {
+		t.Fatalf("Find(): %v", err)
+	}
+
+	if len(deletedReversals) > 0 {
+		t.Fatalf("wanted 0 reversals, got %d", len(deletedReversals))
+	}
+}
+
+func TestReversalRepository_DeleteUser_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	err := reversalRepo.DeleteAllUserReports(models.SteamID(1))
+	if err == nil {
+		t.Fatalf("DeleteAllUserReports(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("DeleteAllUserReports(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
 func TestReversalRepository_List(t *testing.T) {
 	t.Parallel()
 

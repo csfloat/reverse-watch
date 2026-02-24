@@ -81,7 +81,7 @@ func GetProjectRootDir() (string, error) {
 		return "", err
 	}
 
-	dir := filepath.Dir(wd)
+	dir := wd
 	for {
 		targetPath := filepath.Join(dir, "go.mod")
 
