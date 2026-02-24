@@ -191,11 +191,16 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 			relatedSteamID = reversal.RelatedSteamID.String()
 		}
 
+		var deletedAt string
+		if !reversal.DeletedAt.Time.IsZero() {
+			deletedAt = strconv.FormatUint(uint64(reversal.DeletedAt.Time.UnixMilli()), 10)
+		}
+
 		records = append(records, []string{
 			reversal.ID.String(),
 			strconv.FormatUint(reversal.CreatedAt, 10),
 			strconv.FormatUint(reversal.UpdatedAt, 10),
-			strconv.FormatUint(uint64(reversal.DeletedAt.Time.UnixMilli()), 10),
+			deletedAt,
 			reversal.SteamID.String(),
 			reversal.MarketplaceSlug,
 			source,
