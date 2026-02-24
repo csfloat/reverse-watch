@@ -16,6 +16,7 @@ import (
 
 func modifyReversal(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -47,7 +48,7 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	audit := models.NewReversalAdminAudit(models.TargetActionUpdateReversal, snowflake, details)
+	audit := models.NewReversalAdminAudit(models.TargetActionUpdateReversal, snowflake, authKey.ID, details)
 	if err := factory.AdminAudit().Create(audit); err != nil {
 		render.Error(w, r, err)
 		return
