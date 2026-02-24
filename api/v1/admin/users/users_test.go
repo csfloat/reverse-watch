@@ -259,7 +259,7 @@ func TestPurgeUser(t *testing.T) {
 
 			factoryMiddleware := middleware.FactoryMiddleware(f)
 			permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
-			handler := http.HandlerFunc(purgeUser)
+			handler := http.HandlerFunc(deleteAllUserReports)
 
 			finalHandler := factoryMiddleware(
 				middleware.AuthMiddleware(

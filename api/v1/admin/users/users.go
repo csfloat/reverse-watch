@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func purgeUser(w http.ResponseWriter, r *http.Request) {
+func deleteAllUserReports(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
