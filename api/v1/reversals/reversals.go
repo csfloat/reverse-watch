@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
@@ -178,7 +177,7 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	headers := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+	headers := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 	records := [][]string{headers}
 
 	for _, reversal := range reversals {
@@ -192,21 +191,16 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 			relatedSteamID = reversal.RelatedSteamID.String()
 		}
 
-		var expungedAt string
-		if reversal.ExpungedAt != nil {
-			expungedAt = strconv.FormatUint(*reversal.ExpungedAt, 10)
-		}
-
 		records = append(records, []string{
 			reversal.ID.String(),
 			strconv.FormatUint(reversal.CreatedAt, 10),
 			strconv.FormatUint(reversal.UpdatedAt, 10),
+			strconv.FormatUint(uint64(reversal.DeletedAt.Time.UnixMilli()), 10),
 			reversal.SteamID.String(),
 			reversal.MarketplaceSlug,
 			source,
 			relatedSteamID,
 			strconv.FormatUint(reversal.ReversedAt, 10),
-			expungedAt,
 		})
 	}
 
@@ -230,7 +224,7 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf.Bytes())
 }
 
-func expungeReversal(w http.ResponseWriter, r *http.Request) {
+func deleteReversal(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
@@ -253,19 +247,18 @@ func expungeReversal(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if key.MarketplaceSlug != reversal.MarketplaceSlug {
-			return errors.New(errors.BadRequest, "cannot expunge reversal report of another marketplace")
+			return errors.New(errors.BadRequest, "cannot delete reversal report of another marketplace")
 		}
 
-		if reversal.ExpungedAt != nil {
-			return errors.New(errors.BadRequest, "reversal has already been expunged")
+		if !reversal.DeletedAt.Time.IsZero() {
+			return errors.New(errors.BadRequest, "reversal has already been deleted")
 		}
 
-		now := uint64(time.Now().UnixMilli())
-		if err := tx.Reversal().Update(snowflake, &dto.ReversalUpdates{ExpungedAt: &now}); err != nil {
+		if err := tx.Reversal().Delete(snowflake); err != nil {
 			return err
 		}
 
-		logging.Log.Infof("marketplace %s expunged reversal with id %d", key.MarketplaceSlug, snowflake)
+		logging.Log.Infof("marketplace %s deleted reversal report with id %d", key.MarketplaceSlug, snowflake)
 		return nil
 	})
 	if err != nil {
@@ -273,7 +266,7 @@ func expungeReversal(w http.ResponseWriter, r *http.Request) {
 			render.Error(w, r, e)
 			return
 		}
-		render.Errorf(w, r, errors.InternalServerError, "failed to expunge reversal")
+		render.Errorf(w, r, errors.InternalServerError, "failed to delete reversal")
 		return
 	}
 	w.WriteHeader(http.StatusOK)

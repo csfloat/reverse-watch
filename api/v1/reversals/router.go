@@ -22,7 +22,7 @@ func Router() chi.Router {
 	r.With(
 		middleware.RequirePermissions(models.PermissionDelete),
 		ratelimit.ThrottleByAPIKey(time.Hour, 2_000),
-	).Delete("/{id}", expungeReversal)
+	).Delete("/{id}", deleteReversal)
 
 	r.Route("/", func(r chi.Router) {
 		r.Use(middleware.RequirePermissions(models.PermissionExport))

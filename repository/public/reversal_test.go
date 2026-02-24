@@ -3,7 +3,6 @@ package public
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
@@ -117,24 +116,6 @@ func TestReversalRepository_BeforeCreate_Errors(t *testing.T) {
 				ReversedAt:      uint64(99999999999999999),
 			},
 			wantErr: "reversed_at cannot be in the future",
-		},
-		{
-			name: "invalidExpungedAt",
-			reversal: &models.Reversal{
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-				ExpungedAt:      util.Ptr(uint64(0)),
-			},
-			wantErr: "expunged_at is invalid",
-		},
-		{
-			name: "expungedAtInFuture",
-			reversal: &models.Reversal{
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-				ExpungedAt:      util.Ptr(uint64(99999999999999999)),
-			},
-			wantErr: "expunged_at is invalid",
 		},
 	}
 
@@ -379,7 +360,6 @@ func TestReversalRepository_Read(t *testing.T) {
 		MarketplaceSlug: "test-slug",
 		Source:          util.Ptr(models.SourceRelatedUser),
 		RelatedSteamID:  util.Ptr(models.SteamID(76561197960287931)),
-		ExpungedAt:      util.Ptr(uint64(time.Now().Add(-24 * time.Hour).UnixMilli())),
 	}
 	testutil.Insert(t, db, testReversal)
 
@@ -470,28 +450,6 @@ func TestReversalRepository_Update(t *testing.T) {
 				ReversedAt:      models.Epoch + 1,
 			},
 			ignoreFields: []string{"CreatedAt", "UpdatedAt"},
-		},
-		{
-			name: "expungedAt",
-			initial: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-			},
-			updates: &dto.ReversalUpdates{
-				ExpungedAt: util.Ptr(models.Epoch + 1),
-			},
-			want: &models.Reversal{
-				Model: models.Model{
-					ID: models.Snowflake(1),
-				},
-				SteamID:         models.SteamID(76561197960287930),
-				MarketplaceSlug: "test-slug",
-				ExpungedAt:      util.Ptr(models.Epoch + 1),
-			},
-			ignoreFields: []string{"CreatedAt", "UpdatedAt", "ReversedAt"},
 		},
 	}
 
@@ -621,7 +579,7 @@ func TestReversalRepository_Delete_NotFound(t *testing.T) {
 	}
 }
 
-func TestReversalRepository_DeleteUser(t *testing.T) {
+func TestReversalRepository_DeleteAllUserReports(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
@@ -660,7 +618,7 @@ func TestReversalRepository_DeleteUser(t *testing.T) {
 	}
 }
 
-func TestReversalRepository_DeleteUser_NotFound(t *testing.T) {
+func TestReversalRepository_DeleteAllUserReports_NotFound(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)

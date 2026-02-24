@@ -19,7 +19,6 @@ type ReversalUpdates struct {
 	Source         *models.Source  `json:"source"`
 	RelatedSteamID *models.SteamID `json:"related_steam_id"`
 	ReversedAt     *uint64         `json:"reversed_at"`
-	ExpungedAt     *uint64         `json:"expunged_at"`
 }
 
 func (u *ReversalUpdates) ToFields() map[string]interface{} {
@@ -32,9 +31,6 @@ func (u *ReversalUpdates) ToFields() map[string]interface{} {
 	}
 	if u.ReversedAt != nil {
 		fields["reversed_at"] = u.ReversedAt
-	}
-	if u.ExpungedAt != nil {
-		fields["expunged_at"] = u.ExpungedAt
 	}
 
 	// Ensure related_steam_id is nullified when source is not SourceRelatedUser
@@ -60,12 +56,6 @@ func (u *ReversalUpdates) Validate() error {
 	if u.ReversedAt != nil {
 		if *u.ReversedAt == 0 || *u.ReversedAt < models.Epoch || *u.ReversedAt > now {
 			return errors.New(errors.BadRequest, "reversed_at is invalid")
-		}
-	}
-
-	if u.ExpungedAt != nil {
-		if *u.ExpungedAt == 0 || *u.ExpungedAt < models.Epoch || *u.ExpungedAt > now {
-			return errors.New(errors.BadRequest, "expunged_at is invalid")
 		}
 	}
 	return nil

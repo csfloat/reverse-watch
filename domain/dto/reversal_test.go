@@ -75,13 +75,11 @@ func TestReversalUpdates_ToFields(t *testing.T) {
 				Source:         util.Ptr(models.SourceRelatedUser),
 				RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 				ReversedAt:     util.Ptr(models.Epoch + 1),
-				ExpungedAt:     util.Ptr(models.Epoch + 1),
 			},
 			want: map[string]interface{}{
 				"source":           util.Ptr(models.SourceRelatedUser),
 				"related_steam_id": util.Ptr(models.SteamID(76561197960287931)),
 				"reversed_at":      util.Ptr(models.Epoch + 1),
-				"expunged_at":      util.Ptr(models.Epoch + 1),
 			},
 		},
 		{
@@ -133,7 +131,6 @@ func TestReversalUpdates_Validate(t *testing.T) {
 		Source:         util.Ptr(models.SourceRelatedUser),
 		RelatedSteamID: util.Ptr(models.SteamID(76561197960287931)),
 		ReversedAt:     util.Ptr(models.Epoch + 1),
-		ExpungedAt:     util.Ptr(models.Epoch + 1),
 	}
 
 	if err := updates.Validate(); err != nil {
@@ -180,20 +177,6 @@ func TestReversalUpdates_Validate_Errors(t *testing.T) {
 				ReversedAt: util.Ptr(uint64(99999999999999999)),
 			},
 			wantErr: errors.New(errors.BadRequest, "reversed_at is invalid").Error(),
-		},
-		{
-			name: "invalidExpungedAt",
-			updates: &ReversalUpdates{
-				ExpungedAt: util.Ptr(uint64(0)),
-			},
-			wantErr: errors.New(errors.BadRequest, "expunged_at is invalid").Error(),
-		},
-		{
-			name: "expungedAtInFuture",
-			updates: &ReversalUpdates{
-				ExpungedAt: util.Ptr(uint64(99999999999999999)),
-			},
-			wantErr: errors.New(errors.BadRequest, "expunged_at is invalid").Error(),
 		},
 	}
 

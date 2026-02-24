@@ -45,7 +45,7 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 	var lastReversalTime uint64
 	for _, reversal := range reversals {
 		lastReversalTime = max(lastReversalTime, reversal.ReversedAt)
-		if reversal.ExpungedAt == nil {
+		if reversal.DeletedAt.Time.IsZero() {
 			data.HasReversed = true
 			break
 		}

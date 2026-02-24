@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/models/constants"
@@ -195,7 +196,7 @@ func TestFetchUserStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "userWithExpungedReversal",
+			name: "userWithDeletedReversal",
 			setup: func(t *testing.T, db *gorm.DB) (*http.Request, *fetchUserStatusResponse) {
 				steamID := models.SteamID(76561197960287930)
 				testMarketplace := &models.Marketplace{
@@ -205,13 +206,11 @@ func TestFetchUserStatus(t *testing.T) {
 				}
 				testutil.Insert(t, db, testMarketplace)
 
-				expungedAt := uint64(1717756900)
 				reversal := &models.Reversal{
-					Model:           models.Model{ID: 1, CreatedAt: 1},
+					Model:           models.Model{ID: 1, CreatedAt: 1, DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true}},
 					SteamID:         steamID,
 					MarketplaceSlug: testMarketplace.Slug,
 					ReversedAt:      1717756800,
-					ExpungedAt:      &expungedAt,
 				}
 				testutil.Insert(t, db, reversal)
 
@@ -245,7 +244,7 @@ func TestFetchUserStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "userWithExpungedAndNonExpungedReversals",
+			name: "userWithDeletedAndNonDeletedReversals",
 			setup: func(t *testing.T, db *gorm.DB) (*http.Request, *fetchUserStatusResponse) {
 				steamID := models.SteamID(76561197960287930)
 				testMarketplaces := []*models.Marketplace{
@@ -262,21 +261,18 @@ func TestFetchUserStatus(t *testing.T) {
 				}
 				testutil.Insert(t, db, testMarketplaces...)
 
-				expungedAt := uint64(1717756900)
 				reversals := []*models.Reversal{
 					{
-						Model:           models.Model{ID: 1, CreatedAt: 1},
+						Model:           models.Model{ID: 1, CreatedAt: 1, DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true}},
 						SteamID:         steamID,
 						MarketplaceSlug: testMarketplaces[0].Slug,
 						ReversedAt:      1717756800,
-						ExpungedAt:      &expungedAt,
 					},
 					{
 						Model:           models.Model{ID: 2, CreatedAt: 1},
 						SteamID:         steamID,
 						MarketplaceSlug: testMarketplaces[1].Slug,
 						ReversedAt:      1717756900,
-						ExpungedAt:      nil, // Not expunged
 					},
 				}
 				testutil.Insert(t, db, reversals...)
@@ -287,7 +283,7 @@ func TestFetchUserStatus(t *testing.T) {
 				chiContext.URLParams.Add("steamId", steamID.String())
 				ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
 
-				// User is considered to have reversed if not all reversal reports have been expunged
+				// User is considered to have reversed if not all reversal reports have been deleted
 				expectedResp := &fetchUserStatusResponse{
 					SteamID:               steamID,
 					HasReversed:           true,

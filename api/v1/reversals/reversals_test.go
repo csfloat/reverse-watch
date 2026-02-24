@@ -1130,7 +1130,7 @@ func TestListReversals_Pagination(t *testing.T) {
 func decodeExportedCSV(t *testing.T, records [][]string) []*models.Reversal {
 	t.Helper()
 
-	headers := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+	headers := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 	reversals := make([]*models.Reversal, 0)
 
 	for i := 0; i < len(records); i++ {
@@ -1165,6 +1165,17 @@ func decodeExportedCSV(t *testing.T, records [][]string) []*models.Reversal {
 						t.Fatalf("ParseUint(%q): %v", column, err)
 					}
 					reversal.Model.UpdatedAt = timestamp
+				}
+			case "deleted_at":
+				if column != "" {
+					timestamp, err := strconv.ParseUint(column, 10, 64)
+					if err != nil {
+						t.Fatalf("ParseUint(%q): %v", column, err)
+					}
+					mstime := time.UnixMilli(int64(timestamp))
+					if !mstime.IsZero() {
+						reversal.Model.DeletedAt = gorm.DeletedAt{Time: mstime, Valid: true}
+					}
 				}
 			case "steam_id":
 				if column != "" {
@@ -1206,14 +1217,6 @@ func decodeExportedCSV(t *testing.T, records [][]string) []*models.Reversal {
 						t.Fatalf("ParseUint(%q): %v", column, err)
 					}
 					reversal.ReversedAt = timestamp
-				}
-			case "expunged_at":
-				if column != "" {
-					timestamp, err := strconv.ParseUint(column, 10, 64)
-					if err != nil {
-						t.Fatalf("ParseUint(%q): %v", column, err)
-					}
-					reversal.ExpungedAt = &timestamp
 				}
 			default:
 				t.Fatalf("unknown column: %q", headers[j])
@@ -1272,7 +1275,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1321,7 +1324,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("expected 2 rows (header + 1 data), got %d", len(records))
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1345,7 +1348,6 @@ func TestExportReversals(t *testing.T) {
 						Source:          nil,
 						RelatedSteamID:  nil,
 						ReversedAt:      1717756800,
-						ExpungedAt:      nil,
 					},
 				}
 				testutil.Insert(t, db, reversals...)
@@ -1367,7 +1369,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1422,7 +1424,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1475,7 +1477,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1534,7 +1536,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1581,7 +1583,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1626,7 +1628,7 @@ func TestExportReversals(t *testing.T) {
 					t.Fatalf("failed to read CSV: %v", err)
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1783,7 +1785,7 @@ func TestExportReversals(t *testing.T) {
 					t.Errorf("expected only header row, got %d rows", len(records))
 				}
 
-				expectedHeaders := []string{"id", "created_at", "updated_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at", "expunged_at"}
+				expectedHeaders := []string{"id", "created_at", "updated_at", "deleted_at", "steam_id", "marketplace_slug", "source", "related_steam_id", "reversed_at"}
 				if diff := cmp.Diff(expectedHeaders, records[0]); diff != "" {
 					t.Error(diff)
 				}
@@ -1886,7 +1888,7 @@ func TestExportReversals_ContextErrors(t *testing.T) {
 	}
 }
 
-func TestExpungeReversal(t *testing.T) {
+func TestDeleteReversal(t *testing.T) {
 	t.Parallel()
 	logging.Initialize()
 
@@ -1896,7 +1898,7 @@ func TestExpungeReversal(t *testing.T) {
 		validateFunc func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response)
 	}{
 		{
-			name: "validExpunge",
+			name: "validDelete",
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				testMarketplace, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
@@ -1922,14 +1924,18 @@ func TestExpungeReversal(t *testing.T) {
 					t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
 				}
 
-				// Verify reversal was expunged
+				// Verify reversal was deleted
 				var storedReversal models.Reversal
-				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err == nil {
+					t.Fatalf("expected reversal to be deleted, but got %v", storedReversal)
+				}
+
+				if err := db.Unscoped().Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if storedReversal.ExpungedAt == nil {
-					t.Error("expected reversal to be expunged, but ExpungedAt is nil")
+				if storedReversal.DeletedAt.Time.IsZero() {
+					t.Error("expected reversal to be deleted, but DeletedAt is zero")
 				}
 			},
 		},
@@ -1959,23 +1965,22 @@ func TestExpungeReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "failed to expunge reversal" {
-					t.Errorf("wanted details %q, got %q", "failed to expunge reversal", respData.Details)
+				if respData.Details != "failed to delete reversal" {
+					t.Errorf("wanted details %q, got %q", "failed to delete reversal", respData.Details)
 				}
 			},
 		},
 		{
-			name: "reversalAlreadyExpunged",
+			name: "reversalAlreadyDeleted",
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
 				createdAt := uint64(time.Now().Add(-1 * time.Minute).UnixMilli())
 				reversal := &models.Reversal{
-					Model:           models.Model{ID: 1, CreatedAt: createdAt},
+					Model:           models.Model{ID: 1, CreatedAt: createdAt, DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true}},
 					SteamID:         models.SteamID(76561197960287930),
 					MarketplaceSlug: "test-marketplace",
 					ReversedAt:      1717756800,
-					ExpungedAt:      &createdAt,
 				}
 				testutil.Insert(t, db, reversal)
 
@@ -1989,8 +1994,8 @@ func TestExpungeReversal(t *testing.T) {
 				return r.WithContext(ctx), reversal
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
-				if resp.StatusCode != http.StatusBadRequest {
-					t.Errorf("wanted status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -1999,23 +2004,23 @@ func TestExpungeReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "reversal has already been expunged" {
-					t.Fatalf("wanted details %q, got %q", "reversal has already been expunged", respData.Details)
+				if respData.Details != "failed to delete reversal" {
+					t.Fatalf("wanted details %q, got %q", "failed to delete reversal", respData.Details)
 				}
 
-				// Verify expunged at was NOT updated
+				// Verify deleted at was NOT updated
 				var storedReversal models.Reversal
-				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
+				if err := db.Unscoped().Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if *storedReversal.ExpungedAt != *reversal.ExpungedAt {
-					t.Errorf("expected expunged at %d, got %d", reversal.ExpungedAt, storedReversal.ExpungedAt)
+				if reversal.DeletedAt.Time.UnixMilli() != storedReversal.DeletedAt.Time.UnixMilli() {
+					t.Errorf("expected deleted at %d, got %d", reversal.DeletedAt.Time.UnixMilli(), storedReversal.DeletedAt.Time.UnixMilli())
 				}
 			},
 		},
 		{
-			name: "cannotExpungeOtherMarketplaceReversal",
+			name: "cannotDeleteOtherMarketplaceReversal",
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, *models.Reversal) {
 				_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionDelete)
 
@@ -2056,18 +2061,18 @@ func TestExpungeReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "cannot expunge reversal report of another marketplace" {
-					t.Errorf("wanted details %q, got %q", "cannot expunge reversal report of another marketplace", respData.Details)
+				if respData.Details != "cannot delete reversal report of another marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot delete reversal report of another marketplace", respData.Details)
 				}
 
-				// Verify reversal was NOT expunged
+				// Verify reversal was NOT deleted
 				var storedReversal models.Reversal
 				if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err != nil {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if storedReversal.ExpungedAt != nil {
-					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
+				if !storedReversal.DeletedAt.Time.IsZero() {
+					t.Errorf("expected reversal to not be deleted, but DeletedAt is %v", storedReversal.DeletedAt.Time)
 				}
 			},
 		},
@@ -2164,8 +2169,8 @@ func TestExpungeReversal(t *testing.T) {
 					t.Fatalf("failed to read reversal: %v", err)
 				}
 
-				if storedReversal.ExpungedAt != nil {
-					t.Error("expected reversal to not be expunged, but ExpungedAt is set")
+				if !storedReversal.DeletedAt.Time.IsZero() {
+					t.Errorf("expected reversal to not be deleted, but DeletedAt is %v", storedReversal.DeletedAt.Time)
 				}
 			},
 		},
@@ -2186,7 +2191,7 @@ func TestExpungeReversal(t *testing.T) {
 
 			factoryMiddleware := middleware.FactoryMiddleware(f)
 			permissionsMiddleware := middleware.RequirePermissions(models.PermissionDelete)
-			handler := http.HandlerFunc(expungeReversal)
+			handler := http.HandlerFunc(deleteReversal)
 
 			finalHandler := factoryMiddleware(
 				middleware.AuthMiddleware(

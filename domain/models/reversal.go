@@ -15,7 +15,6 @@ type Reversal struct {
 	Source          *Source  `json:"source,omitempty"`
 	RelatedSteamID  *SteamID `json:"related_steam_id,omitempty"`
 	ReversedAt      uint64   `json:"reversed_at"`
-	ExpungedAt      *uint64  `json:"expunged_at,omitempty"`
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
@@ -38,12 +37,6 @@ func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
 	now := uint64(time.Now().UnixMilli())
 	if r.ReversedAt > now {
 		return fmt.Errorf("reversed_at cannot be in the future")
-	}
-
-	if r.ExpungedAt != nil {
-		if *r.ExpungedAt == 0 || *r.ExpungedAt < r.CreatedAt || *r.ExpungedAt > now {
-			return fmt.Errorf("expunged_at is invalid")
-		}
 	}
 
 	if r.ReversedAt == 0 {
@@ -82,7 +75,7 @@ func (s *Source) String() string {
 	if s == nil {
 		return ""
 	}
-	
+
 	var source string
 	switch *s {
 	case SourceDirect:
