@@ -97,6 +97,20 @@ func TestModifyReversal(t *testing.T) {
 					models.TargetActionUpdateReversal, models.TargetResourceTypeReversal, originalReversal.ID.String()).First(&audit).Error; err != nil {
 					t.Fatalf("failed to find admin audit: %v", err)
 				}
+
+				wantDetails := &dto.ReversalUpdates{
+					Source:         util.Ptr(models.SourceUserReport),
+					RelatedSteamID: nil,
+				}
+
+				var gotDetails dto.ReversalUpdates
+				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
+					t.Fatalf("failed to decode details: %v", err)
+				}
+
+				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
+					t.Error(diff)
+				}
 			},
 		},
 		{
@@ -154,6 +168,26 @@ func TestModifyReversal(t *testing.T) {
 
 				if storedReversal.RelatedSteamID == nil || *storedReversal.RelatedSteamID != expectedSteamID {
 					t.Errorf("wanted stored related steam id %d, got %v", expectedSteamID, storedReversal.RelatedSteamID)
+				}
+
+				var audit models.AdminAudit
+				if err := db.Model(&models.AdminAudit{}).Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionUpdateReversal, models.TargetResourceTypeReversal, originalReversal.ID.String()).First(&audit).Error; err != nil {
+					t.Fatalf("failed to find admin audit: %v", err)
+				}
+
+				wantDetails := &dto.ReversalUpdates{
+					Source:         util.Ptr(models.SourceRelatedUser),
+					RelatedSteamID: util.Ptr(models.SteamID(76561197960287932)),
+				}
+
+				var gotDetails dto.ReversalUpdates
+				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
+					t.Fatalf("failed to decode details: %v", err)
+				}
+
+				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
+					t.Error(diff)
 				}
 			},
 		},
@@ -218,6 +252,27 @@ func TestModifyReversal(t *testing.T) {
 
 				if storedReversal.ReversedAt != 1735689600100 {
 					t.Errorf("wanted stored reversed at %d, got %d", 1735689600100, storedReversal.ReversedAt)
+				}
+
+				var audit models.AdminAudit
+				if err := db.Model(&models.AdminAudit{}).Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionUpdateReversal, models.TargetResourceTypeReversal, originalReversal.ID.String()).First(&audit).Error; err != nil {
+					t.Fatalf("failed to find admin audit: %v", err)
+				}
+
+				wantDetails := &dto.ReversalUpdates{
+					Source:         util.Ptr(models.SourceUserReport),
+					ReversedAt:     util.Ptr(uint64(1735689600100)),
+					RelatedSteamID: nil,
+				}
+
+				var gotDetails dto.ReversalUpdates
+				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
+					t.Fatalf("failed to decode details: %v", err)
+				}
+
+				if diff := cmp.Diff(wantDetails, &gotDetails); diff != "" {
+					t.Error(diff)
 				}
 			},
 		},

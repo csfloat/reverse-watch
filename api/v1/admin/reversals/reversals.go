@@ -44,7 +44,7 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	details, err := models.ToRawJsonb(opts)
+	details, err := models.ToRawJsonb(opts.ToFields())
 	if err != nil {
 		render.Error(w, r, err)
 		return
