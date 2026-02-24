@@ -1955,8 +1955,8 @@ func TestDeleteReversal(t *testing.T) {
 				return r.WithContext(ctx), nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -1965,8 +1965,8 @@ func TestDeleteReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "failed to delete reversal" {
-					t.Errorf("wanted details %q, got %q", "failed to delete reversal", respData.Details)
+				if respData.Details != "record not found" {
+					t.Errorf("wanted details %q, got %q", "record not found", respData.Details)
 				}
 			},
 		},
@@ -1994,8 +1994,8 @@ func TestDeleteReversal(t *testing.T) {
 				return r.WithContext(ctx), reversal
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, reversal *models.Reversal, resp *http.Response) {
-				if resp.StatusCode != http.StatusInternalServerError {
-					t.Errorf("wanted status code %d, got %d", http.StatusInternalServerError, resp.StatusCode)
+				if resp.StatusCode != http.StatusNotFound {
+					t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 				}
 
 				defer resp.Body.Close()
@@ -2004,8 +2004,8 @@ func TestDeleteReversal(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "failed to delete reversal" {
-					t.Fatalf("wanted details %q, got %q", "failed to delete reversal", respData.Details)
+				if respData.Details != "record not found" {
+					t.Fatalf("wanted details %q, got %q", "record not found", respData.Details)
 				}
 
 				// Verify deleted at was NOT updated

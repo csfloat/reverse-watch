@@ -17,6 +17,7 @@ import (
 	"reverse-watch/render"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 )
 
 func createReversals(w http.ResponseWriter, r *http.Request) {
@@ -248,6 +249,9 @@ func deleteReversal(w http.ResponseWriter, r *http.Request) {
 	err = factory.RunInTransactionPublic(func(tx repository.PublicTransaction) error {
 		reversal, err := tx.Reversal().Read(snowflake)
 		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.New(errors.NotFound, err.Error())
+			}
 			return err
 		}
 

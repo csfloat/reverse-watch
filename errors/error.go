@@ -7,6 +7,8 @@ import (
 	"github.com/go-chi/render"
 )
 
+// TODO(zach): improve errors api
+
 type Error struct {
 	Code    uint64 `json:"code"`
 	status  int

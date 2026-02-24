@@ -12,11 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func isUniqueConstrainError(err error) bool {
+func isUniqueConstraintError(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
-func isForeignConstrainError(err error) bool {
+func isForeignConstraintError(err error) bool {
 	return strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
 }
 
@@ -25,9 +25,9 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 	if !stderrors.As(err, &e) {
 		if stderrors.Is(err, gorm.ErrRecordNotFound) {
 			e = errors.New(errors.NotFound, err.Error())
-		} else if isUniqueConstrainError(err) {
+		} else if isUniqueConstraintError(err) {
 			e = errors.New(errors.Conflict, err.Error())
-		} else if isForeignConstrainError(err) {
+		} else if isForeignConstraintError(err) {
 			e = errors.New(errors.InvalidReference, err.Error())
 		} else {
 			logging.Log.Warnf("attempting to render non-server error: %v", err)
