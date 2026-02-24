@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	stderrors "errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -249,7 +250,7 @@ func deleteReversal(w http.ResponseWriter, r *http.Request) {
 	err = factory.RunInTransactionPublic(func(tx repository.PublicTransaction) error {
 		reversal, err := tx.Reversal().Read(snowflake)
 		if err != nil {
-			if err == gorm.ErrRecordNotFound {
+			if stderrors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New(errors.NotFound, err.Error())
 			}
 			return err
@@ -257,10 +258,6 @@ func deleteReversal(w http.ResponseWriter, r *http.Request) {
 
 		if key.MarketplaceSlug != reversal.MarketplaceSlug {
 			return errors.New(errors.BadRequest, "cannot delete reversal report of another marketplace")
-		}
-
-		if !reversal.DeletedAt.Time.IsZero() {
-			return errors.New(errors.BadRequest, "reversal has already been deleted")
 		}
 
 		if err := tx.Reversal().Delete(snowflake); err != nil {
