@@ -31,6 +31,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionAddMarketplace,
 				TargetResourceType: models.TargetResourceTypeMarketplace,
 				TargetResource:     "test-slug",
+				InitiatorKey:       "admin-key-id",
 			},
 		},
 		{
@@ -39,6 +40,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionUpdateMarketplace,
 				TargetResourceType: models.TargetResourceTypeMarketplace,
 				TargetResource:     "test-slug",
+				InitiatorKey:       "admin-key-id",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
 					"name":      "Test Marketplace",
 					"is_active": false,
@@ -51,6 +53,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionRemoveMarketplace,
 				TargetResourceType: models.TargetResourceTypeMarketplace,
 				TargetResource:     "test-slug",
+				InitiatorKey:       "admin-key-id",
 			},
 		},
 		{
@@ -59,6 +62,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionAddKey,
 				TargetResourceType: models.TargetResourceTypeKey,
 				TargetResource:     "test-key-id",
+				InitiatorKey:       "admin-key-id",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
 					"marketplace_slug": "test-slug",
 					"permissions":      models.Permissions(8),
@@ -71,6 +75,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionRemoveKey,
 				TargetResourceType: models.TargetResourceTypeKey,
 				TargetResource:     "test-key-id",
+				InitiatorKey:       "admin-key-id",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
 					"marketplace_slug": "test-slug",
 					"permissions":      models.Permissions(8),
@@ -83,6 +88,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionUpdateReversal,
 				TargetResourceType: models.TargetResourceTypeReversal,
 				TargetResource:     "1",
+				InitiatorKey:       "admin-key-id",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
 					"steam_id":         models.SteamID(76561197960265728),
 					"marketplace_slug": "test-slug",
@@ -97,6 +103,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 				TargetAction:       models.TargetActionRemoveReversal,
 				TargetResourceType: models.TargetResourceTypeReversal,
 				TargetResource:     "1",
+				InitiatorKey:       "admin-key-id",
 			},
 		},
 		{
@@ -104,6 +111,7 @@ func TestAdminAuditRepository_Create(t *testing.T) {
 			audit: &models.AdminAudit{
 				TargetAction:       models.TargetActionDeleteUserData,
 				TargetResourceType: models.TargetResourceTypeReversal,
+				InitiatorKey:       "admin-key-id",
 				Details: testutil.MustRawJsonb(map[string]interface{}{
 					"steam_id":    models.SteamID(76561197960265728),
 					"deleted_ids": []models.Snowflake{1},
@@ -140,6 +148,7 @@ func TestAdminAuditRepository_Read(t *testing.T) {
 		TargetAction:       models.TargetActionAddMarketplace,
 		TargetResourceType: models.TargetResourceTypeMarketplace,
 		TargetResource:     "test-slug",
+		InitiatorKey:       "admin-key-id",
 	}
 	testutil.Insert(t, db, testAudit)
 
@@ -163,6 +172,7 @@ func TestAdminAuditRepository_Delete(t *testing.T) {
 		TargetAction:       models.TargetActionAddMarketplace,
 		TargetResourceType: models.TargetResourceTypeMarketplace,
 		TargetResource:     "test-slug",
+		InitiatorKey:       "admin-key-id",
 	}
 	testutil.Insert(t, db, testAudit)
 
@@ -206,6 +216,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionAddMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-1",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"name":      "Test Marketplace 1",
 				"is_active": true,
@@ -215,6 +226,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionAddMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-2",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"name":      "Test Marketplace 2",
 				"is_active": true,
@@ -224,6 +236,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionUpdateMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-1",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"name":      "Test Marketplace 1",
 				"is_active": false,
@@ -233,6 +246,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionUpdateMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-2",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"name":      "Test Marketplace 2",
 				"is_active": false,
@@ -242,16 +256,19 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionRemoveMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-1",
+			InitiatorKey:       "admin-key-id",
 		},
 		{
 			TargetAction:       models.TargetActionRemoveMarketplace,
 			TargetResourceType: models.TargetResourceTypeMarketplace,
 			TargetResource:     "test-slug-2",
+			InitiatorKey:       "admin-key-id",
 		},
 		{
 			TargetAction:       models.TargetActionAddKey,
 			TargetResourceType: models.TargetResourceTypeKey,
 			TargetResource:     "test-key-id-1",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"marketplace_slug": "test-slug-1",
 				"permissions":      models.Permissions(8),
@@ -261,6 +278,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionAddKey,
 			TargetResourceType: models.TargetResourceTypeKey,
 			TargetResource:     "test-key-id-2",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"marketplace_slug": "test-slug-2",
 				"permissions":      models.Permissions(16),
@@ -270,6 +288,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionRemoveKey,
 			TargetResourceType: models.TargetResourceTypeKey,
 			TargetResource:     "test-key-id-1",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"marketplace_slug": "test-slug-1",
 				"permissions":      models.Permissions(8),
@@ -279,6 +298,7 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionUpdateReversal,
 			TargetResourceType: models.TargetResourceTypeReversal,
 			TargetResource:     "1",
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"steam_id":         models.SteamID(76561197960265728),
 				"marketplace_slug": "test-slug-1",
@@ -290,10 +310,12 @@ func TestAdminAuditRepository_List(t *testing.T) {
 			TargetAction:       models.TargetActionRemoveReversal,
 			TargetResourceType: models.TargetResourceTypeReversal,
 			TargetResource:     "1",
+			InitiatorKey:       "admin-key-id",
 		},
 		{
 			TargetAction:       models.TargetActionDeleteUserData,
 			TargetResourceType: models.TargetResourceTypeReversal,
+			InitiatorKey:       "admin-key-id",
 			Details: testutil.MustRawJsonb(map[string]interface{}{
 				"steam_id":    models.SteamID(76561197960265728),
 				"deleted_ids": []models.Snowflake{1},

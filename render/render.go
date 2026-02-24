@@ -16,6 +16,10 @@ func isUniqueConstrainError(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
+func isForeignConstrainError(err error) bool {
+	return strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
+}
+
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var e *errors.Error
 	if !stderrors.As(err, &e) {
@@ -23,6 +27,8 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 			e = errors.New(errors.NotFound, err.Error())
 		} else if isUniqueConstrainError(err) {
 			e = errors.New(errors.Conflict, err.Error())
+		} else if isForeignConstrainError(err) {
+			e = errors.New(errors.InvalidReference, err.Error())
 		} else {
 			logging.Log.Warnf("attempting to render non-server error: %v", err)
 			e = errors.New(errors.InternalServerError, err.Error())

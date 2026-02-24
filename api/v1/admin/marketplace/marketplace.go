@@ -22,6 +22,7 @@ type onboardMarketplaceRequest struct {
 
 func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	var req onboardMarketplaceRequest
 	defer r.Body.Close()
@@ -55,7 +56,7 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, nil)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionAddMarketplace, marketplace.Slug, authKey.ID, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
@@ -85,6 +86,7 @@ func onboardMarketplace(w http.ResponseWriter, r *http.Request) {
 
 func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
@@ -105,14 +107,12 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		var details *models.RawJsonb
-		var err error
-		details, err = models.ToRawJsonb(opts)
+		details, err := models.ToRawJsonb(opts)
 		if err != nil {
 			return err
 		}
 
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, details)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionUpdateMarketplace, slug, authKey.ID, details)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 
 func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
@@ -152,17 +152,7 @@ func deleteMarketplace(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		data := struct {
-			Key string `json:"key"`
-		}{
-			Key: key.ID,
-		}
-		details, err := models.ToRawJsonb(data)
-		if err != nil {
-			return err
-		}
-
-		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, details)
+		audit := models.NewMarketplaceAdminAudit(models.TargetActionRemoveMarketplace, slug, authKey.ID, nil)
 		if err := tx.AdminAudit().Create(audit); err != nil {
 			return err
 		}
