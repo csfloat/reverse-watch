@@ -108,15 +108,8 @@ func TestPurgeUser(t *testing.T) {
 					t.Fatalf("failed to find admin audit: %v", err)
 				}
 
-				var gotDetails struct {
-					Key string `json:"key"`
-				}
-				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
-					t.Fatalf("failed to unmarshal audit details: %v", err)
-				}
-
-				if gotDetails.Key != key {
-					t.Errorf("wanted key %q, got %q", key, gotDetails.Key)
+				if key != audit.InitiatorKey {
+					t.Errorf("wanted key %q, got %q", key, audit.InitiatorKey)
 				}
 			},
 		},
