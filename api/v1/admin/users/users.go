@@ -6,6 +6,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
 
@@ -14,7 +15,7 @@ import (
 
 func purgeUser(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	steamIdStr := chi.URLParam(r, "steamId")
 	steamId, err := models.ToSteamID(steamIdStr)
@@ -23,25 +24,15 @@ func purgeUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := factory.Reversal().DeleteUser(*steamId); err != nil {
+	if err := factory.Reversal().DeleteAllUserReports(*steamId); err != nil {
+		logging.Log.Errorf("failed to delete all user reports: %v", err)
 		render.Error(w, r, err)
 		return
 	}
 
-	details := struct {
-		Key string `json:"key"`
-	}{
-		Key: key.ID,
-	}
-
-	jsonb, err := models.ToRawJsonb(details)
-	if err != nil {
-		render.Error(w, r, err)
-		return
-	}
-
-	audit := models.NewUserAdminAudit(models.TargetActionDeleteUserData, *steamId, jsonb)
+	audit := models.NewUserAdminAudit(models.TargetActionDeleteUserData, *steamId, authKey.ID, nil)
 	if err := factory.AdminAudit().Create(audit); err != nil {
+		logging.Log.Errorf("failed to create admin audit: %v", err)
 		render.Error(w, r, err)
 		return
 	}

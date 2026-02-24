@@ -67,7 +67,7 @@ func (r *reversalRepository) Delete(id models.Snowflake) error {
 	return nil
 }
 
-func (r *reversalRepository) DeleteUser(steamId models.SteamID) error {
+func (r *reversalRepository) DeleteAllUserReports(steamId models.SteamID) error {
 	tx := r.conn.Unscoped().Where("steam_id = ?", steamId).Delete(&models.Reversal{})
 	if tx.Error != nil {
 		return tx.Error

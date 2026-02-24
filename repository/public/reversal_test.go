@@ -646,8 +646,8 @@ func TestReversalRepository_DeleteUser(t *testing.T) {
 	}
 	testutil.Insert(t, db, testReversals...)
 
-	if err := reversalRepo.DeleteUser(testReversals[0].SteamID); err != nil {
-		t.Fatalf("DeleteUser(): %v", err)
+	if err := reversalRepo.DeleteAllUserReports(testReversals[0].SteamID); err != nil {
+		t.Fatalf("DeleteAllUserReports(): %v", err)
 	}
 
 	var deletedReversals []*models.Reversal
@@ -666,12 +666,12 @@ func TestReversalRepository_DeleteUser_NotFound(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	reversalRepo := NewReversalRepository(db)
 
-	err := reversalRepo.DeleteUser(models.SteamID(1))
+	err := reversalRepo.DeleteAllUserReports(models.SteamID(1))
 	if err == nil {
-		t.Fatalf("DeleteUser(): got nil error, wanted error")
+		t.Fatalf("DeleteAllUserReports(): got nil error, wanted error")
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		t.Fatalf("DeleteUser(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+		t.Fatalf("DeleteAllUserReports(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
 	}
 }
 

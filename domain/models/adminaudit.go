@@ -80,11 +80,12 @@ func NewReversalAdminAudit(action TargetAction, id Snowflake, initiatorKey strin
 	}
 }
 
-func NewUserAdminAudit(action TargetAction, steamId SteamID, details *RawJsonb) *AdminAudit {
+func NewUserAdminAudit(action TargetAction, steamId SteamID, initiatorKey string, details *RawJsonb) *AdminAudit {
 	return &AdminAudit{
 		TargetAction:       action,
 		TargetResourceType: TargetResourceTypeUser,
 		TargetResource:     steamId.String(),
+		InitiatorKey:       initiatorKey,
 		Details:            details,
 	}
 }
