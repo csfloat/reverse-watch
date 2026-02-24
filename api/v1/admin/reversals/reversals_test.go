@@ -578,15 +578,8 @@ func TestDeleteReversal(t *testing.T) {
 					t.Fatalf("failed to find admin audit: %v", err)
 				}
 
-				var gotDetails struct {
-					Key string `json:"key"`
-				}
-				if err := json.Unmarshal(audit.Details.Raw, &gotDetails); err != nil {
-					t.Fatalf("failed to unmarshal audit details: %v", err)
-				}
-
-				if gotDetails.Key != key {
-					t.Errorf("wanted key %q, got %q", key, gotDetails.Key)
+				if key != audit.InitiatorKey {
+					t.Errorf("wanted initiator key to be %s, got %s", key, audit.InitiatorKey)
 				}
 			},
 		},
@@ -774,5 +767,72 @@ func TestDeleteReversal(t *testing.T) {
 
 			tc.validateFunc(t, db, reversal, key, w.Result())
 		})
+	}
+}
+
+func TestDeleteReversal_DeleteTwice(t *testing.T) {
+	t.Parallel()
+	logging.Initialize()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+
+	reversal := &models.Reversal{
+		Model:           models.Model{ID: 1},
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-marketplace",
+	}
+	testutil.Insert(t, db, reversal)
+
+	_, _, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+	r := httptest.NewRequest(http.MethodDelete, "/"+reversal.ID.String(), nil)
+	r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+	factoryMiddleware := middleware.FactoryMiddleware(f)
+	permissionsMiddleware := middleware.RequirePermissions(models.PermissionAdmin)
+	handler := http.HandlerFunc(deleteReversal)
+
+	finalHandler := factoryMiddleware(
+		middleware.AuthMiddleware(
+			permissionsMiddleware(handler),
+		),
+	)
+
+	chiContext := chi.NewRouteContext()
+	chiContext.URLParams.Add("id", reversal.ID.String())
+
+	ctx := context.WithValue(r.Context(), chi.RouteCtxKey, chiContext)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, r)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("wanted status code %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+
+	// Ensure reversal was deleted
+	var storedReversal models.Reversal
+	if err := db.Where("id = ?", reversal.ID).First(&storedReversal).Error; err == nil {
+		t.Fatalf("expected reversal to be deleted")
+	}
+
+	// Attempt to delete reversal a second time
+	w = httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, r)
+
+	resp = w.Result()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("wanted status code %d, got %d", http.StatusNotFound, resp.StatusCode)
 	}
 }
