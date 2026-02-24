@@ -194,7 +194,7 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var deletedAt string
-		if !reversal.DeletedAt.Time.IsZero() {
+		if reversal.DeletedAt.Valid {
 			deletedAt = strconv.FormatUint(uint64(reversal.DeletedAt.Time.UnixMilli()), 10)
 		}
 
