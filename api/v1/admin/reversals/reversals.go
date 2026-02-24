@@ -65,7 +65,7 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 
 func deleteReversal(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
-	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	authKey := r.Context().Value(middleware.KeyContextKey).(*models.Key)
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -84,19 +84,7 @@ func deleteReversal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	details := struct {
-		Key string `json:"key"`
-	}{
-		Key: key.ID,
-	}
-
-	jsonb, err := models.ToRawJsonb(details)
-	if err != nil {
-		render.Error(w, r, err)
-		return
-	}
-
-	audit := models.NewReversalAdminAudit(models.TargetActionRemoveReversal, snowflake, jsonb)
+	audit := models.NewReversalAdminAudit(models.TargetActionRemoveReversal, snowflake, authKey.ID, nil)
 	if err := factory.AdminAudit().Create(audit); err != nil {
 		render.Error(w, r, err)
 		return
