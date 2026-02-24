@@ -8,6 +8,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
 
@@ -38,6 +39,7 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := factory.Reversal().Update(snowflake, &opts); err != nil {
+		logging.Log.Errorf("failed to update reversal: %v", err)
 		render.Error(w, r, err)
 		return
 	}
@@ -50,12 +52,14 @@ func modifyReversal(w http.ResponseWriter, r *http.Request) {
 
 	audit := models.NewReversalAdminAudit(models.TargetActionUpdateReversal, snowflake, authKey.ID, details)
 	if err := factory.AdminAudit().Create(audit); err != nil {
+		logging.Log.Errorf("failed to create admin audit: %v", err)
 		render.Error(w, r, err)
 		return
 	}
 
 	reversal, err := factory.Reversal().Read(snowflake)
 	if err != nil {
+		logging.Log.Errorf("failed to read updated reversal: %v", err)
 		render.Error(w, r, err)
 		return
 	}
