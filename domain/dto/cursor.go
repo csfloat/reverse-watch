@@ -16,7 +16,7 @@ type Cursor struct {
 }
 
 func (c *Cursor) MarshalJSON() ([]byte, error) {
-	cursor, err := c.Encode()
+	cursor, err := c.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -24,12 +24,12 @@ func (c *Cursor) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Cursor) UnmarshalJSON(data []byte) error {
-	var encoded string
-	if err := json.Unmarshal(data, &encoded); err != nil {
+	var cursorStr string
+	if err := json.Unmarshal(data, &cursorStr); err != nil {
 		return err
 	}
 
-	cursor, err := DecodeCursor(encoded)
+	cursor, err := UnmarshalCursor(cursorStr)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (c *Cursor) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (c *Cursor) Encode() (*string, error) {
+func (c *Cursor) Marshal() (*string, error) {
 	cursorpb := &cpb.Cursor{
 		Id: uint64(c.ID),
 	}
@@ -51,8 +51,8 @@ func (c *Cursor) Encode() (*string, error) {
 	return &encoded, nil
 }
 
-func DecodeCursor(encoded string) (*Cursor, error) {
-	bytes, err := base64.RawURLEncoding.DecodeString(encoded)
+func UnmarshalCursor(cursorStr string) (*Cursor, error) {
+	bytes, err := base64.RawURLEncoding.DecodeString(cursorStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode cursor: %s", err)
 	}

@@ -46,6 +46,10 @@ func TestCreateReversals(t *testing.T) {
 		Data []*reversal `json:"data"`
 	}
 
+	type response struct {
+		Data []*models.Reversal `json:"data"`
+	}
+
 	testCases := []struct {
 		name         string
 		setup        func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, []*reversal, error)
@@ -80,7 +84,7 @@ func TestCreateReversals(t *testing.T) {
 				}
 
 				defer resp.Body.Close()
-				var respData []*models.Reversal
+				var respData response
 				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
@@ -96,7 +100,7 @@ func TestCreateReversals(t *testing.T) {
 					})
 				}
 
-				if diff := cmp.Diff(respData, reversals, cmpopts.IgnoreFields(models.Reversal{}, "ID", "CreatedAt", "UpdatedAt", "MarketplaceSlug")); diff != "" {
+				if diff := cmp.Diff(reversals, respData.Data, cmpopts.IgnoreFields(models.Reversal{}, "ID", "CreatedAt", "UpdatedAt", "MarketplaceSlug")); diff != "" {
 					t.Error(diff)
 				}
 			},
@@ -144,7 +148,7 @@ func TestCreateReversals(t *testing.T) {
 				}
 
 				defer resp.Body.Close()
-				var respData []*models.Reversal
+				var respData response
 				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
@@ -160,7 +164,7 @@ func TestCreateReversals(t *testing.T) {
 					})
 				}
 
-				if diff := cmp.Diff(respData, reversals, cmpopts.IgnoreFields(models.Reversal{}, "ID", "CreatedAt", "UpdatedAt", "MarketplaceSlug")); diff != "" {
+				if diff := cmp.Diff(reversals, respData.Data, cmpopts.IgnoreFields(models.Reversal{}, "ID", "CreatedAt", "UpdatedAt", "MarketplaceSlug")); diff != "" {
 					t.Error(diff)
 				}
 			},
@@ -217,7 +221,7 @@ func TestCreateReversals(t *testing.T) {
 				r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(body))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Authorization", "Bearer "+formattedKey)
-				return r, nil, nil
+				return r, data, nil
 			},
 			validateFunc: func(t *testing.T, db *gorm.DB, data []*reversal, resp *http.Response) {
 				if resp.StatusCode != http.StatusInternalServerError {
@@ -602,7 +606,7 @@ func TestListReversals(t *testing.T) {
 
 				// Create cursor for second page
 				cursor := &dto.Cursor{ID: reversals[4].ID}
-				encodedCursor, err := cursor.Encode()
+				encodedCursor, err := cursor.Marshal()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -988,7 +992,7 @@ func TestListReversals_Pagination(t *testing.T) {
 				cursor := &dto.Cursor{
 					ID: reversals[74].ID,
 				}
-				encodedCursor, err := cursor.Encode()
+				encodedCursor, err := cursor.Marshal()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1029,7 +1033,7 @@ func TestListReversals_Pagination(t *testing.T) {
 				cursor := &dto.Cursor{
 					ID: reversals[124].ID,
 				}
-				encodedCursor, err := cursor.Encode()
+				encodedCursor, err := cursor.Marshal()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1070,7 +1074,7 @@ func TestListReversals_Pagination(t *testing.T) {
 				cursor := &dto.Cursor{
 					ID: reversals[174].ID,
 				}
-				encodedCursor, err := cursor.Encode()
+				encodedCursor, err := cursor.Marshal()
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1405,7 +1409,7 @@ func TestExportReversals(t *testing.T) {
 					t.Error("expected X-Next-Cursor header to be set")
 				}
 
-				decodedCursor, err := dto.DecodeCursor(nextCursor)
+				decodedCursor, err := dto.UnmarshalCursor(nextCursor)
 				if err != nil {
 					t.Fatalf("DecodeCursor(%q): %v", nextCursor, err)
 				}
@@ -1558,7 +1562,7 @@ func TestExportReversals(t *testing.T) {
 				})
 
 				cursor := &dto.Cursor{ID: reversals[9].ID}
-				encodedCursor, err := cursor.Encode()
+				encodedCursor, err := cursor.Marshal()
 				if err != nil {
 					return nil, nil, err
 				}
