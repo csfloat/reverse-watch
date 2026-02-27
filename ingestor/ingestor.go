@@ -116,7 +116,7 @@ func (i *ingestor) sync() error {
 
 	// July 14th 2025 00:00:00:0000 in milliseconds
 	// The day before Valve added the ability to reverse trades
-	mostRecent := uint64(1752476400)
+	mostRecent := uint64(1752476400000)
 	cachedSteamIDs := make(map[models.SteamID]struct{})
 	for _, reversal := range reversals {
 		if _, ok := cachedSteamIDs[reversal.SteamID]; ok {
