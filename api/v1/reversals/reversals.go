@@ -66,7 +66,13 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, &reversals)
+	resp := struct {
+		Data []*models.Reversal `json:"data"`
+	}{
+		Data: reversals,
+	}
+
+	render.JSON(w, r, &resp)
 }
 
 func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
@@ -103,7 +109,7 @@ func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLim
 	}
 
 	if cursorStr := values.Get("cursor"); cursorStr != "" {
-		cursor, err := dto.DecodeCursor(cursorStr)
+		cursor, err := dto.UnmarshalCursor(cursorStr)
 		if err != nil {
 			return nil, nil, errors.New(errors.BadRequest, "invalid cursor")
 		}
@@ -218,7 +224,7 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if nextCursor != nil {
-		encodedCursor, err := nextCursor.Encode()
+		encodedCursor, err := nextCursor.Marshal()
 		if err != nil {
 			render.Errorf(w, r, errors.InternalServerError, "failed to encode cursor")
 			return
