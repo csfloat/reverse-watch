@@ -108,6 +108,10 @@ func (i *ingestor) sync() error {
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
 		Limit:           util.Ptr[uint](50),
+		OrderParam: &dto.OrderParam{
+			Column:    "id",
+			Direction: dto.DESC,
+		},
 	})
 	if err != nil {
 		i.log.Errorf("failed to list recently inserted reversals: %v", err)
