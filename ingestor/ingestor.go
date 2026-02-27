@@ -196,5 +196,6 @@ func (i *ingestor) Start() {
 }
 
 func (i *ingestor) Stop() {
+	i.log.Infof("Stopping ingestor")
 	i.cancel()
 }
