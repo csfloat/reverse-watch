@@ -141,7 +141,7 @@ func (i *ingestor) sync() error {
 		default:
 		}
 
-		endTime := startTime.Add(24 * time.Hour)
+		endTime := startTime.Add(7 * 24 * time.Hour)
 		if endTime.After(time.Now()) {
 			endTime = time.Now()
 		}
