@@ -12,7 +12,10 @@ import (
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
+	"reverse-watch/ingestor"
 	"reverse-watch/logging"
+	"reverse-watch/repository/factory"
+	"reverse-watch/secret"
 	"reverse-watch/server"
 )
 
@@ -21,15 +24,26 @@ func main() {
 	cfg := config.Load()
 	models.InitSnowflakeGenerator(0 /* workerID */, 0 /* processID */)
 
+	keygen := secret.NewKeyGenerator(cfg.Environment)
+	f, err := factory.NewFactory(cfg, keygen)
+	if err != nil {
+		logging.Log.Errorf("failed to create factory: %v", err)
+		panic(err)
+	}
+
 	logging.Log.Info("Starting Reverse Watch")
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	srv, err := server.New(cfg)
+	srv, err := server.New(cfg, f)
 	if err != nil {
 		panic(err)
 	}
+
+	ing := ingestor.New(f, cfg, logging.Log)
+	ing.Start()
+
 	httpSrv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
 		Handler:           srv,
@@ -57,7 +71,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := srv.Close(); err != nil {
+	if err := f.Close(); err != nil {
 		panic(err)
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// January 1, 2025 00:00:0000 in milliseconds
+// Epoch January 1, 2025 00:00:00:0000 in milliseconds
 const Epoch uint64 = 1735689600000
 
 var (

@@ -3,7 +3,6 @@ package render
 import (
 	stderrors "errors"
 	"net/http"
-	"strings"
 
 	"reverse-watch/errors"
 	"reverse-watch/logging"
@@ -12,22 +11,14 @@ import (
 	"gorm.io/gorm"
 )
 
-func isUniqueConstrainError(err error) bool {
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
-}
-
-func isForeignConstrainError(err error) bool {
-	return strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
-}
-
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var e *errors.Error
 	if !stderrors.As(err, &e) {
 		if stderrors.Is(err, gorm.ErrRecordNotFound) {
 			e = errors.New(errors.NotFound, err.Error())
-		} else if isUniqueConstrainError(err) {
+		} else if errors.IsUniqueConstraintError(err) {
 			e = errors.New(errors.Conflict, err.Error())
-		} else if isForeignConstrainError(err) {
+		} else if errors.IsForeignConstraintError(err) {
 			e = errors.New(errors.InvalidReference, err.Error())
 		} else {
 			logging.Log.Warnf("attempting to render non-server error: %v", err)

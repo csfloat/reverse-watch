@@ -24,6 +24,11 @@ type Config struct {
 
 	Environment constants.Environment
 	TrustProxy  bool
+
+	CSFloat struct {
+		BaseURL   string
+		SecretKey string
+	}
 }
 
 func Load() Config {
@@ -53,6 +58,7 @@ func load() Config {
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
+	v.SetDefault("CSFloat.BaseURL", "https://csfloat.com")
 
 	dir, err := GetProjectRootDir()
 	if err != nil {

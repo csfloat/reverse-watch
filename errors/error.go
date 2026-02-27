@@ -3,9 +3,18 @@ package errors
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/render"
 )
+
+func IsUniqueConstraintError(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+func IsForeignConstraintError(err error) bool {
+	return strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
+}
 
 type Error struct {
 	Code    uint64 `json:"code"`
