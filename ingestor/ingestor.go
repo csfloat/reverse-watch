@@ -52,7 +52,7 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-// fetch reversal warnings from csfloat
+// fetch reversal warnings from CSFloat
 func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time=%d&end_time=%d", i.cfg.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
 	r, err := http.NewRequest("GET", url, nil)
@@ -104,7 +104,7 @@ func (i *ingestor) process(warnings []*slimWarning) {
 }
 
 func (i *ingestor) sync() error {
-	// Fetch the most recent reversals created by csfloat
+	// Fetch the most recent reversals created by CSFloat
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
 		Limit:           util.Ptr[uint](50),
@@ -147,7 +147,6 @@ func (i *ingestor) sync() error {
 		}
 
 		if len(warnings) > 0 {
-			// Remove duplicates
 			filteredWarnings := make([]*slimWarning, 0)
 			for _, warning := range warnings {
 				if _, ok := cachedSteamIDs[warning.SteamID]; ok {
