@@ -22,8 +22,9 @@ type ingestor struct {
 	cfg     *config.Config
 	factory repository.Factory
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx     context.Context
+	cancel  context.CancelFunc
+	stopped chan struct{}
 }
 
 func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogger) *ingestor {
@@ -34,6 +35,7 @@ func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogge
 		factory: factory,
 		ctx:     ctx,
 		cancel:  cancel,
+		stopped: make(chan struct{}),
 	}
 }
 
@@ -177,6 +179,8 @@ func (i *ingestor) sync() error {
 
 func (i *ingestor) Start() {
 	go func() {
+		defer close(i.stopped)
+
 		sleepTime := time.Minute
 		for {
 			if err := i.sync(); err != nil {
@@ -201,4 +205,5 @@ func (i *ingestor) Start() {
 func (i *ingestor) Stop() {
 	i.log.Infof("Stopping ingestor")
 	i.cancel()
+	<-i.stopped
 }
