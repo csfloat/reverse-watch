@@ -60,6 +60,7 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 		return nil, err
 	}
 	r.Header.Set("X-Secret-Key", i.cfg.CSFloat.SecretKey)
+	r = r.WithContext(i.ctx)
 
 	client := &http.Client{}
 	resp, err := client.Do(r)
@@ -128,6 +129,12 @@ func (i *ingestor) sync() error {
 	startTime := time.UnixMilli(int64(mostRecent))
 
 	for {
+		select {
+		case <-i.ctx.Done():
+			return nil
+		default:
+		}
+
 		endTime := startTime.Add(24 * time.Hour)
 		if endTime.After(time.Now()) {
 			endTime = time.Now()
@@ -155,7 +162,11 @@ func (i *ingestor) sync() error {
 
 		// Delay syncing if endTime is close to the current time
 		if endTime.After(time.Now().Add(-30 * time.Minute)) {
-			time.Sleep(30 * time.Minute)
+			select {
+			case <-time.After(30 * time.Minute):
+			case <-i.ctx.Done():
+				return nil
+			}
 		}
 		startTime = endTime
 	}
@@ -167,11 +178,16 @@ func (i *ingestor) Start() {
 		for {
 			if err := i.sync(); err != nil {
 				i.log.Errorf("failed to sync reversals: %v", err)
-
 				select {
 				case <-time.After(sleepTime):
 					sleepTime = min(sleepTime*2, 30*time.Minute)
 				case <-i.ctx.Done():
+					return
+				}
+			} else {
+				select {
+				case <-i.ctx.Done():
+					return
 				default:
 				}
 			}

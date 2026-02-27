@@ -71,6 +71,8 @@ func main() {
 		panic(err)
 	}
 
+	ing.Stop()
+
 	if err := f.Close(); err != nil {
 		panic(err)
 	}
