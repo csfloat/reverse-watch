@@ -22,6 +22,8 @@ type ingestor struct {
 	cfg     *config.Config
 	factory repository.Factory
 
+	cachedSteamIds map[models.SteamID]struct{}
+
 	ctx     context.Context
 	cancel  context.CancelFunc
 	stopped chan struct{}
@@ -30,12 +32,13 @@ type ingestor struct {
 func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogger) *ingestor {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ingestor{
-		log:     logger,
-		cfg:     &cfg,
-		factory: factory,
-		ctx:     ctx,
-		cancel:  cancel,
-		stopped: make(chan struct{}),
+		log:            logger,
+		cfg:            &cfg,
+		factory:        factory,
+		cachedSteamIds: make(map[models.SteamID]struct{}),
+		ctx:            ctx,
+		cancel:         cancel,
+		stopped:        make(chan struct{}),
 	}
 }
 
@@ -91,6 +94,10 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 
 func (i *ingestor) process(warnings []*slimWarning) {
 	for _, warning := range warnings {
+		if _, ok := i.cachedSteamIds[warning.SteamID]; ok {
+			continue
+		}
+
 		reversal := &models.Reversal{
 			SteamID:         warning.SteamID,
 			MarketplaceSlug: "csfloat",
@@ -102,6 +109,7 @@ func (i *ingestor) process(warnings []*slimWarning) {
 			i.log.Errorf("failed to create reversal %v: %v", reversal, err)
 			continue
 		}
+		i.cachedSteamIds[reversal.SteamID] = struct{}{}
 	}
 }
 
@@ -120,9 +128,8 @@ func (i *ingestor) sync() error {
 		return fmt.Errorf("failed to list recently inserted reversals: %v", err)
 	}
 
-	// July 14th 2025 00:00:00:0000 in milliseconds
 	// The day before Valve added the ability to reverse trades
-	mostRecent := uint64(1752476400000)
+	mostRecent := uint64(time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC).UnixMilli())
 	cachedSteamIDs := make(map[models.SteamID]struct{})
 	for _, reversal := range reversals {
 		if _, ok := cachedSteamIDs[reversal.SteamID]; ok {
@@ -153,16 +160,7 @@ func (i *ingestor) sync() error {
 		}
 
 		if len(warnings) > 0 {
-			filteredWarnings := make([]*slimWarning, 0)
-			for _, warning := range warnings {
-				if _, ok := cachedSteamIDs[warning.SteamID]; ok {
-					continue
-				}
-				cachedSteamIDs[warning.SteamID] = struct{}{}
-				filteredWarnings = append(filteredWarnings, warning)
-			}
-
-			i.process(filteredWarnings)
+			i.process(warnings)
 		}
 
 		// Delay syncing if endTime is close to the current time
