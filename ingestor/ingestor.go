@@ -92,17 +92,20 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 	return data.Data, nil
 }
 
-func (i *ingestor) process(warnings []*slimWarning) {
+// process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
+func (i *ingestor) process(warnings []*slimWarning) time.Time {
+	var mostRecentReversedAt time.Time
 	for _, warning := range warnings {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
 
+		reversedAt := warning.CreatedAt
 		reversal := &models.Reversal{
 			SteamID:         warning.SteamID,
 			MarketplaceSlug: "csfloat",
 			Source:          util.Ptr(models.SourceDirect),
-			ReversedAt:      uint64(warning.CreatedAt.UnixMilli()),
+			ReversedAt:      uint64(reversedAt.UnixMilli()),
 		}
 
 		if err := i.factory.Reversal().Create(reversal); err != nil {
@@ -110,7 +113,9 @@ func (i *ingestor) process(warnings []*slimWarning) {
 			continue
 		}
 		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
+		mostRecentReversedAt = reversedAt
 	}
+	return mostRecentReversedAt
 }
 
 func (i *ingestor) sync() error {
@@ -138,8 +143,8 @@ func (i *ingestor) sync() error {
 
 		mostRecent = max(mostRecent, reversal.ReversedAt)
 	}
-	startTime := time.UnixMilli(int64(mostRecent))
 
+	startTime := time.UnixMilli(int64(mostRecent))
 	for {
 		select {
 		case <-i.ctx.Done():
@@ -147,7 +152,7 @@ func (i *ingestor) sync() error {
 		default:
 		}
 
-		endTime := startTime.Add(7 * 24 * time.Hour)
+		endTime := startTime.Add(24 * time.Hour)
 		if endTime.After(time.Now()) {
 			endTime = time.Now()
 		}
@@ -158,19 +163,21 @@ func (i *ingestor) sync() error {
 			return fmt.Errorf("failed to fetch warnings with startTime %v and endTime %v: %v", startTime, endTime, err)
 		}
 
-		if len(warnings) > 0 {
-			i.process(warnings)
+		newStartTime := endTime
+		mostRecentReversedAt := i.process(warnings)
+		if !mostRecentReversedAt.IsZero() {
+			newStartTime = mostRecentReversedAt
 		}
 
-		// Delay syncing if endTime is close to the current time
-		if endTime.After(time.Now().Add(-30 * time.Minute)) {
+		// Delay syncing if newStartTime is close to the current time
+		if newStartTime.After(time.Now().Add(-30 * time.Minute)) {
 			select {
 			case <-time.After(30 * time.Minute):
 			case <-i.ctx.Done():
 				return nil
 			}
 		}
-		startTime = endTime
+		startTime = newStartTime
 	}
 }
 
