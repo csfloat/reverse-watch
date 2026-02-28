@@ -22,7 +22,7 @@ type ingestor struct {
 	cfg     *config.Config
 	factory repository.Factory
 
-	cachedSteamIds map[models.SteamID]struct{}
+	cachedSteamIDs map[models.SteamID]struct{}
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -35,7 +35,7 @@ func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogge
 		log:            logger,
 		cfg:            &cfg,
 		factory:        factory,
-		cachedSteamIds: make(map[models.SteamID]struct{}),
+		cachedSteamIDs: make(map[models.SteamID]struct{}),
 		ctx:            ctx,
 		cancel:         cancel,
 		stopped:        make(chan struct{}),
@@ -94,7 +94,7 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 
 func (i *ingestor) process(warnings []*slimWarning) {
 	for _, warning := range warnings {
-		if _, ok := i.cachedSteamIds[warning.SteamID]; ok {
+		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
 
@@ -109,7 +109,7 @@ func (i *ingestor) process(warnings []*slimWarning) {
 			i.log.Errorf("failed to create reversal %v: %v", reversal, err)
 			continue
 		}
-		i.cachedSteamIds[reversal.SteamID] = struct{}{}
+		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
 	}
 }
 
@@ -130,12 +130,11 @@ func (i *ingestor) sync() error {
 
 	// The day before Valve added the ability to reverse trades
 	mostRecent := uint64(time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC).UnixMilli())
-	cachedSteamIDs := make(map[models.SteamID]struct{})
 	for _, reversal := range reversals {
-		if _, ok := cachedSteamIDs[reversal.SteamID]; ok {
+		if _, ok := i.cachedSteamIDs[reversal.SteamID]; ok {
 			continue
 		}
-		cachedSteamIDs[reversal.SteamID] = struct{}{}
+		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
 
 		mostRecent = max(mostRecent, reversal.ReversedAt)
 	}
