@@ -94,27 +94,31 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 
 // process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
 func (i *ingestor) process(warnings []*slimWarning) time.Time {
-	var mostRecentReversedAt uint64
+	var mostRecentReversedAt time.Time
 	for _, warning := range warnings {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
 
+		reversedAt := warning.CreatedAt
 		reversal := &models.Reversal{
 			SteamID:         warning.SteamID,
 			MarketplaceSlug: "csfloat",
 			Source:          util.Ptr(models.SourceDirect),
-			ReversedAt:      uint64(warning.CreatedAt.UnixMilli()),
+			ReversedAt:      uint64(reversedAt.UnixMilli()),
 		}
 
 		if err := i.factory.Reversal().Create(reversal); err != nil {
 			i.log.Errorf("failed to create reversal %v: %v", reversal, err)
 			continue
 		}
+
 		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
-		mostRecentReversedAt = max(mostRecentReversedAt, reversal.ReversedAt)
+		if reversedAt.After(mostRecentReversedAt) {
+			mostRecentReversedAt = reversedAt
+		}
 	}
-	return time.UnixMilli(int64(mostRecentReversedAt))
+	return mostRecentReversedAt
 }
 
 func (i *ingestor) sync() error {
