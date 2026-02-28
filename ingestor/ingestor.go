@@ -94,18 +94,17 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 
 // process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
 func (i *ingestor) process(warnings []*slimWarning) time.Time {
-	var mostRecentReversedAt time.Time
+	var mostRecentReversedAt uint64
 	for _, warning := range warnings {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
 
-		reversedAt := warning.CreatedAt
 		reversal := &models.Reversal{
 			SteamID:         warning.SteamID,
 			MarketplaceSlug: "csfloat",
 			Source:          util.Ptr(models.SourceDirect),
-			ReversedAt:      uint64(reversedAt.UnixMilli()),
+			ReversedAt:      uint64(warning.CreatedAt.UnixMilli()),
 		}
 
 		if err := i.factory.Reversal().Create(reversal); err != nil {
@@ -113,9 +112,9 @@ func (i *ingestor) process(warnings []*slimWarning) time.Time {
 			continue
 		}
 		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
-		mostRecentReversedAt = reversedAt
+		mostRecentReversedAt = max(mostRecentReversedAt, reversal.ReversedAt)
 	}
-	return mostRecentReversedAt
+	return time.UnixMilli(int64(mostRecentReversedAt))
 }
 
 func (i *ingestor) sync() error {
@@ -136,12 +135,12 @@ func (i *ingestor) sync() error {
 	// The day before Valve added the ability to reverse trades
 	mostRecent := uint64(time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC).UnixMilli())
 	for _, reversal := range reversals {
+		mostRecent = max(mostRecent, reversal.ReversedAt)
+
 		if _, ok := i.cachedSteamIDs[reversal.SteamID]; ok {
 			continue
 		}
 		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
-
-		mostRecent = max(mostRecent, reversal.ReversedAt)
 	}
 
 	startTime := time.UnixMilli(int64(mostRecent))
