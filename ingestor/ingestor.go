@@ -99,6 +99,7 @@ func (i *ingestor) process(warnings []*slimWarning) time.Time {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
+		i.cachedSteamIDs[warning.SteamID] = struct{}{}
 
 		reversedAt := warning.CreatedAt
 		reversal := &models.Reversal{
@@ -113,7 +114,6 @@ func (i *ingestor) process(warnings []*slimWarning) time.Time {
 			continue
 		}
 
-		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
 		if reversedAt.After(mostRecentReversedAt) {
 			mostRecentReversedAt = reversedAt
 		}
@@ -203,6 +203,7 @@ func (i *ingestor) Start() {
 				case <-i.ctx.Done():
 					return
 				default:
+					sleepTime = time.Minute
 				}
 			}
 		}
