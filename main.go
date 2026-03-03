@@ -41,8 +41,8 @@ func main() {
 		panic(err)
 	}
 
-	ing := ingestors.New(f, cfg, logging.Log)
-	ing.Start()
+	ingestorManager := ingestors.New(f, &cfg, logging.Log)
+	ingestorManager.Start()
 
 	httpSrv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
@@ -71,7 +71,7 @@ func main() {
 		panic(err)
 	}
 
-	ing.Stop()
+	ingestorManager.Stop()
 
 	if err := f.Close(); err != nil {
 		panic(err)

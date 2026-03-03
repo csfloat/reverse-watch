@@ -1,4 +1,4 @@
-package ingestors
+package csfloat
 
 import (
 	"context"
@@ -29,14 +29,14 @@ type csfloatIngestor struct {
 	stopped chan struct{}
 }
 
-func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogger) *csfloatIngestor {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewCSFloatIngestor(ctx context.Context, factory repository.Factory, cfg *config.Config, logger *zap.SugaredLogger) *csfloatIngestor {
+	ingestorCtx, cancel := context.WithCancel(ctx)
 	return &csfloatIngestor{
 		log:            logger,
-		cfg:            &cfg,
+		cfg:            cfg,
 		factory:        factory,
 		cachedSteamIDs: make(map[models.SteamID]struct{}),
-		ctx:            ctx,
+		ctx:            ingestorCtx,
 		cancel:         cancel,
 		stopped:        make(chan struct{}),
 	}
@@ -59,12 +59,12 @@ type errorResponse struct {
 
 // fetch reversal warnings from CSFloat
 func (i *csfloatIngestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
-	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=", i.cfg.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
+	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	r.Header.Set("X-Secret-Key", i.cfg.CSFloat.SecretKey)
+	r.Header.Set("X-Secret-Key", i.cfg.Ingestors.CSFloat.SecretKey)
 	r = r.WithContext(i.ctx)
 
 	client := &http.Client{}
@@ -214,4 +214,12 @@ func (i *csfloatIngestor) Stop() {
 	i.log.Infof("Stopping csfloatIngestor")
 	i.cancel()
 	<-i.stopped
+}
+
+func (i *csfloatIngestor) Done() <-chan struct{} {
+	return i.stopped
+}
+
+func (i *csfloatIngestor) IsEnabled() bool {
+	return i.cfg.Ingestors.CSFloat.Enable
 }
