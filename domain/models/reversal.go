@@ -10,12 +10,13 @@ import (
 
 type Reversal struct {
 	Model
-	SteamID         SteamID  `json:"steam_id"`
-	MarketplaceSlug string   `json:"marketplace_slug"`
-	Source          *Source  `json:"source,omitempty"`
-	RelatedSteamID  *SteamID `json:"related_steam_id,omitempty"`
-	ReversedAt      uint64   `json:"reversed_at"`
-	ExpungedAt      *uint64  `json:"expunged_at,omitempty"`
+	SteamID            SteamID    `json:"steam_id"`
+	MarketplaceSlug    string     `json:"marketplace_slug"`
+	Source             *Source    `json:"source,omitempty"`
+	RelatedSteamID     *SteamID   `json:"related_steam_id,omitempty"`
+	ReversedAt         uint64     `json:"reversed_at"`
+	ReporterInternalID *Snowflake `json:"-"`
+	ExpungedAt         *uint64    `json:"expunged_at,omitempty"`
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
@@ -82,7 +83,7 @@ func (s *Source) String() string {
 	if s == nil {
 		return ""
 	}
-	
+
 	var source string
 	switch *s {
 	case SourceDirect:
