@@ -12,7 +12,7 @@ import (
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
-	"reverse-watch/ingestor"
+	"reverse-watch/ingestors"
 	"reverse-watch/logging"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
@@ -41,7 +41,7 @@ func main() {
 		panic(err)
 	}
 
-	ing := ingestor.New(f, cfg, logging.Log)
+	ing := ingestors.New(f, cfg, logging.Log)
 	ing.Start()
 
 	httpSrv := &http.Server{

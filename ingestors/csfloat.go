@@ -1,4 +1,4 @@
-package ingestor
+package ingestors
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type ingestor struct {
+type csfloatIngestor struct {
 	log     *zap.SugaredLogger
 	cfg     *config.Config
 	factory repository.Factory
@@ -29,9 +29,9 @@ type ingestor struct {
 	stopped chan struct{}
 }
 
-func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogger) *ingestor {
+func New(factory repository.Factory, cfg config.Config, logger *zap.SugaredLogger) *csfloatIngestor {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &ingestor{
+	return &csfloatIngestor{
 		log:            logger,
 		cfg:            &cfg,
 		factory:        factory,
@@ -58,8 +58,8 @@ type errorResponse struct {
 }
 
 // fetch reversal warnings from CSFloat
-func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
-	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time=%d&end_time=%d", i.cfg.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
+func (i *csfloatIngestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
+	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=", i.cfg.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (i *ingestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
 }
 
 // process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
-func (i *ingestor) process(warnings []*slimWarning) time.Time {
+func (i *csfloatIngestor) process(warnings []*slimWarning) time.Time {
 	var mostRecentReversedAt time.Time
 	for _, warning := range warnings {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
@@ -121,7 +121,7 @@ func (i *ingestor) process(warnings []*slimWarning) time.Time {
 	return mostRecentReversedAt
 }
 
-func (i *ingestor) sync() error {
+func (i *csfloatIngestor) sync() error {
 	// Fetch the most recent reversals created by CSFloat
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
@@ -184,7 +184,7 @@ func (i *ingestor) sync() error {
 	}
 }
 
-func (i *ingestor) Start() {
+func (i *csfloatIngestor) Start() {
 	go func() {
 		defer close(i.stopped)
 
@@ -210,8 +210,8 @@ func (i *ingestor) Start() {
 	}()
 }
 
-func (i *ingestor) Stop() {
-	i.log.Infof("Stopping ingestor")
+func (i *csfloatIngestor) Stop() {
+	i.log.Infof("Stopping csfloatIngestor")
 	i.cancel()
 	<-i.stopped
 }
