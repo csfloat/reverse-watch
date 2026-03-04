@@ -83,7 +83,7 @@ func load() Config {
 	}
 
 	if cfg.Ingestors.CSFloat.Enable {
-		if cfg.Ingestors.CSFloat.BaseURL == "" && cfg.Ingestors.CSFloat.SecretKey == "" {
+		if cfg.Ingestors.CSFloat.BaseURL == "" || cfg.Ingestors.CSFloat.SecretKey == "" {
 			panic("csfloat ingestor configuration is required when enabled")
 		}
 	}
