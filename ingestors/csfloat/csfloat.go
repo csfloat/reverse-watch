@@ -49,7 +49,8 @@ type slimWarning struct {
 }
 
 type responseData struct {
-	Data []*slimWarning `json:"data"`
+	Data       []*slimWarning `json:"data"`
+	NextCursor uint           `json:"next_cursor"`
 }
 
 type errorResponse struct {
@@ -58,11 +59,11 @@ type errorResponse struct {
 }
 
 // fetch reversal warnings from CSFloat
-func (i *csfloatIngestor) fetch(startTime, endTime time.Time) ([]*slimWarning, error) {
-	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli())
+func (i *csfloatIngestor) fetch(cursor uint, startTime, endTime time.Time) ([]*slimWarning, uint, error) {
+	url := fmt.Sprintf("%s/api/v1/warnings/reversals?cursor=%d&start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, cursor, startTime.UnixMilli(), endTime.UnixMilli(), 1000)
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	r.Header.Set("X-Secret-Key", i.cfg.Ingestors.CSFloat.SecretKey)
 	r = r.WithContext(i.ctx)
@@ -70,43 +71,43 @@ func (i *csfloatIngestor) fetch(startTime, endTime time.Time) ([]*slimWarning, e
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		var errResp errorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-			return nil, errors.New(errors.JSONDecode, err.Error())
+			return nil, 0, errors.New(errors.JSONDecode, err.Error())
 		}
 
 		i.log.Errorf("fetching failed with status code %d: %s", errResp.Code, errResp.Message)
-		return nil, fmt.Errorf("fetching failed with status code %d: %s", errResp.Code, errResp.Message)
+		return nil, 0, fmt.Errorf("fetching failed with status code %d: %s", errResp.Code, errResp.Message)
 	}
 
 	var data responseData
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, errors.New(errors.JSONDecode, err.Error())
+		return nil, 0, errors.New(errors.JSONDecode, err.Error())
 	}
 
-	return data.Data, nil
+	return data.Data, data.NextCursor, nil
 }
 
 // process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
 func (i *csfloatIngestor) process(warnings []*slimWarning) time.Time {
-	var mostRecentReversedAt time.Time
+	var mostRecent time.Time
 	for _, warning := range warnings {
 		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
 			continue
 		}
 		i.cachedSteamIDs[warning.SteamID] = struct{}{}
 
-		reversedAt := warning.CreatedAt
 		reversal := &models.Reversal{
-			SteamID:         warning.SteamID,
-			MarketplaceSlug: "csfloat",
-			Source:          util.Ptr(models.SourceDirect),
-			ReversedAt:      uint64(reversedAt.UnixMilli()),
+			SteamID:            warning.SteamID,
+			MarketplaceSlug:    "csfloat",
+			Source:             util.Ptr(models.SourceDirect),
+			ReversedAt:         uint64(warning.CreatedAt.UnixMilli()),
+			ReporterInternalID: &warning.ID,
 		}
 
 		if err := i.factory.Reversal().Create(reversal); err != nil {
@@ -114,11 +115,11 @@ func (i *csfloatIngestor) process(warnings []*slimWarning) time.Time {
 			continue
 		}
 
-		if reversedAt.After(mostRecentReversedAt) {
-			mostRecentReversedAt = reversedAt
+		if warning.CreatedAt.After(mostRecent) {
+			mostRecent = warning.CreatedAt
 		}
 	}
-	return mostRecentReversedAt
+	return mostRecent
 }
 
 func (i *csfloatIngestor) sync() error {
@@ -136,10 +137,11 @@ func (i *csfloatIngestor) sync() error {
 		return fmt.Errorf("failed to list recently inserted reversals: %v", err)
 	}
 
-	// The day before Valve added the ability to reverse trades
-	mostRecent := uint64(time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC).UnixMilli())
+	var cursor uint
 	for _, reversal := range reversals {
-		mostRecent = max(mostRecent, reversal.ReversedAt)
+		if reversal.ReporterInternalID != nil {
+			cursor = max(cursor, *reversal.ReporterInternalID)
+		}
 
 		if _, ok := i.cachedSteamIDs[reversal.SteamID]; ok {
 			continue
@@ -147,7 +149,6 @@ func (i *csfloatIngestor) sync() error {
 		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
 	}
 
-	startTime := time.UnixMilli(int64(mostRecent))
 	for {
 		select {
 		case <-i.ctx.Done():
@@ -155,36 +156,26 @@ func (i *csfloatIngestor) sync() error {
 		default:
 		}
 
-		endTime := startTime.Add(24 * time.Hour)
-		if endTime.After(time.Now()) {
-			endTime = time.Now()
-		}
-
-		warnings, err := i.fetch(startTime, endTime)
+		warnings, nextCursor, err := i.fetch(cursor, time.Time{}, time.Now().Add(-5*time.Minute))
 		if err != nil {
-			i.log.Errorf("failed to fetch warnings with startTime %v and endTime %v: %v", startTime, endTime, err)
-			return fmt.Errorf("failed to fetch warnings with startTime %v and endTime %v: %v", startTime, endTime, err)
+			i.log.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
+			return fmt.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
 		}
 
-		newStartTime := endTime
-		mostRecentReversedAt := i.process(warnings)
-		if !mostRecentReversedAt.IsZero() {
-			newStartTime = mostRecentReversedAt
-		}
-
-		// Delay syncing if newStartTime is close to the current time
-		if newStartTime.After(time.Now().Add(-30 * time.Minute)) {
+		mostRecent := i.process(warnings)
+		if mostRecent.After(time.Now().Add(-30 * time.Minute)) {
 			select {
 			case <-time.After(30 * time.Minute):
 			case <-i.ctx.Done():
 				return nil
 			}
 		}
-		startTime = newStartTime
+		cursor = nextCursor
 	}
 }
 
 func (i *csfloatIngestor) Start() {
+	i.log.Info("Starting CSFloat ingestor")
 	go func() {
 		defer close(i.stopped)
 
@@ -211,7 +202,7 @@ func (i *csfloatIngestor) Start() {
 }
 
 func (i *csfloatIngestor) Stop() {
-	i.log.Infof("Stopping csfloatIngestor")
+	i.log.Infof("Stopping CSFloat ingestor")
 	i.cancel()
 	<-i.stopped
 }
