@@ -229,7 +229,3 @@ func (i *csfloatIngestor) Stop() {
 func (i *csfloatIngestor) Done() <-chan struct{} {
 	return i.stopped
 }
-
-func (i *csfloatIngestor) IsEnabled() bool {
-	return i.cfg.Ingestors.CSFloat.Enable
-}

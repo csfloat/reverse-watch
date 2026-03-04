@@ -14,7 +14,6 @@ type ingestor interface {
 	Start()
 	Stop()
 	Done() <-chan struct{}
-	IsEnabled() bool
 }
 
 type manager struct {
@@ -27,35 +26,32 @@ type manager struct {
 
 func New(factory repository.Factory, cfg *config.Config, logger *zap.SugaredLogger) *manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &manager{
+	m := &manager{
 		log:       logger,
-		ingestors: []ingestor{csfloat.NewCSFloatIngestor(ctx, factory, cfg, logger)},
+		ingestors: make([]ingestor, 0),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
+
+	if cfg.Ingestors.CSFloat.Enable {
+		m.ingestors = append(m.ingestors, csfloat.NewCSFloatIngestor(ctx, factory, cfg, logger))
+	}
+	return m
 }
 
 func (m *manager) Start() {
 	for _, ingestor := range m.ingestors {
-		if !ingestor.IsEnabled() {
-			continue
-		}
 		ingestor.Start()
 	}
 }
 
 func (m *manager) Stop() {
+	m.cancel()
 	for _, ingestor := range m.ingestors {
-		if !ingestor.IsEnabled() {
-			continue
-		}
 		ingestor.Stop()
 	}
 	// Block until each ingestor exits
 	for _, ingestor := range m.ingestors {
-		if !ingestor.IsEnabled() {
-			continue
-		}
 		<-ingestor.Done()
 	}
 }
