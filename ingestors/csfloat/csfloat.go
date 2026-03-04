@@ -57,7 +57,7 @@ type errorResponse struct {
 
 // fetch reversal warnings from CSFloat
 func (i *csfloatIngestor) fetch(cursor *uint, startTime, endTime time.Time, limit uint) ([]*slimWarning, *uint, error) {
-	url := fmt.Sprintf("%s/api/v1/warnings/reversals?&start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
+	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
 	if cursor != nil {
 		url = fmt.Sprintf("%s&cursor=%d", url, *cursor)
 	}
@@ -145,7 +145,7 @@ func (i *csfloatIngestor) sync() error {
 
 		// The day before Valve introduced trade reversals
 		startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
-		limit := 2
+		limit := 1000
 		warnings, nextCursor, err := i.fetch(cursor, startTime, time.Now().Add(-5*time.Minute), uint(limit))
 		if err != nil {
 			i.log.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
