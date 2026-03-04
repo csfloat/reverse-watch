@@ -62,7 +62,7 @@ type errorResponse struct {
 func (i *csfloatIngestor) fetch(cursor *uint, startTime, endTime time.Time, limit uint) ([]*slimWarning, *uint, error) {
 	url := fmt.Sprintf("%s/api/v1/warnings/reversals?&start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
 	if cursor != nil {
-		url = fmt.Sprintf("%s?cursor=%d", url, *cursor)
+		url = fmt.Sprintf("%s&cursor=%d", url, *cursor)
 	}
 
 	r, err := http.NewRequest("GET", url, nil)
@@ -147,7 +147,7 @@ func (i *csfloatIngestor) sync() error {
 			if cursor == nil {
 				cursor = reversal.ReporterInternalID
 			} else {
-				*cursor = max(*cursor, *reversal.ReporterInternalID)
+				cursor = util.Ptr(max(*cursor, *reversal.ReporterInternalID))
 			}
 		}
 
