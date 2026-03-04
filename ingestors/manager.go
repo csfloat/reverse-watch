@@ -46,10 +46,16 @@ func (m *manager) Start() {
 
 func (m *manager) Stop() {
 	for _, ingestor := range m.ingestors {
+		if !ingestor.IsEnabled() {
+			continue
+		}
 		ingestor.Stop()
 	}
 	// Block until each ingestor exits
 	for _, ingestor := range m.ingestors {
+		if !ingestor.IsEnabled() {
+			continue
+		}
 		<-ingestor.Done()
 	}
 }
