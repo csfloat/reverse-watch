@@ -166,7 +166,7 @@ func (i *csfloatIngestor) sync() error {
 			return fmt.Errorf("failed to process reversals: %v", err)
 		}
 
-		if nextCursor == nil && len(warnings) < limit {
+		if nextCursor == nil {
 			select {
 			case <-time.After(30 * time.Minute):
 				continue
