@@ -22,8 +22,6 @@ type csfloatIngestor struct {
 	cfg     *config.Config
 	factory repository.Factory
 
-	cachedSteamIDs map[models.SteamID]struct{}
-
 	ctx     context.Context
 	cancel  context.CancelFunc
 	stopped chan struct{}
@@ -32,13 +30,12 @@ type csfloatIngestor struct {
 func NewCSFloatIngestor(ctx context.Context, factory repository.Factory, cfg *config.Config, logger *zap.SugaredLogger) *csfloatIngestor {
 	ingestorCtx, cancel := context.WithCancel(ctx)
 	return &csfloatIngestor{
-		log:            logger,
-		cfg:            cfg,
-		factory:        factory,
-		cachedSteamIDs: make(map[models.SteamID]struct{}),
-		ctx:            ingestorCtx,
-		cancel:         cancel,
-		stopped:        make(chan struct{}),
+		log:     logger,
+		cfg:     cfg,
+		factory: factory,
+		ctx:     ingestorCtx,
+		cancel:  cancel,
+		stopped: make(chan struct{}),
 	}
 }
 
@@ -97,14 +94,9 @@ func (i *csfloatIngestor) fetch(cursor *uint, startTime, endTime time.Time, limi
 	return data.Data, data.NextCursor, nil
 }
 
-// process warnings and create reversals, returns the most recent reversed at time if any warnings were processed
-func (i *csfloatIngestor) process(warnings []*slimWarning) time.Time {
-	var mostRecent time.Time
+// process warnings and create reversals, returns the most recent reversal
+func (i *csfloatIngestor) process(warnings []*slimWarning) error {
 	for _, warning := range warnings {
-		if _, ok := i.cachedSteamIDs[warning.SteamID]; ok {
-			continue
-		}
-
 		reversal := &models.Reversal{
 			SteamID:            warning.SteamID,
 			MarketplaceSlug:    "csfloat",
@@ -114,23 +106,21 @@ func (i *csfloatIngestor) process(warnings []*slimWarning) time.Time {
 		}
 
 		if err := i.factory.Reversal().Create(reversal); err != nil {
-			i.log.Errorf("failed to create reversal %v: %v", reversal, err)
-			continue
-		}
-		i.cachedSteamIDs[warning.SteamID] = struct{}{}
-
-		if warning.CreatedAt.After(mostRecent) {
-			mostRecent = warning.CreatedAt
+			if errors.IsUniqueConstraintError(err) {
+				i.log.Warnf("failed to create reversal %v: %v", reversal, err)
+				continue
+			}
+			return err
 		}
 	}
-	return mostRecent
+	return nil
 }
 
 func (i *csfloatIngestor) sync() error {
 	// Fetch the most recent reversals created by CSFloat
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
-		Limit:           util.Ptr[uint](50),
+		Limit:           util.Ptr[uint](1),
 		OrderParam: &dto.OrderParam{
 			Column:    "id",
 			Direction: dto.DESC,
@@ -142,19 +132,8 @@ func (i *csfloatIngestor) sync() error {
 	}
 
 	var cursor *uint
-	for _, reversal := range reversals {
-		if reversal.ReporterInternalID != nil {
-			if cursor == nil {
-				cursor = reversal.ReporterInternalID
-			} else {
-				cursor = util.Ptr(max(*cursor, *reversal.ReporterInternalID))
-			}
-		}
-
-		if _, ok := i.cachedSteamIDs[reversal.SteamID]; ok {
-			continue
-		}
-		i.cachedSteamIDs[reversal.SteamID] = struct{}{}
+	if len(reversals) > 0 {
+		cursor = reversals[0].ReporterInternalID
 	}
 
 	for {
@@ -164,7 +143,10 @@ func (i *csfloatIngestor) sync() error {
 		default:
 		}
 
-		warnings, nextCursor, err := i.fetch(cursor, time.Time{}, time.Now().Add(-5*time.Minute), 1000)
+		// The day before Valve introduced trade reversals
+		startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
+		limit := 2
+		warnings, nextCursor, err := i.fetch(cursor, startTime, time.Now().Add(-5*time.Minute), uint(limit))
 		if err != nil {
 			i.log.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
 			return fmt.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
@@ -172,17 +154,22 @@ func (i *csfloatIngestor) sync() error {
 
 		if len(warnings) == 0 {
 			select {
-			case <-time.After(5 * time.Minute):
+			case <-time.After(1 * time.Minute):
 				continue
 			case <-i.ctx.Done():
 				return nil
 			}
 		}
 
-		mostRecent := i.process(warnings)
-		if mostRecent.After(time.Now().Add(-30 * time.Minute)) {
+		if err := i.process(warnings); err != nil {
+			i.log.Errorf("failed to process reversals: %v", err)
+			return fmt.Errorf("failed to process reversals: %v", err)
+		}
+
+		if nextCursor == nil && len(warnings) < limit {
 			select {
 			case <-time.After(30 * time.Minute):
+				continue
 			case <-i.ctx.Done():
 				return nil
 			}
@@ -202,8 +189,6 @@ func (i *csfloatIngestor) Start() {
 				i.log.Errorf("failed to sync reversals: %v", err)
 				select {
 				case <-time.After(sleepTime):
-					// Reset cache before retry
-					i.cachedSteamIDs = make(map[models.SteamID]struct{})
 					sleepTime = min(sleepTime*2, 30*time.Minute)
 				case <-i.ctx.Done():
 					return
