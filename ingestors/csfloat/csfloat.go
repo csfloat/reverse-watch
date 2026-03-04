@@ -183,13 +183,11 @@ func (i *csfloatIngestor) Start() {
 	go func() {
 		defer close(i.stopped)
 
-		sleepTime := time.Minute
 		for {
 			if err := i.sync(); err != nil {
 				i.log.Errorf("failed to sync reversals: %v", err)
 				select {
-				case <-time.After(sleepTime):
-					sleepTime = min(sleepTime*2, 30*time.Minute)
+				case <-time.After(5 * time.Minute):
 				case <-i.ctx.Done():
 					return
 				}
@@ -198,7 +196,6 @@ func (i *csfloatIngestor) Start() {
 				case <-i.ctx.Done():
 					return
 				default:
-					sleepTime = time.Minute
 				}
 			}
 		}
