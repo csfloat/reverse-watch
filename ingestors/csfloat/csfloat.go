@@ -145,7 +145,7 @@ func (i *csfloatIngestor) sync() error {
 
 		// The day before Valve introduced trade reversals
 		startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
-		limit := 1000
+		limit := 2
 		warnings, nextCursor, err := i.fetch(cursor, startTime, time.Now().Add(-5*time.Minute), uint(limit))
 		if err != nil {
 			i.log.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
@@ -206,8 +206,4 @@ func (i *csfloatIngestor) Stop() {
 	i.log.Infof("Stopping CSFloat ingestor")
 	i.cancel()
 	<-i.stopped
-}
-
-func (i *csfloatIngestor) Done() <-chan struct{} {
-	return i.stopped
 }

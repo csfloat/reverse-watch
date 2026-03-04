@@ -13,7 +13,6 @@ import (
 type ingestor interface {
 	Start()
 	Stop()
-	Done() <-chan struct{}
 }
 
 type manager struct {
@@ -39,7 +38,7 @@ func New(factory repository.Factory, cfg *config.Config, logger *zap.SugaredLogg
 	return m
 }
 
-func (m *manager) Start() {
+func (m *manager) StartIngestors() {
 	for _, ingestor := range m.ingestors {
 		ingestor.Start()
 	}
@@ -49,9 +48,5 @@ func (m *manager) Stop() {
 	m.cancel()
 	for _, ingestor := range m.ingestors {
 		ingestor.Stop()
-	}
-	// Block until each ingestor exits
-	for _, ingestor := range m.ingestors {
-		<-ingestor.Done()
 	}
 }

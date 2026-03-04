@@ -42,7 +42,7 @@ func main() {
 	}
 
 	ingestorManager := ingestors.New(f, &cfg, logging.Log)
-	ingestorManager.Start()
+	ingestorManager.StartIngestors()
 
 	httpSrv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", cfg.HTTP.Port),
