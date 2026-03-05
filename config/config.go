@@ -13,10 +13,20 @@ import (
 	"github.com/spf13/viper"
 )
 
+type DatabaseConfig struct {
+}
+
 type Config struct {
-	// StaticDir is the directory containing the database files
-	// This is relative to the project's root directory
-	StaticDir string
+	Database struct {
+		Host          string
+		Port          string
+		User          string
+		Password      string
+		DBName        string
+		SSLMode       string
+		PrivateDBName string
+		PublicDBName  string
+	}
 
 	HTTP struct {
 		Port string
@@ -57,7 +67,13 @@ func load() Config {
 		},
 	))
 
-	v.SetDefault("StaticDir", "./static")
+	v.SetDefault("Database.Host", "localhost")
+	v.SetDefault("Database.Port", "5432")
+	v.SetDefault("Database.User", "postgres")
+	v.SetDefault("Database.Password", "postgres")
+	v.SetDefault("Database.SSLMode", "disable")
+	v.SetDefault("Database.PrivateDBName", "private")
+	v.SetDefault("Database.PublicDBName", "public")
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)

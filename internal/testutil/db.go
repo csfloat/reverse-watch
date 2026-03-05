@@ -10,7 +10,9 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/secret"
 
-	"gorm.io/driver/sqlite"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/peterldowns/pgtestdb"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -40,15 +42,25 @@ func newTestDB(t *testing.T) *gorm.DB {
 
 	models.InitSnowflakeGenerator(0 /* workerID */, 0 /* processID */)
 
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{
+	cfg := pgtestdb.Config{
+		DriverName: "pgx",
+		User:       "postgres",
+		Password:   "postgres",
+		Host:       "localhost",
+		Port:       "5432",
+		Options:    "sslmode=disable",
+	}
+
+	sqlDB := pgtestdb.New(t, cfg, pgtestdb.NoopMigrator{})
+	dialector := postgres.New(postgres.Config{
+		Conn: sqlDB,
+	})
+
+	db, err := gorm.Open(dialector, &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
-	}
-
-	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
-		t.Fatalf("failed to enable foreign keys: %v", err)
 	}
 	return db
 }
