@@ -10,13 +10,15 @@ import (
 
 type Reversal struct {
 	Model
-	SteamID            SteamID  `json:"steam_id"`
-	MarketplaceSlug    string   `json:"marketplace_slug"`
-	Source             *Source  `json:"source,omitempty"`
-	RelatedSteamID     *SteamID `json:"related_steam_id,omitempty"`
-	ReversedAt         uint64   `json:"reversed_at"`
-	ReporterInternalID *uint    `json:"-"`
-	ExpungedAt         *uint64  `json:"expunged_at,omitempty"`
+	SteamID         SteamID  `json:"steam_id"`
+	MarketplaceSlug string   `json:"marketplace_slug"`
+	Source          *Source  `json:"source,omitempty"`
+	RelatedSteamID  *SteamID `json:"related_steam_id,omitempty"`
+	// The timestamp of the reversal in milliseconds since the Unix epoch
+	ReversedAt         uint64 `json:"reversed_at"`
+	ReporterInternalID *uint  `json:"-"`
+	// The timestamp the reversal was expunged at in milliseconds since the Unix epoch
+	ExpungedAt *uint64 `json:"expunged_at,omitempty"`
 }
 
 func (r *Reversal) BeforeCreate(tx *gorm.DB) error {
