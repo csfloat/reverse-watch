@@ -146,7 +146,7 @@ func (i *csfloatIngestor) sync() error {
 		}
 
 		if len(warnings) == 0 {
-			return fmt.Errorf("no warnings found with cursor %v", cursor)
+			return nil
 		}
 
 		if err := i.process(warnings); err != nil {
