@@ -126,7 +126,7 @@ func (i *csfloatIngestor) sync() error {
 		MarketplaceSlug: util.Ptr("csfloat"),
 		Limit:           util.Ptr[uint](1),
 		OrderParam: &dto.OrderParam{
-			Column:    "id",
+			Column:    "reporter_internal_id",
 			Direction: dto.DESC,
 		},
 	})
