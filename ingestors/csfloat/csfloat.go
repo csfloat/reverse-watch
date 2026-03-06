@@ -56,7 +56,11 @@ type errorResponse struct {
 }
 
 // fetch reversal warnings from CSFloat
-func (i *csfloatIngestor) fetch(cursor *uint, startTime, endTime time.Time, limit uint) ([]*slimWarning, *uint, error) {
+func (i *csfloatIngestor) fetch(cursor *uint) ([]*slimWarning, *uint, error) {
+	// The day before Valve introduced trade reversals
+	startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
+	endTime := time.Now().Add(-5 * time.Minute)
+	limit := 1000
 	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
 	if cursor != nil {
 		url = fmt.Sprintf("%s&cursor=%d", url, *cursor)
@@ -127,7 +131,6 @@ func (i *csfloatIngestor) sync() error {
 		},
 	})
 	if err != nil {
-		i.log.Errorf("failed to list recently inserted reversals: %v", err)
 		return fmt.Errorf("failed to list recently inserted reversals: %v", err)
 	}
 
@@ -137,42 +140,21 @@ func (i *csfloatIngestor) sync() error {
 	}
 
 	for {
-		select {
-		case <-i.ctx.Done():
-			return nil
-		default:
-		}
-
-		// The day before Valve introduced trade reversals
-		startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
-		limit := 1000
-		warnings, nextCursor, err := i.fetch(cursor, startTime, time.Now().Add(-5*time.Minute), uint(limit))
+		warnings, nextCursor, err := i.fetch(cursor)
 		if err != nil {
-			i.log.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
 			return fmt.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
 		}
 
 		if len(warnings) == 0 {
-			select {
-			case <-time.After(1 * time.Minute):
-				continue
-			case <-i.ctx.Done():
-				return nil
-			}
+			return fmt.Errorf("no warnings found with cursor %v", cursor)
 		}
 
 		if err := i.process(warnings); err != nil {
-			i.log.Errorf("failed to process reversals: %v", err)
-			return fmt.Errorf("failed to process reversals: %v", err)
+			return fmt.Errorf("failed to process reversals with cursor %v: %v", cursor, err)
 		}
 
 		if nextCursor == nil {
-			select {
-			case <-time.After(30 * time.Minute):
-				continue
-			case <-i.ctx.Done():
-				return nil
-			}
+			return nil
 		}
 		cursor = nextCursor
 	}
@@ -186,17 +168,12 @@ func (i *csfloatIngestor) Start() {
 		for {
 			if err := i.sync(); err != nil {
 				i.log.Errorf("failed to sync reversals: %v", err)
-				select {
-				case <-time.After(5 * time.Minute):
-				case <-i.ctx.Done():
-					return
-				}
-			} else {
-				select {
-				case <-i.ctx.Done():
-					return
-				default:
-				}
+			}
+
+			select {
+			case <-time.After(30 * time.Minute):
+			case <-i.ctx.Done():
+				return
 			}
 		}
 	}()
