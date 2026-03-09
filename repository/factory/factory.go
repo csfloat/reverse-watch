@@ -95,6 +95,7 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 
 	sqlPublicDB, err := sql.Open("pgx", publicDSN)
 	if err != nil {
+		closeDB(privateDB)
 		return nil, err
 	}
 

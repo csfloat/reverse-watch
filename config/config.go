@@ -13,16 +13,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-type DatabaseConfig struct {
-}
-
 type Config struct {
 	Database struct {
 		Host          string
 		Port          string
 		User          string
 		Password      string
-		DBName        string
 		SSLMode       string
 		PrivateDBName string
 		PublicDBName  string
