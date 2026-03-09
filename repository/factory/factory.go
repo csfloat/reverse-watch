@@ -85,6 +85,8 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 	case constants.EnvironmentDevelopment:
 		privateDSN = constructDSN(cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.PrivateDBName, cfg.Database.SSLMode, &cfg.Database.Port)
 		publicDSN = constructDSN(cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.PublicDBName, cfg.Database.SSLMode, &cfg.Database.Port)
+	default:
+		return nil, fmt.Errorf("unknown environment: %s", cfg.Environment)
 	}
 
 	sqlPrivateDB, err := sql.Open("pgx", privateDSN)
