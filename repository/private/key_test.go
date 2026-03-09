@@ -240,7 +240,7 @@ func TestKeyRepository_Create_Errors(t *testing.T) {
 			name:        "nonExistentMarketplace",
 			slug:        "non-existent-marketplace",
 			permissions: models.PermissionRead,
-			wantErr:     "FOREIGN KEY constraint failed",
+			wantErr:     "ERROR: insert or update on table \"keys\" violates foreign key constraint \"fk_keys_marketplace\" (SQLSTATE 23503)",
 		},
 	}
 

@@ -143,8 +143,8 @@ func TestMarketplaceRepository_Create_DuplicatePrimaryKey(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Create(): got nil error, wanted error")
 	}
-	if err.Error() != "UNIQUE constraint failed: marketplaces.slug" {
-		t.Fatalf("Create(): got error %v, wanted %v", err, "UNIQUE constraint failed: marketplaces.slug")
+	if err.Error() != "ERROR: duplicate key value violates unique constraint \"marketplaces_pkey\" (SQLSTATE 23505)" {
+		t.Fatalf("Create(): got error %q, wanted %q", err, "ERROR: duplicate key value violates unique constraint \"marketplaces_pkey\" (SQLSTATE 23505)")
 	}
 }
 

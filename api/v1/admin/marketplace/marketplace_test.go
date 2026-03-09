@@ -265,8 +265,8 @@ func TestOnboardMarketplace(t *testing.T) {
 					t.Fatalf("failed to decode response body: %v", err)
 				}
 
-				if respData.Details != "UNIQUE constraint failed: marketplaces.slug" {
-					t.Errorf("wanted details %q, got %q", "UNIQUE constraint failed: marketplaces.slug", respData.Details)
+				if respData.Details != "ERROR: duplicate key value violates unique constraint \"marketplaces_pkey\" (SQLSTATE 23505)" {
+					t.Errorf("wanted details %q, got %q", "ERROR: duplicate key value violates unique constraint \"marketplaces_pkey\" (SQLSTATE 23505)", respData.Details)
 				}
 			},
 		},
