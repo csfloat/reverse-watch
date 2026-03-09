@@ -8,4 +8,4 @@ FROM gcr.io/distroless/base-debian12
 
 COPY --from=builder /app/reverse-watch /app/reverse-watch
 EXPOSE 8080
-CMD ["./reverse-watch"]
+CMD ["./app/reverse-watch"]
