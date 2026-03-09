@@ -9,3 +9,5 @@ static/*.db-wal
 
 *.exe
 *.so
+
+.secrets
