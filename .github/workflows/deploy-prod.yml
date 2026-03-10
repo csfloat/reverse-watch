@@ -51,7 +51,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy reverse-watch \
-            --service-account ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --service-account ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }} \
             --image us-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reverse-watch/prod:${{ github.ref_name }} \
             --no-default-url \
             --region us-west1 \
