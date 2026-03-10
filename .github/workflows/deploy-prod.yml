@@ -21,7 +21,7 @@ jobs:
         with:
           create_credentials_file: true
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Setup Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -51,7 +51,9 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy reverse-watch \
+            --service-account ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
             --image us-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reverse-watch/prod:${{ github.ref_name }} \
+            --no-default-url \
             --region us-west1 \
             --min-instances 1 \
             --max-instances 4 \
@@ -64,6 +66,6 @@ jobs:
                             INGESTORS_CSFLOAT_ENABLE=ingestors-csfloat-enable:latest,\
                             INGESTORS_CSFLOAT_BASEURL=ingestors-csfloat-baseurl:latest,\
                             INGESTORS_CSFLOAT_SECRETKEY=ingestors-csfloat-secretkey:latest" \
+            --execution-environment gen2 \
             --add-cloudsql-instances ${{ secrets.GCP_CLOUDSQL_INSTANCE_NAME }} \
             --ingress internal-and-cloud-load-balancing
-            
