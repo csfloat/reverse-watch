@@ -54,6 +54,7 @@ jobs:
             --service-account ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }} \
             --image us-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reverse-watch/prod:${{ github.ref_name }} \
             --no-default-url \
+            --allow-unauthenticated \
             --region us-west1 \
             --min-instances 1 \
             --max-instances 4 \
