@@ -73,7 +73,7 @@ func load() Config {
 	v.SetDefault("Database.SSLMode", "disable")
 	v.SetDefault("Database.PrivateDBName", "private")
 	v.SetDefault("Database.PublicDBName", "public")
-	v.SetDefault("HTTP.Port", "8080")
+	v.SetDefault("HTTP.Port", "80")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
 	v.SetDefault("Ingestors.CSFloat.Enable", false)
