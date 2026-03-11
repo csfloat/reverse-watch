@@ -49,24 +49,12 @@ jobs:
           docker push $IMAGE_NAME
       
       - name: Deploy to Cloud Run
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_RUNTIME_SERVICE_ACCOUNT: ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }}
+          GCP_CLOUDSQL_INSTANCE_NAME: ${{ secrets.GCP_CLOUDSQL_INSTANCE_NAME }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          gcloud run deploy reverse-watch \
-            --service-account ${{ secrets.GCP_RUNTIME_SERVICE_ACCOUNT }} \
-            --image us-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reverse-watch/prod:${{ github.ref_name }} \
-            --no-default-url \
-            --allow-unauthenticated \
-            --region us-west1 \
-            --min-instances 1 \
-            --max-instances 4 \
-            --port 8080 \
-            --set-env-vars "ENVIRONMENT=production,\
-                            TRUSTPROXY=true,\
-                            INGESTORS_CSFLOAT_ENABLE=true,\
-                            INGESTORS_CSFLOAT_BASEURL=https://csfloat.com" \
-            --set-secrets "DATABASE_HOST=db-host:latest,\
-                            DATABASE_PASSWORD=db-password:latest,\
-                            DATABASE_USER=db-user:latest,\
-                            INGESTORS_CSFLOAT_SECRETKEY=ingestors-csfloat-secretkey:latest" \
-            --execution-environment gen2 \
-            --add-cloudsql-instances ${{ secrets.GCP_CLOUDSQL_INSTANCE_NAME }} \
-            --ingress internal-and-cloud-load-balancing
+          envsubst < deploy/reverse-watch-service.yaml.template > service.yaml
+        
+          gcloud run services replace service.yaml
