@@ -1,19 +1,33 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/render"
+	"github.com/jackc/pgx/v5/pgconn"
+)
+
+const (
+	PGForeignKeyViolation = "23503"
+	PGUniqueViolation     = "23505"
 )
 
 func IsUniqueConstraintError(err error) bool {
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == PGUniqueViolation
+	}
+	return false
 }
 
 func IsForeignConstraintError(err error) bool {
-	return strings.Contains(err.Error(), "FOREIGN KEY constraint failed")
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == PGForeignKeyViolation
+	}
+	return false
 }
 
 type Error struct {
