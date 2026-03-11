@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"reverse-watch/config"
+	"reverse-watch/domain/models/constants"
 	"reverse-watch/domain/repository"
 	"reverse-watch/domain/secret"
 	"reverse-watch/logging"
@@ -60,16 +61,33 @@ func NewFactoryWithConfig(cfg *Config) (repository.Factory, error) {
 	}, nil
 }
 
-func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
-	// Initialize private database
-	privateDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.PrivateDBName,
-		cfg.Database.SSLMode,
+func constructDSN(host, user, password, dbname, sslmode string, port *string) string {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=%s",
+		host,
+		user,
+		password,
+		dbname,
+		sslmode,
 	)
+	if port != nil {
+		dsn += fmt.Sprintf(" port=%s", *port)
+	}
+	return dsn
+}
+
+func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Factory, error) {
+	var privateDSN, publicDSN string
+	switch cfg.Environment {
+	case constants.EnvironmentProduction:
+		host := fmt.Sprintf("/cloudsql/%s", cfg.Database.Host)
+		privateDSN = constructDSN(host, cfg.Database.User, cfg.Database.Password, cfg.Database.PrivateDBName, "disable", nil)
+		publicDSN = constructDSN(host, cfg.Database.User, cfg.Database.Password, cfg.Database.PublicDBName, "disable", nil)
+	case constants.EnvironmentDevelopment:
+		privateDSN = constructDSN(cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.PrivateDBName, cfg.Database.SSLMode, &cfg.Database.Port)
+		publicDSN = constructDSN(cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.PublicDBName, cfg.Database.SSLMode, &cfg.Database.Port)
+	default:
+		return nil, fmt.Errorf("unknown environment: %s", cfg.Environment)
+	}
 
 	sqlPrivateDB, err := sql.Open("pgx", privateDSN)
 	if err != nil {
@@ -83,16 +101,6 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		sqlPrivateDB.Close()
 		return nil, fmt.Errorf("failed to open private database: %w", err)
 	}
-
-	// Initialize public database
-	publicDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.PublicDBName,
-		cfg.Database.SSLMode,
-	)
 
 	sqlPublicDB, err := sql.Open("pgx", publicDSN)
 	if err != nil {

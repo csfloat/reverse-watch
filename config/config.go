@@ -63,6 +63,9 @@ func load() Config {
 		},
 	))
 
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
 	v.SetDefault("Database.Host", "localhost")
 	v.SetDefault("Database.Port", "5432")
 	v.SetDefault("Database.User", "postgres")
@@ -70,23 +73,27 @@ func load() Config {
 	v.SetDefault("Database.SSLMode", "disable")
 	v.SetDefault("Database.PrivateDBName", "private")
 	v.SetDefault("Database.PublicDBName", "public")
-	v.SetDefault("HTTP.Port", "8080")
+	v.SetDefault("HTTP.Port", "80")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
 	v.SetDefault("Ingestors.CSFloat.Enable", false)
 	v.SetDefault("Ingestors.CSFloat.BaseURL", "https://csfloat.com")
 
+	// Need to register environment variables if defaults aren't set
+	v.BindEnv("Ingestors.CSFloat.SecretKey")
+
+	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
 	dir, err := GetProjectRootDir()
-	if err != nil {
-		panic(err)
-	}
+	if err == nil {
+		v.AddConfigPath(dir)
+		v.SetConfigName("config")
+		v.SetConfigType("json")
 
-	v.AddConfigPath(dir)
-	v.SetConfigName("config")
-	v.SetConfigType("json")
-
-	if err := v.ReadInConfig(); err != nil {
-		panic(err)
+		if err := v.ReadInConfig(); err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				panic(err)
+			}
+		}
 	}
 
 	var cfg Config

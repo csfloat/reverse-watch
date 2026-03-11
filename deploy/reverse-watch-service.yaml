@@ -1,0 +1,76 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: reverse-watch
+  labels:
+    cloud.googleapis.com/location: us-west1
+  annotations:
+    run.googleapis.com/client-name: cloud-console
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/ingress-status: internal-and-cloud-load-balancing
+    run.googleapis.com/invoker-iam-disabled: 'true'
+    run.googleapis.com/minScale: '1'
+    run.googleapis.com/maxScale: '4'
+    run.googleapis.com/urls: '[]'
+spec:
+  template:
+    metadata:
+      labels:
+        run.googleapis.com/startupProbeType: Default
+      annotations:
+        run.googleapis.com/cloudsql-instances: $GCP_CLOUDSQL_INSTANCE_NAME
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/client-name: cloud-console
+        run.googleapis.com/startup-cpu-boost: 'true'
+    spec:
+      containerConcurrency: 50
+      timeoutSeconds: 60
+      serviceAccountName: $GCP_RUNTIME_SERVICE_ACCOUNT
+      containers:
+        - name: reverse-watch-prod
+          image: us-west1-docker.pkg.dev/$GCP_PROJECT_ID/reverse-watch/prod:$GITHUB_REF_NAME
+          ports:
+            - name: http1
+              containerPort: 80
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: TRUSTPROXY
+              value: 'true'
+            - name: INGESTORS_CSFLOAT_ENABLE
+              value: 'true'
+            - name: INGESTORS_CSFLOAT_BASEURL
+              value: https://csfloat.com
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: db-host
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: db-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: db-password
+            - name: INGESTORS_CSFLOAT_SECRETKEY
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: ingestors-csfloat-secretkey
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 8Gi
+          startupProbe:
+            timeoutSeconds: 240
+            periodSeconds: 240
+            failureThreshold: 1
+            tcpSocket:
+              port: 80
+  traffic:
+    - percent: 100
+      latestRevision: true
