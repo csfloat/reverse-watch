@@ -1,34 +1,22 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"reverse-watch/api"
 	"reverse-watch/config"
 	"reverse-watch/domain/repository"
-	"reverse-watch/logging"
 	rwmiddleware "reverse-watch/middleware"
-	"reverse-watch/repository/factory"
-	"reverse-watch/secret"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
-	r       chi.Router
-	factory repository.Factory
+	r chi.Router
 }
 
-func New(cfg config.Config) (*Server, error) {
-	keygen := secret.NewKeyGenerator(cfg.Environment)
-	f, err := factory.NewFactory(cfg, keygen)
-	if err != nil {
-		logging.Log.Errorf("failed to create factory: %v", err)
-		return nil, fmt.Errorf("failed to create factory: %w", err)
-	}
-
+func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
@@ -39,21 +27,16 @@ func New(cfg config.Config) (*Server, error) {
 	if cfg.TrustProxy {
 		r.Use(rwmiddleware.CloudflareIP)
 	}
-	
-	r.Use(rwmiddleware.FactoryMiddleware(f))
+
+	r.Use(rwmiddleware.FactoryMiddleware(factory))
 
 	r.Mount("/api", api.Router())
 
 	return &Server{
-		r:       r,
-		factory: f,
+		r: r,
 	}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.r.ServeHTTP(w, r)
-}
-
-func (s *Server) Close() error {
-	return s.factory.Close()
 }

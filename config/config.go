@@ -24,6 +24,14 @@ type Config struct {
 
 	Environment constants.Environment
 	TrustProxy  bool
+
+	Ingestors struct {
+		CSFloat struct {
+			Enable    bool
+			BaseURL   string
+			SecretKey string
+		}
+	}
 }
 
 func Load() Config {
@@ -53,6 +61,8 @@ func load() Config {
 	v.SetDefault("HTTP.Port", "8080")
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
+	v.SetDefault("Ingestors.CSFloat.Enable", false)
+	v.SetDefault("Ingestors.CSFloat.BaseURL", "https://csfloat.com")
 
 	dir, err := GetProjectRootDir()
 	if err != nil {
@@ -70,6 +80,12 @@ func load() Config {
 	var cfg Config
 	if err := v.Unmarshal(&cfg, opts); err != nil {
 		panic(err)
+	}
+
+	if cfg.Ingestors.CSFloat.Enable {
+		if cfg.Ingestors.CSFloat.BaseURL == "" || cfg.Ingestors.CSFloat.SecretKey == "" {
+			panic("csfloat ingestor configuration is required when enabled")
+		}
 	}
 
 	return cfg
