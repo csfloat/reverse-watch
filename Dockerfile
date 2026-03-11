@@ -7,5 +7,5 @@ RUN go build -o reverse-watch main.go
 FROM gcr.io/distroless/base-debian12
 
 COPY --from=builder /app/reverse-watch /app/reverse-watch
-EXPOSE 8080
+EXPOSE 80
 CMD ["./app/reverse-watch"]
