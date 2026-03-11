@@ -55,6 +55,6 @@ jobs:
           GCP_CLOUDSQL_INSTANCE_NAME: ${{ secrets.GCP_CLOUDSQL_INSTANCE_NAME }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          envsubst < deploy/reverse-watch-service.yaml.template > service.yaml
+          envsubst < deploy/reverse-watch-service.yaml > service.yaml
         
           gcloud run services replace service.yaml
