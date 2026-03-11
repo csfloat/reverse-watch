@@ -51,6 +51,11 @@ spec:
             secretKeyRef:
               key: '1'
               name: db-user
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: '1'
+              name: db-password
         - name: INGESTORS_CSFLOAT_SECRETKEY
           valueFrom:
             secretKeyRef:
