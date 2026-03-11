@@ -31,7 +31,7 @@ spec:
         image: us-west1-docker.pkg.dev/$GCP_PROJECT_ID/reverse-watch/prod:$GITHUB_REF_NAME
         ports:
         - name: http1
-          containerPort: 8080
+          containerPort: 80
         env:
         - name: ENVIRONMENT
           value: production
@@ -70,7 +70,7 @@ spec:
           periodSeconds: 240
           failureThreshold: 1
           tcpSocket:
-            port: 8080
+            port: 80
   traffic:
   - percent: 100
     latestRevision: true
