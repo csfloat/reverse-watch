@@ -71,6 +71,14 @@ spec:
             failureThreshold: 1
             tcpSocket:
               port: 80
+          livenessProbe:
+            initialDelaySeconds: 10
+            timeoutSeconds: 1
+            periodSeconds: 10
+            failureThreshold: 3
+            httpGet:
+              path: /api/v1/health
+              port: 80
   traffic:
     - percent: 100
       latestRevision: true
