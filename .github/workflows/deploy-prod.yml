@@ -59,13 +59,13 @@ jobs:
             --min-instances 1 \
             --max-instances 4 \
             --port 8080 \
+            --set-env-vars "ENVIRONMENT=production,\
+                            TRUSTPROXY=true,\
+                            INGESTORS_CSFLOAT_ENABLE=true,\
+                            INGESTORS_CSFLOAT_BASEURL=https://csfloat.com" \
             --set-secrets "DATABASE_HOST=db-host:latest,\
                             DATABASE_PASSWORD=db-password:latest,\
                             DATABASE_USER=db-user:latest,\
-                            ENVIRONMENT=environment:latest,\
-                            TRUSTPROXY=trust-proxy:latest,\
-                            INGESTORS_CSFLOAT_ENABLE=ingestors-csfloat-enable:latest,\
-                            INGESTORS_CSFLOAT_BASEURL=ingestors-csfloat-baseurl:latest,\
                             INGESTORS_CSFLOAT_SECRETKEY=ingestors-csfloat-secretkey:latest" \
             --execution-environment gen2 \
             --add-cloudsql-instances ${{ secrets.GCP_CLOUDSQL_INSTANCE_NAME }} \
