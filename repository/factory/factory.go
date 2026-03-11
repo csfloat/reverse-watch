@@ -98,12 +98,13 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
+		sqlPrivateDB.Close()
 		return nil, fmt.Errorf("failed to open private database: %w", err)
 	}
 
 	sqlPublicDB, err := sql.Open("pgx", publicDSN)
 	if err != nil {
-		closeDB(privateDB)
+		sqlPrivateDB.Close()
 		return nil, err
 	}
 
@@ -111,7 +112,8 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		closeDB(privateDB)
+		sqlPrivateDB.Close()
+		sqlPublicDB.Close()
 		return nil, fmt.Errorf("failed to open public database: %w", err)
 	}
 
@@ -121,8 +123,8 @@ func NewFactory(cfg config.Config, keygen secret.KeyGenerator) (repository.Facto
 		KeyGen:    keygen,
 	})
 	if err != nil {
-		closeDB(publicDB)
-		closeDB(privateDB)
+		sqlPrivateDB.Close()
+		sqlPublicDB.Close()
 		return nil, fmt.Errorf("failed to initialize factory: %w", err)
 	}
 
