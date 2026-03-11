@@ -335,7 +335,7 @@
             searchBtn.innerHTML = '<span class="loading"></span>';
 
             try {
-                const response = await fetch(`http://localhost:3434/api/v1/users/${encodeURIComponent(steamId)}`);
+                const response = await fetch(`https://reverse.watch/api/v1/users/${encodeURIComponent(steamId)}`);
                 if (!response.ok) {
                     const errorData = await response.json();
 
@@ -343,7 +343,7 @@
                     if (errorData.details) {
                         errorStr += ` (${errorData.details})`;
                     }
-                    throw new Error(errorStr || `Request failed with status ${response.status}`);
+                    throw new Error(errorStr);
                 }
 
                 const data = await response.json();
