@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 type Server struct {
@@ -18,6 +19,16 @@ type Server struct {
 
 func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	r := chi.NewRouter()
+
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{
+			"chrome-extension://jjicbefpemnphinccgikpdaagjebbnhg",
+		},
+		AllowedMethods:   []string{"GET", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
