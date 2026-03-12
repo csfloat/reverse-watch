@@ -37,12 +37,17 @@
             padding: 40px 20px;
 
             .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
                 max-width: 500px;
                 width: 100%;
                 
                 header {
                     text-align: center;
                     margin-bottom: 40px;
+                    padding: 0 10px;
                     
                     .title {
                         font-size: 54px;
@@ -51,18 +56,16 @@
                         letter-spacing: -0.5px;
                     }
 
-                    @media (max-width: 768px) {
-                        .title {
-                            font-size: 48px;
-                        }
-                    }
-
                     .subtitle {
                         color: var(--text-secondary);
                         font-size: 16px;
                     }
 
                     @media (max-width: 768px) {
+                        .title {
+                            font-size: 42px;
+                        }
+
                         .subtitle {
                             font-size: 14px;
                         }
@@ -77,8 +80,10 @@
                     
                     .input-group {
                         display: flex;
+                        flex-wrap: wrap;
                         gap: 12px;
                         margin-bottom: 12px;
+                        justify-content: center;
 
                         input[type="text"] {
                             flex: 1;
@@ -125,9 +130,22 @@
                                 cursor: not-allowed;
                             }
                         }
+
+                        @media (max-width: 400px) {
+                            flex-direction: column;
+                            
+                            input[type="text"] {
+                                width: 100%;
+                            }
+                            
+                            button {
+                                width: 100%;
+                            }
+                        }
                     }
 
                     .hint {
+                        text-align: center;
                         font-size: 0.85rem;
                         color: var(--text-secondary);
                     }
