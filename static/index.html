@@ -45,6 +45,7 @@
                 width: 100%;
                 
                 header {
+                    width: 100%;
                     text-align: center;
                     margin-bottom: 40px;
                     padding: 0 10px;
@@ -73,6 +74,7 @@
                 }
 
                 .search-card {
+                    width: 100%;
                     background: var(--bg-card);
                     border-radius: 16px;
                     padding: 24px;
@@ -102,6 +104,8 @@
                             }
 
                             &::placeholder {
+                                font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+                                letter-spacing: -0.5px;
                                 color: var(--text-secondary);
                             }
                         }
@@ -152,6 +156,7 @@
                 }
 
                 .result-card {
+                    width: 100%;
                     margin-top: 24px;
                     background: var(--bg-card);
                     border-radius: 16px;
@@ -159,7 +164,7 @@
                     border: 1px solid var(--border);
                     display: none;
                     
-                    .visible {
+                    &.visible {
                         display: block;
                         animation: fadeIn 0.3s ease;
                     }
@@ -225,6 +230,8 @@
                 }
 
                 .error-message {
+                    width: 100%;
+                    text-align: center;
                     margin-top: 24px;
                     background: rgba(244, 33, 46, 0.1);
                     border: 1px solid rgba(244, 33, 46, 0.3);
@@ -232,8 +239,9 @@
                     padding: 16px;
                     color: var(--danger);
                     display: none;
+                    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
 
-                    .visible {
+                    &.visible {
                         display: block;
                         animation: fadeIn 0.3s ease;
                     }
