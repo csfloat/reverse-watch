@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"regexp"
+	"strings"
 
 	"reverse-watch/api"
 	"reverse-watch/config"
@@ -21,8 +23,22 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{
-			"chrome-extension://jjicbefpemnphinccgikpdaagjebbnhg",
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			for _, allowedOrigin := range cfg.HTTP.AllowedOrigins {
+				if allowedOrigin == origin {
+					return true
+				}
+			}
+
+			// Firefox extension IDs are randomly generated for each user.
+			// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
+			firefoxExtensionOrigin := regexp.MustCompile("moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+			if firefoxExtensionOrigin.MatchString(origin) {
+				if strings.Contains(r.RequestURI, "/api/v1/users") {
+					return true
+				}
+			}
+			return false
 		},
 		AllowedMethods:   []string{"GET", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type"},

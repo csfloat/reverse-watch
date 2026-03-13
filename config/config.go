@@ -25,7 +25,8 @@ type Config struct {
 	}
 
 	HTTP struct {
-		Port string
+		Port           string
+		AllowedOrigins []string
 	}
 
 	Environment constants.Environment
