@@ -448,7 +448,7 @@
             searchBtn.innerHTML = '<span class="loading"></span>';
 
             try {
-                const response = await fetch(`http://localhost:3434/api/v1/users/${encodeURIComponent(steamId)}`);
+                const response = await fetch(`/api/v1/users/${encodeURIComponent(steamId)}`);
                 if (!response.ok) {
                     const errorData = await response.json();
 
