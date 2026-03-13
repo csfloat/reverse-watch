@@ -22,6 +22,8 @@ type Server struct {
 func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	r := chi.NewRouter()
 
+	firefoxExtensionOrigin := regexp.MustCompile("^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
 	r.Use(cors.Handler(cors.Options{
 		AllowOriginFunc: func(r *http.Request, origin string) bool {
 			for _, allowedOrigin := range cfg.HTTP.AllowedOrigins {
@@ -32,9 +34,8 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 
 			// Firefox extension IDs are randomly generated for each user.
 			// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
-			firefoxExtensionOrigin := regexp.MustCompile("moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 			if firefoxExtensionOrigin.MatchString(origin) {
-				if strings.Contains(r.RequestURI, "/api/v1/users") {
+				if strings.HasPrefix(r.RequestURI, "/api/v1/users/") {
 					return true
 				}
 			}
