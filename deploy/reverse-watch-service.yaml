@@ -22,13 +22,11 @@ spec:
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/client-name: cloud-console
         run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       containerConcurrency: 50
       timeoutSeconds: 60
       serviceAccountName: $GCP_RUNTIME_SERVICE_ACCOUNT
-      networkInterfaces:
-        - network: default
-          subnetwork: default
       containers:
         - name: reverse-watch-prod
           image: us-west1-docker.pkg.dev/$GCP_PROJECT_ID/reverse-watch/prod:$GITHUB_REF_NAME
@@ -36,6 +34,8 @@ spec:
             - name: http1
               containerPort: 80
           env:
+            - name: CLOUDSQL_AUTH_PROXY_PRIVATE_IP
+              value: 'true'
             - name: ENVIRONMENT
               value: production
             - name: TRUSTPROXY
