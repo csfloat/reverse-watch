@@ -83,6 +83,7 @@ func load() Config {
 	v.SetDefault("Ingestors.CSFloat.BaseURL", "https://csfloat.com")
 
 	// Need to register environment variables if defaults aren't set
+	v.BindEnv("HTTP.AllowedOrigins")
 	v.BindEnv("Ingestors.CSFloat.SecretKey")
 
 	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
