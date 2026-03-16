@@ -42,7 +42,7 @@ spec:
             - name: INGESTORS_CSFLOAT_BASEURL
               value: https://csfloat.com
             - name: HTTP_ALLOWEDORIGINS
-              value: ['chrome-extension://jjicbefpemnphinccgikpdaagjebbnhg']
+              value: "['chrome-extension://jjicbefpemnphinccgikpdaagjebbnhg']"
             - name: HTTP_ALLOWFIREFOXEXTENSIONS
               value: 'true'
             - name: DATABASE_HOST
