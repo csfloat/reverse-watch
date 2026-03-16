@@ -26,6 +26,9 @@ spec:
       containerConcurrency: 50
       timeoutSeconds: 60
       serviceAccountName: $GCP_RUNTIME_SERVICE_ACCOUNT
+      networkInterfaces:
+        - network: default
+          subnetwork: default
       containers:
         - name: reverse-watch-prod
           image: us-west1-docker.pkg.dev/$GCP_PROJECT_ID/reverse-watch/prod:$GITHUB_REF_NAME
@@ -71,8 +74,8 @@ spec:
               memory: 8Gi
           startupProbe:
             timeoutSeconds: 240
-            periodSeconds: 240
-            failureThreshold: 1
+            periodSeconds: 10
+            failureThreshold: 24
             tcpSocket:
               port: 80
           livenessProbe:
