@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"regexp"
+	"strings"
 
 	"reverse-watch/api"
 	"reverse-watch/config"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 type Server struct {
@@ -18,6 +21,33 @@ type Server struct {
 
 func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	r := chi.NewRouter()
+
+	firefoxExtensionOrigin := regexp.MustCompile("^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+	r.Use(cors.Handler(cors.Options{
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			for _, allowedOrigin := range cfg.HTTP.AllowedOrigins {
+				if allowedOrigin == origin {
+					return true
+				}
+			}
+
+			if cfg.HTTP.AllowFirefoxExtensions {
+				// Firefox extension IDs are randomly generated for each user.
+				// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
+				if firefoxExtensionOrigin.MatchString(origin) {
+					if strings.HasPrefix(r.RequestURI, "/api/v1/users/") {
+						return true
+					}
+				}
+			}
+			return false
+		},
+		AllowedMethods:   []string{"GET", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)

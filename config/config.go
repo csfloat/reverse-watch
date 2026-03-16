@@ -25,7 +25,9 @@ type Config struct {
 	}
 
 	HTTP struct {
-		Port string
+		Port                   string
+		AllowedOrigins         []string
+		AllowFirefoxExtensions bool
 	}
 
 	Environment constants.Environment
@@ -74,12 +76,14 @@ func load() Config {
 	v.SetDefault("Database.PrivateDBName", "private")
 	v.SetDefault("Database.PublicDBName", "public")
 	v.SetDefault("HTTP.Port", "80")
+	v.SetDefault("HTTP.AllowFirefoxExtensions", false)
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
 	v.SetDefault("Ingestors.CSFloat.Enable", false)
 	v.SetDefault("Ingestors.CSFloat.BaseURL", "https://csfloat.com")
 
 	// Need to register environment variables if defaults aren't set
+	v.BindEnv("HTTP.AllowedOrigins")
 	v.BindEnv("Ingestors.CSFloat.SecretKey")
 
 	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
