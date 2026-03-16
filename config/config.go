@@ -25,8 +25,9 @@ type Config struct {
 	}
 
 	HTTP struct {
-		Port           string
-		AllowedOrigins []string
+		Port                   string
+		AllowedOrigins         []string
+		AllowFirefoxExtensions bool
 	}
 
 	Environment constants.Environment
@@ -75,6 +76,7 @@ func load() Config {
 	v.SetDefault("Database.PrivateDBName", "private")
 	v.SetDefault("Database.PublicDBName", "public")
 	v.SetDefault("HTTP.Port", "80")
+	v.SetDefault("HTTP.AllowFirefoxExtensions", false)
 	v.SetDefault("Environment", constants.EnvironmentDevelopment)
 	v.SetDefault("TrustProxy", false)
 	v.SetDefault("Ingestors.CSFloat.Enable", false)

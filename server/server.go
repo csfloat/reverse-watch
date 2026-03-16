@@ -32,11 +32,13 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 				}
 			}
 
-			// Firefox extension IDs are randomly generated for each user.
-			// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
-			if firefoxExtensionOrigin.MatchString(origin) {
-				if strings.HasPrefix(r.RequestURI, "/api/v1/users/") {
-					return true
+			if cfg.HTTP.AllowFirefoxExtensions {
+				// Firefox extension IDs are randomly generated for each user.
+				// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
+				if firefoxExtensionOrigin.MatchString(origin) {
+					if strings.HasPrefix(r.RequestURI, "/api/v1/users/") {
+						return true
+					}
 				}
 			}
 			return false
