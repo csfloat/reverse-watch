@@ -30,6 +30,10 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 
 	r.Use(rwmiddleware.FactoryMiddleware(factory))
 
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
+
 	r.Mount("/api", api.Router())
 
 	return &Server{
