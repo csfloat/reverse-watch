@@ -22,6 +22,7 @@ spec:
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/client-name: cloud-console
         run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only
     spec:
       containerConcurrency: 50
