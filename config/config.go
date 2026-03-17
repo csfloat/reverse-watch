@@ -38,13 +38,12 @@ type Config struct {
 			Enable    bool
 			BaseURL   string
 			SecretKey string
-		}
-	}
 
-	Elector struct {
-		Enable bool
-		ID     string
-		Salt   string
+			Elector struct {
+				ID   string
+				Salt string
+			}
+		}
 	}
 }
 
@@ -92,8 +91,8 @@ func load() Config {
 	// Need to register environment variables if defaults aren't set
 	v.BindEnv("HTTP.AllowedOrigins")
 	v.BindEnv("Ingestors.CSFloat.SecretKey")
-	v.BindEnv("Elector.ID")
-	v.BindEnv("Elector.Salt")
+	v.BindEnv("Ingestors.CSFloat.Elector.ID")
+	v.BindEnv("Ingestors.CSFloat.Elector.Salt")
 
 	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
 	dir, err := GetProjectRootDir()
@@ -115,15 +114,10 @@ func load() Config {
 	}
 
 	if cfg.Ingestors.CSFloat.Enable {
-		if cfg.Ingestors.CSFloat.BaseURL == "" || cfg.Ingestors.CSFloat.SecretKey == "" {
+		if cfg.Ingestors.CSFloat.BaseURL == "" || cfg.Ingestors.CSFloat.SecretKey == "" || cfg.Ingestors.CSFloat.Elector.ID == "" || cfg.Ingestors.CSFloat.Elector.Salt == "" {
 			panic("csfloat ingestor configuration is required when enabled")
 		}
 	}
-
-	if cfg.Elector.Enable != cfg.Ingestors.CSFloat.Enable {
-		panic("both elector and ingestor require the same enable state")
-	}
-
 	return cfg
 }
 
