@@ -70,9 +70,10 @@ spec:
               cpu: 2000m
               memory: 8Gi
           startupProbe:
-            timeoutSeconds: 240
-            periodSeconds: 240
-            failureThreshold: 1
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 24
             tcpSocket:
               port: 80
           livenessProbe:
