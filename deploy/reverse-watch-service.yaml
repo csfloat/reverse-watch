@@ -35,8 +35,6 @@ spec:
             - name: http1
               containerPort: 80
           env:
-            - name: CLOUDSQL_AUTH_PROXY_PRIVATE_IP
-              value: 'true'
             - name: ENVIRONMENT
               value: production
             - name: TRUSTPROXY
@@ -52,7 +50,7 @@ spec:
             - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
-                  key: '1'
+                  key: '2'
                   name: db-host
             - name: DATABASE_USER
               valueFrom:
