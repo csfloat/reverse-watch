@@ -50,7 +50,7 @@ spec:
             - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
-                  key: '2'
+                  key: '1'
                   name: db-host
             - name: DATABASE_USER
               valueFrom:
@@ -72,7 +72,8 @@ spec:
               cpu: 2000m
               memory: 8Gi
           startupProbe:
-            timeoutSeconds: 240
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
             periodSeconds: 10
             failureThreshold: 24
             tcpSocket:
