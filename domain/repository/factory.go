@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"io"
 
 	"gorm.io/gorm"
@@ -16,6 +17,12 @@ type PrivateTransaction interface {
 
 type AdvisoryLock interface {
 	TryAdvisoryXactLock(id, salt string) (bool, error)
+}
+
+type AdvisoryLockSession interface {
+	io.Closer
+	TryAdvisoryLock(id, salt string) (bool, error)
+	AdvisoryUnlock(id, salt string) error
 }
 
 type PublicTransaction interface {
@@ -38,4 +45,5 @@ type Factory interface {
 
 	NewPublicTransaction() PublicTransaction
 	RunInTransactionPublic(fn func(PublicTransaction) error) error
+	NewPublicAdvisoryLockSession(ctx context.Context) (AdvisoryLockSession, error)
 }

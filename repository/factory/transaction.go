@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"context"
+	"database/sql"
 	"hash/fnv"
 
 	"reverse-watch/domain/repository"
@@ -72,13 +74,9 @@ func (t *publicTransaction) Reversal() repository.ReversalRepository {
 }
 
 func (t *publicTransaction) TryAdvisoryXactLock(id, salt string) (bool, error) {
-	h := fnv.New32a()
-	h.Write([]byte(salt))
-	h.Write([]byte(id))
-	lockKey := h.Sum32()
-
+	lockKey := advisoryLockKey(id, salt)
 	var hasLock bool
-	if err := t.tx.Raw("SELECT pg_try_advisory_xact_lock(?)", lockKey).Scan(&hasLock).Error; err != nil {
+	if err := t.tx.Raw("SELECT pg_try_advisory_lock(?)", lockKey).Scan(&hasLock).Error; err != nil {
 		return false, err
 	}
 
@@ -86,4 +84,41 @@ func (t *publicTransaction) TryAdvisoryXactLock(id, salt string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+type publicAdvisoryLockSession struct {
+	conn *sql.Conn
+}
+
+func newPublicAdvisoryLockSession(conn *sql.Conn) *publicAdvisoryLockSession {
+	return &publicAdvisoryLockSession{conn: conn}
+}
+
+func (s *publicAdvisoryLockSession) Close() error {
+	return s.conn.Close()
+}
+
+func (s *publicAdvisoryLockSession) TryAdvisoryLock(id, salt string) (bool, error) {
+	lockKey := advisoryLockKey(id, salt)
+	var hasLock bool
+	if err := s.conn.QueryRowContext(context.Background(), "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock); err != nil {
+		return false, err
+	}
+	return hasLock, nil
+}
+
+func (s *publicAdvisoryLockSession) AdvisoryUnlock(id, salt string) error {
+	lockKey := advisoryLockKey(id, salt)
+	var unlocked bool
+	if err := s.conn.QueryRowContext(context.Background(), "SELECT pg_advisory_unlock($1)", lockKey).Scan(&unlocked); err != nil {
+		return err
+	}
+	return nil
+}
+
+func advisoryLockKey(id, salt string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(salt))
+	h.Write([]byte(id))
+	return h.Sum32()
 }

@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -208,6 +209,20 @@ func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction)
 
 func (f *factory) NewPublicTransaction() repository.PublicTransaction {
 	return newPublicTransaction(f.public.Begin())
+}
+
+func (f *factory) NewPublicAdvisoryLockSession(ctx context.Context) (repository.AdvisoryLockSession, error) {
+	sqlDB, err := f.public.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := sqlDB.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return newPublicAdvisoryLockSession(conn), nil
 }
 
 func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) error) error {

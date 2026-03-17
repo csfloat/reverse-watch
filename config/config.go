@@ -120,6 +120,12 @@ func load() Config {
 		}
 	}
 
+	if cfg.Elector.Enable {
+		if cfg.Elector.ID == "" || cfg.Elector.Salt == "" {
+			panic("elector configuration is required when enabled")
+		}
+	}
+
 	if cfg.Elector.Enable != cfg.Ingestors.CSFloat.Enable {
 		panic("both elector and ingestor require the same enable state")
 	}

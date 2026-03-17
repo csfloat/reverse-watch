@@ -41,24 +41,34 @@ func (e *elector) Run(ctx context.Context, onLeader func()) {
 		case <-time.After(time.Until(nextMinute)):
 		}
 
-		tx := e.factory.NewPublicTransaction()
-		acquired, err := tx.TryAdvisoryXactLock(e.cfg.Elector.ID, e.cfg.Elector.Salt)
+		lockSession, err := e.factory.NewPublicAdvisoryLockSession(ctx)
+		if err != nil {
+			e.log.Warnf("failed to create advisory lock session: %v", err)
+			continue
+		}
+
+		acquired, err := lockSession.TryAdvisoryLock(e.cfg.Elector.ID, e.cfg.Elector.Salt)
 		if err != nil {
 			e.log.Warnf("failed to acquire leader lock: %v", err)
-			tx.Rollback()
+			lockSession.Close()
 			continue
 		}
 
 		if !acquired {
 			e.log.Warn("failed to acquire leader lock")
-			tx.Rollback()
+			lockSession.Close()
 			continue
 		}
 
 		e.log.Info("leader lock acquired")
 		onLeader()
 
-		tx.Rollback()
+		if err := lockSession.AdvisoryUnlock(e.cfg.Elector.ID, e.cfg.Elector.Salt); err != nil {
+			e.log.Warnf("failed to release leader lock: %v", err)
+		}
+		if err := lockSession.Close(); err != nil {
+			e.log.Warnf("failed to close advisory lock session: %v", err)
+		}
 		return
 	}
 }
