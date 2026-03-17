@@ -14,10 +14,15 @@ type PrivateTransaction interface {
 	AdminAudit() AdminAuditRepository
 }
 
+type AdvisoryLock interface {
+	TryAdvisoryXactLock(id, salt string) (bool, error)
+}
+
 type PublicTransaction interface {
 	gorm.TxCommitter
 
 	Reversal() ReversalRepository
+	AdvisoryLock
 }
 
 type Factory interface {

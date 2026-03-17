@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"hash/fnv"
+
 	"reverse-watch/domain/repository"
 	"reverse-watch/domain/secret"
 	"reverse-watch/repository/private"
@@ -67,4 +69,21 @@ func (t *publicTransaction) Rollback() error {
 
 func (t *publicTransaction) Reversal() repository.ReversalRepository {
 	return t.reversal
+}
+
+func (t *publicTransaction) TryAdvisoryXactLock(id, salt string) (bool, error) {
+	h := fnv.New32a()
+	h.Write([]byte(salt))
+	h.Write([]byte(id))
+	lockKey := h.Sum32()
+
+	var hasLock bool
+	if err := t.tx.Raw("SELECT pg_try_advisory_xact_lock(?)", lockKey).Scan(&hasLock).Error; err != nil {
+		return false, err
+	}
+
+	if !hasLock {
+		return false, nil
+	}
+	return true, nil
 }

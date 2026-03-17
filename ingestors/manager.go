@@ -4,36 +4,36 @@ import (
 	"context"
 
 	"reverse-watch/config"
+	"reverse-watch/domain/ingestors"
 	"reverse-watch/domain/repository"
 	"reverse-watch/ingestors/csfloat"
+	"reverse-watch/leader"
 
 	"go.uber.org/zap"
 )
 
-type ingestor interface {
-	Start()
-	Stop()
-}
-
 type manager struct {
 	log       *zap.SugaredLogger
-	ingestors []ingestor
+	ingestors map[ingestors.IngestorType]ingestors.Ingestor
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func New(factory repository.Factory, cfg *config.Config, logger *zap.SugaredLogger) *manager {
+var _ ingestors.Manager = (*manager)(nil)
+
+func New(factory repository.Factory, cfg *config.Config, log *zap.SugaredLogger) ingestors.Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &manager{
-		log:       logger,
-		ingestors: make([]ingestor, 0),
+		log:       log,
+		ingestors: make(map[ingestors.IngestorType]ingestors.Ingestor),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
 
+	elector := leader.New(factory, cfg, log)
 	if cfg.Ingestors.CSFloat.Enable {
-		m.ingestors = append(m.ingestors, csfloat.NewCSFloatIngestor(ctx, factory, cfg, logger))
+		m.ingestors[ingestors.IngestorTypeCSFloat] = csfloat.NewCSFloatIngestor(ctx, factory, elector, cfg, log)
 	}
 	return m
 }
@@ -44,7 +44,7 @@ func (m *manager) StartIngestors() {
 	}
 }
 
-func (m *manager) Stop() {
+func (m *manager) StopIngestors() {
 	m.cancel()
 	for _, ingestor := range m.ingestors {
 		ingestor.Stop()

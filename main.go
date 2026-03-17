@@ -71,7 +71,7 @@ func main() {
 		panic(err)
 	}
 
-	ingestorManager.Stop()
+	ingestorManager.StopIngestors()
 
 	if err := f.Close(); err != nil {
 		panic(err)
