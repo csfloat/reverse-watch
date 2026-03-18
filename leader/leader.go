@@ -2,6 +2,7 @@ package leader
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"reverse-watch/config"
@@ -40,16 +41,9 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, onLeader func()) {
 		case <-time.After(time.Until(nextMinute)):
 		}
 
-		conn, err := e.factory.PrivateDB().DB()
+		hasLock, err := e.tryAdvisoryLock(ctx, lockKey)
 		if err != nil {
-			e.log.Errorf("failed to get private database connection: %v", err)
-			continue
-		}
-
-		var hasLock bool
-		err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(?)", lockKey).Scan(&hasLock)
-		if err != nil {
-			e.log.Errorf("failed to check if leader lock is acquired: %v", err)
+			e.log.Errorf("failed to acquire lock for lock key %d: %v", lockKey, err)
 			continue
 		}
 
@@ -59,4 +53,24 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, onLeader func()) {
 			return
 		}
 	}
+}
+
+func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (bool, error) {
+	db, err := e.factory.PrivateDB().DB()
+	if err != nil {
+		return false, fmt.Errorf("failed to get private database: %v", err)
+	}
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get private database connection: %v", err)
+	}
+	defer conn.Close()
+
+	var hasLock bool
+	err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if leader lock is acquired: %v", err)
+	}
+	return hasLock, nil
 }
