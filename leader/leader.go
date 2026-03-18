@@ -30,7 +30,7 @@ func New(factory repository.Factory, cfg *config.Config, log *zap.SugaredLogger)
 // Run will run the elector in a loop, acquiring the leader lock and calling the onLeader function when the leader is acquired.
 // If the leader lock is not acquired, it will wait for the next minute and try again.
 // If the context is done, it will return.
-func (e *elector) Run(ctx context.Context, lockKey []byte, onLeader func()) {
+func (e *elector) Run(ctx context.Context, lockKey uint32, onLeader func()) {
 	for {
 		now := time.Now()
 		nextMinute := now.Truncate(time.Minute).Add(time.Minute)
