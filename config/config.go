@@ -86,7 +86,6 @@ func load() Config {
 	v.SetDefault("TrustProxy", false)
 	v.SetDefault("Ingestors.CSFloat.Enable", false)
 	v.SetDefault("Ingestors.CSFloat.BaseURL", "https://csfloat.com")
-	v.SetDefault("Elector.Enable", false)
 
 	// Need to register environment variables if defaults aren't set
 	v.BindEnv("HTTP.AllowedOrigins")
