@@ -14,15 +14,10 @@ type PrivateTransaction interface {
 	AdminAudit() AdminAuditRepository
 }
 
-type AdvisoryLock interface {
-	TryAdvisoryXactLock(id, salt string) (bool, error)
-}
-
 type PublicTransaction interface {
 	gorm.TxCommitter
 
 	Reversal() ReversalRepository
-	AdvisoryLock
 }
 
 type Factory interface {
@@ -35,7 +30,9 @@ type Factory interface {
 
 	NewPrivateTransaction() PrivateTransaction
 	RunInTransactionPrivate(fn func(PrivateTransaction) error) error
+	PrivateDB() *gorm.DB
 
 	NewPublicTransaction() PublicTransaction
 	RunInTransactionPublic(fn func(PublicTransaction) error) error
+	PublicDB() *gorm.DB
 }

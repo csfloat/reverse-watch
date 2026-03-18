@@ -30,35 +30,33 @@ func New(factory repository.Factory, cfg *config.Config, log *zap.SugaredLogger)
 // Run will run the elector in a loop, acquiring the leader lock and calling the onLeader function when the leader is acquired.
 // If the leader lock is not acquired, it will wait for the next minute and try again.
 // If the context is done, it will return.
-func (e *elector) Run(ctx context.Context, onLeader func()) {
+func (e *elector) Run(ctx context.Context, lockKey []byte, onLeader func()) {
 	for {
 		now := time.Now()
 		nextMinute := now.Truncate(time.Minute).Add(time.Minute)
-
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Until(nextMinute)):
 		}
 
-		tx := e.factory.NewPublicTransaction()
-		acquired, err := tx.TryAdvisoryXactLock(e.cfg.Elector.ID, e.cfg.Elector.Salt)
+		conn, err := e.factory.PrivateDB().DB()
 		if err != nil {
-			e.log.Warnf("failed to acquire leader lock: %v", err)
-			tx.Rollback()
+			e.log.Errorf("failed to get private database connection: %v", err)
 			continue
 		}
 
-		if !acquired {
-			e.log.Warn("failed to acquire leader lock")
-			tx.Rollback()
+		var hasLock bool
+		err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(?)", lockKey).Scan(&hasLock)
+		if err != nil {
+			e.log.Errorf("failed to check if leader lock is acquired: %v", err)
 			continue
 		}
 
-		e.log.Info("leader lock acquired")
-		onLeader()
-
-		tx.Rollback()
-		return
+		if hasLock {
+			e.log.Info("leader lock acquired")
+			onLeader()
+			return
+		}
 	}
 }

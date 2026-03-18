@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"time"
 
@@ -171,7 +172,12 @@ func (i *csfloatIngestor) Start() {
 	go func() {
 		defer close(i.stopped)
 
-		i.elector.Run(i.ctx, func() {
+		h := fnv.New32a()
+		h.Write([]byte(i.cfg.Ingestors.CSFloat.Elector.Salt))
+		h.Write([]byte(i.cfg.Ingestors.CSFloat.Elector.ID))
+		lockKey := h.Sum32()
+
+		i.elector.Run(i.ctx, lockKey, func() {
 			for {
 				if err := i.sync(); err != nil {
 					i.log.Errorf("failed to sync reversals: %v", err)
