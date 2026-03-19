@@ -67,16 +67,6 @@ spec:
                 secretKeyRef:
                   key: '1'
                   name: ingestors-csfloat-secretkey
-            - name: INGESTORS_CSFLOAT_ELECTOR_ID
-              valueFrom:
-                secretKeyRef:
-                  key: '1'
-                  name: ingestors-csfloat-elector-id
-            - name: INGESTORS_CSFLOAT_ELECTOR_SALT
-              valueFrom:
-                secretKeyRef:
-                  key: '1'
-                  name: ingestors-csfloat-elector-salt
           resources:
             limits:
               cpu: 2000m
