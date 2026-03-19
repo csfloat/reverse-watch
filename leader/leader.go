@@ -26,29 +26,29 @@ func New(factory repository.Factory, log *zap.SugaredLogger) leader.Elector {
 	}
 }
 
-// Run will run the elector in a loop, acquiring the leader lock and calling the onWork function when the leader is acquired.
-// If the leader lock is not acquired, it will wait for the next period and try again.
-// If the context is done, it will return.
-func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration, onWork func(ctx context.Context)) {
-	for {
-		nextBoundary := time.Now().Truncate(period).Add(period)
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Until(nextBoundary)):
-		}
-
-		connCtx, connCancel := context.WithCancel(ctx)
-		conn, acquired := e.tryAdvisoryLock(connCtx, lockKey)
-		if !acquired {
-			connCancel()
-			continue
-		}
-
-		e.runWithLock(connCtx, conn, onWork)
-		connCancel()
-		conn.Close()
+func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Conn, bool) {
+	db, err := e.factory.PublicDB().DB()
+	if err != nil {
+		return nil, false
 	}
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, false
+	}
+
+	var hasLock bool
+	err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock)
+	if err != nil {
+		conn.Close()
+		return nil, false
+	}
+
+	if !hasLock {
+		conn.Close()
+		return nil, false
+	}
+	return conn, true
 }
 
 func (e *elector) runWithLock(ctx context.Context, conn *sql.Conn, onWork func(ctx context.Context)) {
@@ -56,6 +56,7 @@ func (e *elector) runWithLock(ctx context.Context, conn *sql.Conn, onWork func(c
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+
 	// Monitor connection health in background
 	go func() {
 		defer wg.Done()
@@ -82,27 +83,27 @@ func (e *elector) runWithLock(ctx context.Context, conn *sql.Conn, onWork func(c
 	wg.Wait()
 }
 
-func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Conn, bool) {
-	db, err := e.factory.PublicDB().DB()
-	if err != nil {
-		return nil, false
-	}
+// Run will run the elector in a loop, acquiring the leader lock and calling the onWork function when the leader is acquired.
+// If the leader lock is not acquired, it will wait for the next period and try again.
+// If the context is done, it will return.
+func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration, onWork func(ctx context.Context)) {
+	for {
+		nextBoundary := time.Now().Truncate(period).Add(period)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Until(nextBoundary)):
+		}
 
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		return nil, false
-	}
+		connCtx, connCancel := context.WithCancel(ctx)
+		conn, acquired := e.tryAdvisoryLock(connCtx, lockKey)
+		if !acquired {
+			connCancel()
+			continue
+		}
 
-	var hasLock bool
-	err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock)
-	if err != nil {
+		e.runWithLock(connCtx, conn, onWork)
+		connCancel()
 		conn.Close()
-		return nil, false
 	}
-
-	if !hasLock {
-		conn.Close()
-		return nil, false
-	}
-	return conn, true
 }
