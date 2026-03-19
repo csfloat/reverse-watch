@@ -31,7 +31,7 @@ func New(factory repository.Factory, cfg *config.Config, log *zap.SugaredLogger)
 		cancel:    cancel,
 	}
 
-	elector := leader.New(factory, cfg, log)
+	elector := leader.New(factory, log)
 	if cfg.Ingestors.CSFloat.Enable {
 		m.ingestors[ingestors.IngestorTypeCSFloat] = csfloat.NewCSFloatIngestor(ctx, factory, elector, cfg, log)
 	}

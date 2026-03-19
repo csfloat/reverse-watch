@@ -2,10 +2,10 @@ package leader
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"sync"
 	"time"
 
-	"reverse-watch/config"
 	"reverse-watch/domain/leader"
 	"reverse-watch/domain/repository"
 
@@ -14,63 +14,95 @@ import (
 
 type elector struct {
 	log     *zap.SugaredLogger
-	cfg     *config.Config
 	factory repository.Factory
 }
 
 var _ leader.Elector = (*elector)(nil)
 
-func New(factory repository.Factory, cfg *config.Config, log *zap.SugaredLogger) leader.Elector {
+func New(factory repository.Factory, log *zap.SugaredLogger) leader.Elector {
 	return &elector{
 		log:     log,
-		cfg:     cfg,
 		factory: factory,
 	}
 }
 
-// Run will run the elector in a loop, acquiring the leader lock and calling the onLeader function when the leader is acquired.
-// If the leader lock is not acquired, it will wait for the next minute and try again.
+// Run will run the elector in a loop, acquiring the leader lock and calling the onWork function when the leader is acquired.
+// If the leader lock is not acquired, it will wait for the next period and try again.
 // If the context is done, it will return.
-func (e *elector) Run(ctx context.Context, lockKey uint32, onLeader func()) {
+func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration, onWork func(ctx context.Context)) {
 	for {
-		now := time.Now()
-		nextMinute := now.Truncate(time.Minute).Add(time.Minute)
+		nextBoundary := time.Now().Truncate(period).Add(period)
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Until(nextMinute)):
+		case <-time.After(time.Until(nextBoundary)):
 		}
 
-		hasLock, err := e.tryAdvisoryLock(ctx, lockKey)
-		if err != nil {
-			e.log.Errorf("failed to acquire lock for lock key %d: %v", lockKey, err)
+		connCtx, connCancel := context.WithCancel(ctx)
+		conn, acquired := e.tryAdvisoryLock(connCtx, lockKey)
+		if !acquired {
+			connCancel()
 			continue
 		}
 
-		if hasLock {
-			e.log.Info("leader lock acquired")
-			onLeader()
-			return
-		}
+		e.runWithLock(connCtx, conn, onWork)
+		connCancel()
+		conn.Close()
 	}
 }
 
-func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (bool, error) {
-	db, err := e.factory.PrivateDB().DB()
+func (e *elector) runWithLock(ctx context.Context, conn *sql.Conn, onWork func(ctx context.Context)) {
+	workCtx, workCancel := context.WithCancel(ctx)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// Monitor connection health in background
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-workCtx.Done():
+				return
+			case <-ticker.C:
+				if err := conn.PingContext(workCtx); err != nil {
+					e.log.Warnf("failed to ping connection: %v", err)
+					workCancel()
+					return
+				}
+			}
+		}
+	}()
+
+	onWork(workCtx)
+	workCancel()
+	wg.Wait()
+}
+
+func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Conn, bool) {
+	db, err := e.factory.PublicDB().DB()
 	if err != nil {
-		return false, fmt.Errorf("failed to get private database: %v", err)
+		return nil, false
 	}
 
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to get private database connection: %v", err)
+		return nil, false
 	}
-	defer conn.Close()
 
 	var hasLock bool
 	err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if leader lock is acquired: %v", err)
+		conn.Close()
+		return nil, false
 	}
-	return hasLock, nil
+
+	if !hasLock {
+		conn.Close()
+		return nil, false
+	}
+	return conn, true
 }

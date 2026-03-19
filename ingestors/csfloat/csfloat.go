@@ -63,7 +63,7 @@ type errorResponse struct {
 }
 
 // fetch reversal warnings from CSFloat
-func (i *csfloatIngestor) fetch(cursor *uint) ([]*slimWarning, *uint, error) {
+func (i *csfloatIngestor) fetch(ctx context.Context, cursor *uint) ([]*slimWarning, *uint, error) {
 	// The day before Valve introduced trade reversals
 	startTime := time.Date(2025, 7, 14, 0, 0, 0, 0, time.UTC)
 	endTime := time.Now().Add(-5 * time.Minute)
@@ -78,7 +78,7 @@ func (i *csfloatIngestor) fetch(cursor *uint) ([]*slimWarning, *uint, error) {
 		return nil, nil, err
 	}
 	r.Header.Set("X-Secret-Key", i.cfg.Ingestors.CSFloat.SecretKey)
-	r = r.WithContext(i.ctx)
+	r = r.WithContext(ctx)
 
 	client := &http.Client{}
 	resp, err := client.Do(r)
@@ -127,7 +127,7 @@ func (i *csfloatIngestor) process(warnings []*slimWarning) error {
 	return nil
 }
 
-func (i *csfloatIngestor) sync() error {
+func (i *csfloatIngestor) sync(ctx context.Context) error {
 	// Fetch the most recent reversals created by CSFloat
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
@@ -147,7 +147,13 @@ func (i *csfloatIngestor) sync() error {
 	}
 
 	for {
-		warnings, nextCursor, err := i.fetch(cursor)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		warnings, nextCursor, err := i.fetch(ctx, cursor)
 		if err != nil {
 			return fmt.Errorf("failed to fetch warnings with cursor %v: %v", cursor, err)
 		}
@@ -176,17 +182,9 @@ func (i *csfloatIngestor) Start() {
 		h.Write([]byte("csfloat_ingestor_leader"))
 		lockKey := h.Sum32()
 
-		i.elector.Run(i.ctx, lockKey, func() {
-			for {
-				if err := i.sync(); err != nil {
-					i.log.Errorf("failed to sync reversals: %v", err)
-				}
-
-				select {
-				case <-time.After(30 * time.Minute):
-				case <-i.ctx.Done():
-					return
-				}
+		i.elector.Run(i.ctx, lockKey, 30*time.Minute, func(ctx context.Context) {
+			if err := i.sync(ctx); err != nil {
+				i.log.Errorf("failed to sync reversals: %v", err)
 			}
 		})
 	}()
