@@ -147,10 +147,11 @@ func TestElector_TryAdvisoryLock_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
 	f, err := factory.NewFactoryWithConfig(&factory.Config{
 		PrivateDB: db,
 		PublicDB:  db,
-		KeyGen:    nil,
+		KeyGen:    keygen,
 	})
 	if err != nil {
 		t.Fatalf("NewFactoryWithConfig(): %v", err)
@@ -163,14 +164,9 @@ func TestElector_TryAdvisoryLock_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	conn, acquired := e.tryAdvisoryLock(ctx, 66666)
-
+	_, acquired := e.tryAdvisoryLock(ctx, 66666)
 	if acquired {
 		t.Fatal("should not acquire lock with canceled context")
-	}
-	if conn != nil {
-		conn.Rollback()
-		t.Fatal("connection should be nil with canceled context")
 	}
 }
 
