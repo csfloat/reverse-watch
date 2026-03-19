@@ -182,7 +182,7 @@ func (i *csfloatIngestor) Start() {
 		h.Write([]byte("csfloat_ingestor_leader"))
 		lockKey := h.Sum32()
 
-		i.elector.Run(i.ctx, lockKey, 30*time.Second, func(ctx context.Context) {
+		i.elector.Run(i.ctx, lockKey, 30*time.Minute, func(ctx context.Context) {
 			if err := i.sync(ctx); err != nil {
 				i.log.Errorf("failed to sync reversals: %v", err)
 			}
