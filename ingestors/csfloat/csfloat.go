@@ -173,8 +173,7 @@ func (i *csfloatIngestor) Start() {
 		defer close(i.stopped)
 
 		h := fnv.New32a()
-		h.Write([]byte(i.cfg.Ingestors.CSFloat.Elector.Salt))
-		h.Write([]byte(i.cfg.Ingestors.CSFloat.Elector.ID))
+		h.Write([]byte("csfloat_ingestor_leader"))
 		lockKey := h.Sum32()
 
 		i.elector.Run(i.ctx, lockKey, func() {
