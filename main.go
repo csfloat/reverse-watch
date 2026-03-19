@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	logging.Log.Info("Starting Reverse Watch")
+	logging.Log.Info("starting reverse watch")
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	go func() {
-		logging.Log.Infof("Starting HTTP Server on %v", httpSrv.Addr)
+		logging.Log.Infof("starting HTTP Server on %v", httpSrv.Addr)
 		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
@@ -62,7 +62,7 @@ func main() {
 
 	<-done
 
-	logging.Log.Info("Shutting down server connections gracefully")
+	logging.Log.Info("shutting down server connections gracefully")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

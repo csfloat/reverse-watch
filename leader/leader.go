@@ -3,7 +3,6 @@ package leader
 import (
 	"context"
 	"database/sql"
-	"sync"
 	"time"
 
 	"reverse-watch/domain/leader"
@@ -26,61 +25,29 @@ func New(factory repository.Factory, log *zap.SugaredLogger) leader.Elector {
 	}
 }
 
-func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Conn, bool) {
+func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx, bool) {
 	db, err := e.factory.PublicDB().DB()
 	if err != nil {
 		return nil, false
 	}
 
-	conn, err := db.Conn(ctx)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, false
 	}
 
 	var hasLock bool
-	err = conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockKey).Scan(&hasLock)
+	err = tx.QueryRowContext(ctx, "SELECT pg_try_advisory_xact_lock($1)", lockKey).Scan(&hasLock)
 	if err != nil {
-		conn.Close()
+		tx.Rollback()
 		return nil, false
 	}
 
 	if !hasLock {
-		conn.Close()
+		tx.Rollback()
 		return nil, false
 	}
-	return conn, true
-}
-
-func (e *elector) runWithLock(ctx context.Context, conn *sql.Conn, onWork func(ctx context.Context)) {
-	workCtx, workCancel := context.WithCancel(ctx)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	// Monitor connection health in background
-	go func() {
-		defer wg.Done()
-
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-workCtx.Done():
-				return
-			case <-ticker.C:
-				if err := conn.PingContext(workCtx); err != nil {
-					e.log.Warnf("failed to ping connection: %v", err)
-					workCancel()
-					return
-				}
-			}
-		}
-	}()
-
-	onWork(workCtx)
-	workCancel()
-	wg.Wait()
+	return tx, true
 }
 
 // Run will run the elector in a loop, acquiring the leader lock and calling the onWork function when the leader is acquired.
@@ -95,15 +62,15 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		case <-time.After(time.Until(nextBoundary)):
 		}
 
-		connCtx, connCancel := context.WithCancel(ctx)
-		conn, acquired := e.tryAdvisoryLock(connCtx, lockKey)
+		txCtx, txCancel := context.WithCancel(ctx)
+		tx, acquired := e.tryAdvisoryLock(txCtx, lockKey)
 		if !acquired {
-			connCancel()
+			txCancel()
 			continue
 		}
 
-		e.runWithLock(connCtx, conn, onWork)
-		connCancel()
-		conn.Close()
+		onWork(txCtx)
+		tx.Rollback()
+		txCancel()
 	}
 }
