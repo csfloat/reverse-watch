@@ -28,6 +28,7 @@ func New(factory repository.Factory, log *zap.SugaredLogger) leader.Elector {
 func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx, bool) {
 	db, err := e.factory.PublicDB().DB()
 	if err != nil {
+		e.log.Errorf("failed to get database connection: %v", err)
 		return nil, false
 	}
 
@@ -35,6 +36,7 @@ func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx,
 	// Very unlikely, but we don't want another instance to acquire the lock and begin work before we have exited.
 	tx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
+		e.log.Errorf("failed to begin transaction: %v", err)
 		return nil, false
 	}
 
@@ -42,11 +44,13 @@ func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx,
 	err = tx.QueryRowContext(ctx, "SELECT pg_try_advisory_xact_lock($1)", lockKey).Scan(&hasLock)
 	if err != nil {
 		tx.Rollback()
+		e.log.Errorf("failed to acquire advisory lock: %v", err)
 		return nil, false
 	}
 
 	if !hasLock {
 		tx.Rollback()
+		e.log.Errorf("failed to acquire advisory lock: %v", err)
 		return nil, false
 	}
 	return tx, true
