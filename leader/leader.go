@@ -31,7 +31,9 @@ func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx,
 		return nil, false
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	// Use background context so transaction isn't auto-cancelled.
+	// Very unlikely, but we don't want another instance to acquire the lock and begin work before we have exited.
+	tx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return nil, false
 	}
@@ -62,15 +64,15 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		case <-time.After(time.Until(nextBoundary)):
 		}
 
-		txCtx, txCancel := context.WithCancel(ctx)
-		tx, acquired := e.tryAdvisoryLock(txCtx, lockKey)
+		workCtx, workCancel := context.WithCancel(ctx)
+		tx, acquired := e.tryAdvisoryLock(workCtx, lockKey)
 		if !acquired {
-			txCancel()
+			workCancel()
 			continue
 		}
 
-		onWork(txCtx)
+		onWork(workCtx)
 		tx.Rollback()
-		txCancel()
+		workCancel()
 	}
 }

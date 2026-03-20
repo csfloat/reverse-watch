@@ -13,6 +13,7 @@ import (
 	"reverse-watch/secret"
 
 	"go.uber.org/zap"
+
 	"gorm.io/gorm"
 )
 
@@ -243,7 +244,18 @@ func TestElector_Run_ExecutesOnWorkWhenLockAcquired(t *testing.T) {
 		})
 	}()
 
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success - Run exited
+	case <-time.After(2 * time.Second):
+		t.Fatal("test timed out waiting for Run to exit")
+	}
 
 	if workCount.Load() != 1 {
 		t.Fatalf("expected onWork to be called once, got %d", workCount.Load())
