@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"strconv"
 	"time"
 
 	"reverse-watch/config"
@@ -54,7 +55,7 @@ type slimWarning struct {
 
 type responseData struct {
 	Data       []*slimWarning `json:"data"`
-	NextCursor *uint          `json:"next_cursor"`
+	NextCursor *string        `json:"next_cursor"`
 }
 
 type errorResponse struct {
@@ -70,7 +71,7 @@ func (i *csfloatIngestor) fetch(ctx context.Context, cursor *uint) ([]*slimWarni
 	limit := 1000
 	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
 	if cursor != nil {
-		url = fmt.Sprintf("%s&cursor=%d", url, *cursor)
+		url = fmt.Sprintf("%s&cursor=%s", url, *cursor)
 	}
 
 	r, err := http.NewRequest("GET", url, nil)
@@ -102,7 +103,16 @@ func (i *csfloatIngestor) fetch(ctx context.Context, cursor *uint) ([]*slimWarni
 		return nil, nil, errors.New(errors.JSONDecode, err.Error())
 	}
 
-	return data.Data, data.NextCursor, nil
+	var nextCursor *uint
+	if data.NextCursor != nil {
+		next, err := strconv.ParseUint(*data.NextCursor, 10, 64)
+		if err != nil {
+			return nil, nil, errors.New(errors.JSONDecode, err.Error())
+		}
+		nextCursor = util.Ptr(uint(next))
+	}
+
+	return data.Data, nextCursor, nil
 }
 
 // process warnings and create reversals, returns the most recent reversal
