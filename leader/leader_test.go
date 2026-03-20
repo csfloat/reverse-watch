@@ -312,7 +312,18 @@ func TestElector_Run_OnlyOneLeaderExecutesWork(t *testing.T) {
 		}()
 	}
 
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success - Run exited
+	case <-time.After(2 * time.Second):
+		t.Fatal("test timed out waiting for Run to exit")
+	}
 
 	if maxConcurrent.Load() > 1 {
 		t.Fatalf("expected max 1 concurrent worker, got %d", maxConcurrent.Load())
