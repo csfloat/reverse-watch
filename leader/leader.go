@@ -61,11 +61,10 @@ func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx,
 // If the context is done, it will return.
 func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration, onWork func(ctx context.Context)) {
 	for {
-		nextBoundary := time.Now().Truncate(period).Add(period)
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Until(nextBoundary)):
+		default:
 		}
 
 		workCtx, workCancel := context.WithCancel(ctx)
@@ -78,5 +77,12 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		onWork(workCtx)
 		tx.Rollback()
 		workCancel()
+
+		nextBoundary := time.Now().Truncate(period).Add(period)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Until(nextBoundary)):
+		}
 	}
 }
