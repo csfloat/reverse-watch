@@ -190,18 +190,17 @@ func TestElector_Run_ExitsOnContextCancel(t *testing.T) {
 	e := New(f, log)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel immediately
+	cancel()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		e.Run(ctx, 33333, time.Hour, func(ctx context.Context) {
-			cancel()
-			t.Fatal("onWork should not be called")
+			t.Error("onWork should not be called")
+			return
 		})
 	}()
-
-	// Cancel immediately
-	cancel()
 
 	select {
 	case <-done:
