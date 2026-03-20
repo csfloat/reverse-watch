@@ -228,7 +228,7 @@ func TestElector_Run_ExecutesOnWorkWhenLockAcquired(t *testing.T) {
 	log := zap.NewNop().Sugar()
 	e := New(f, log)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
 	var workCount atomic.Int32
