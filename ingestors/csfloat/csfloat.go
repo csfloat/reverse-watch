@@ -71,7 +71,7 @@ func (i *csfloatIngestor) fetch(ctx context.Context, cursor *uint) ([]*slimWarni
 	limit := 1000
 	url := fmt.Sprintf("%s/api/v1/warnings/reversals?start_time_ms=%d&end_time_ms=%d&limit=%d", i.cfg.Ingestors.CSFloat.BaseURL, startTime.UnixMilli(), endTime.UnixMilli(), limit)
 	if cursor != nil {
-		url = fmt.Sprintf("%s&cursor=%s", url, *cursor)
+		url = fmt.Sprintf("%s&cursor=%d", url, *cursor)
 	}
 
 	r, err := http.NewRequest("GET", url, nil)
