@@ -30,7 +30,9 @@ type Factory interface {
 
 	NewPrivateTransaction() PrivateTransaction
 	RunInTransactionPrivate(fn func(PrivateTransaction) error) error
+	PrivateDB() *gorm.DB
 
 	NewPublicTransaction() PublicTransaction
 	RunInTransactionPublic(fn func(PublicTransaction) error) error
+	PublicDB() *gorm.DB
 }

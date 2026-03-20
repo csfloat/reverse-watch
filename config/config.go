@@ -110,7 +110,6 @@ func load() Config {
 			panic("csfloat ingestor configuration is required when enabled")
 		}
 	}
-
 	return cfg
 }
 

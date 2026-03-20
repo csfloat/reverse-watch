@@ -206,6 +206,10 @@ func (f *factory) RunInTransactionPrivate(fn func(repository.PrivateTransaction)
 	})
 }
 
+func (f *factory) PrivateDB() *gorm.DB {
+	return f.private
+}
+
 func (f *factory) NewPublicTransaction() repository.PublicTransaction {
 	return newPublicTransaction(f.public.Begin())
 }
@@ -215,4 +219,8 @@ func (f *factory) RunInTransactionPublic(fn func(repository.PublicTransaction) e
 		tx := newPublicTransaction(gormTx)
 		return fn(tx)
 	})
+}
+
+func (f *factory) PublicDB() *gorm.DB {
+	return f.public
 }
