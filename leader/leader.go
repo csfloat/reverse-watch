@@ -71,6 +71,7 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		tx, acquired := e.tryAdvisoryLock(workCtx, lockKey)
 		if !acquired {
 			workCancel()
+			waitUntilNextBoundary(ctx, period)
 			continue
 		}
 
@@ -78,11 +79,15 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		tx.Rollback()
 		workCancel()
 
-		nextBoundary := time.Now().Truncate(period).Add(period)
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Until(nextBoundary)):
-		}
+		waitUntilNextBoundary(ctx, period)
+	}
+}
+
+func waitUntilNextBoundary(ctx context.Context, period time.Duration) {
+	nextBoundary := time.Now().Truncate(period).Add(period)
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(time.Until(nextBoundary)):
 	}
 }
