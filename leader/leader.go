@@ -50,7 +50,7 @@ func (e *elector) tryAdvisoryLock(ctx context.Context, lockKey uint32) (*sql.Tx,
 
 	if !hasLock {
 		tx.Rollback()
-		e.log.Errorf("failed to acquire advisory lock: %v", err)
+		e.log.Errorf("failed to acquire advisory lock")
 		return nil, false
 	}
 	return tx, true
