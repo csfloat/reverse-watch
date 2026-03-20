@@ -67,19 +67,19 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 		default:
 		}
 
-		workCtx, workCancel := context.WithCancel(ctx)
-		tx, acquired := e.tryAdvisoryLock(workCtx, lockKey)
-		if !acquired {
-			workCancel()
-			waitUntilNextBoundary(ctx, period)
-			continue
-		}
+		func() {
+			workCtx, workCancel := context.WithCancel(ctx)
+			defer workCancel()
+			defer waitUntilNextBoundary(ctx, period)
+			tx, acquired := e.tryAdvisoryLock(workCtx, lockKey)
+			if !acquired {
+				return
+			}
+			defer tx.Rollback()
 
-		onWork(workCtx)
-		tx.Rollback()
-		workCancel()
+			onWork(workCtx)
+		}()
 
-		waitUntilNextBoundary(ctx, period)
 	}
 }
 
