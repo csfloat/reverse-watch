@@ -79,7 +79,6 @@ func (e *elector) Run(ctx context.Context, lockKey uint32, period time.Duration,
 
 			onWork(workCtx)
 		}()
-
 	}
 }
 
