@@ -32,7 +32,7 @@ All entity endpoints require a Bearer token in the `Authorization` header:
 Authorization: Bearer reversewatch_live_xxxxxxxx...
 ```
 
-API keys are scoped to an entity and carry a permission bitfield. Keys are prefixed with `reversewatch_live_` (production) or `reversewatch_test_` (development). The key ID stored in the database is the SHA-256 hash of the full secret.
+API keys are scoped to an entity and carry a permission bitfield. Keys are prefixed with `reversewatch_live_` (production) or `reversewatch_test_` (development).
 
 ### Permissions
 
