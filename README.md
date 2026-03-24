@@ -38,7 +38,7 @@ API keys are scoped to an entity and carry a permission bitfield. Keys are prefi
 
 | Permission | Description |
 |---|---|
-| `admin` | Full administrative access (CSFloat only) |
+| `admin` | Full administrative access (Service operator only) |
 | `manage` | Manage API keys for own entity |
 | `write` | Create reversal reports |
 | `delete` | Expunge reversal reports for own entity |
