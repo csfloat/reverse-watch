@@ -4,7 +4,7 @@ Community-driven open trade reversal tracking database for Steam. Participating 
 
 ## Interested in Participating?
 
-If you're looking to participate, reach out at **join@reverse.watch**.
+If you're looking to participate by contributing reversal reports (i.e. marketplace, trading tool, community site, etc...), reach out at **join@reverse.watch**.
 
 ## Running Locally
 
