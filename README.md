@@ -4,6 +4,10 @@ A shared trade reversal tracking service for CS2 skin marketplaces. Marketplaces
 
 Participating marketplaces report trade reversals to the service, and any marketplace (or end user) can query whether a given Steam account has a history of reversals. This shared visibility discourages abuse and reduces support burden across the ecosystem.
 
+## Interested in Participating?
+
+If you're a marketplace looking to participate, reach out at **join@reverse.watch**.
+
 ## Running Locally
 
 1. Ensure Go 1.24+ and PostgreSQL are installed.
