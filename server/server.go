@@ -64,7 +64,7 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 		http.ServeFile(w, r, "static/index.html")
 	})
 
-	r.Mount("/api", api.Router())
+	r.Mount("/api", api.Router(cfg.Steam.WebAPIKey))
 
 	return &Server{
 		r: r,

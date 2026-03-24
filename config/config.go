@@ -40,6 +40,12 @@ type Config struct {
 			SecretKey string
 		}
 	}
+
+	// Steam.WebAPIKey is optional. If set, /api/v1/users resolves /id/{vanity} via the Web API
+	// instead of the default ?xml=1 request to the community site.
+	Steam struct {
+		WebAPIKey string
+	}
 }
 
 func Load() Config {
@@ -85,6 +91,7 @@ func load() Config {
 	// Need to register environment variables if defaults aren't set
 	v.BindEnv("HTTP.AllowedOrigins")
 	v.BindEnv("Ingestors.CSFloat.SecretKey")
+	v.BindEnv("Steam.WebAPIKey")
 
 	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
 	dir, err := GetProjectRootDir()

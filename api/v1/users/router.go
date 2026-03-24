@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router() chi.Router {
+func Router(steamWebAPIKey string) chi.Router {
 	r := chi.NewRouter()
-	r.With(ratelimit.ThrottleByIP(time.Minute, 100)).Get("/{steamId}", fetchUserStatus)
+	r.With(ratelimit.ThrottleByIP(time.Minute, 100)).Get("/{steamId}", fetchUserStatus(steamWebAPIKey))
 	return r
 }

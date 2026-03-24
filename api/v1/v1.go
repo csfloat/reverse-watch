@@ -10,12 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router() chi.Router {
+func Router(steamWebAPIKey string) chi.Router {
 	r := chi.NewRouter()
 	r.Mount("/health", health.Router())
 	r.Mount("/marketplace", marketplace.Router())
 	r.Mount("/reversals", reversals.Router())
-	r.Mount("/users", users.Router())
+	r.Mount("/users", users.Router(steamWebAPIKey))
 	r.Mount("/admin", admin.Router())
 	return r
 }
