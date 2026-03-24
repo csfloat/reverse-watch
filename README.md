@@ -1,6 +1,6 @@
 # [reverse.watch](https://reverse.watch)
 
- Community-driven open trade reversal tracking database for Steam. Participating entities can report trade reverals to the open database.
+Community-driven open trade reversal tracking database for Steam. Participating entities can report trade reverals to the open database.
 
 ## Interested in Participating?
 
