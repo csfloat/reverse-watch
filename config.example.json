@@ -1,0 +1,15 @@
+{
+    "Database": {
+        "Host": "localhost",
+        "Port": "5432",
+        "User": "postgres",
+        "Password": "postgres",
+        "PrivateDBName": "private",
+        "PublicDBName": "public"
+    },
+    "HTTP": {
+        "Port": "3434",
+        "AllowedOrigins": ["allowed-origin-1", "allowed-origin-2"]
+    },
+    "Environment": "development"
+}
