@@ -53,6 +53,36 @@ Rate limits are enforced in-memory per process. Throttled responses return `429 
 
 Base URL: `/api/v1`
 
+## Error Responses
+
+All error responses follow a consistent JSON format:
+
+```json
+{
+  "code": 1,
+  "message": "malformed request",
+  "details": "invalid steam id"
+}
+```
+
+| Code | HTTP Status | Message |
+|---|---|---|
+| 1 | 400 | Malformed request |
+| 2 | 403 | Forbidden |
+| 3 | 404 | Resource not found |
+| 4 | 500 | Internal server error |
+| 5 | 400 | Unknown resource |
+| 6 | 401 | Invalid permission |
+| 7 | 401 | Invalid API key |
+| 8 | 500 | Failed to create resource |
+| 9 | 500 | Failed to read resource |
+| 10 | 500 | Failed to update resource |
+| 11 | 500 | Failed to delete resource |
+| 12 | 400 | Failed to decode JSON |
+| 14 | 429 | Rate limited |
+| 15 | 409 | Resource already exists |
+| 16 | 400 | Invalid resource reference |
+
 ## Public Endpoints
 
 ### Health Check
@@ -555,34 +585,3 @@ Delete all reversal records for a given Steam user.
 
 **Response:** `200 OK` with empty body on success.
 
----
-
-## Error Responses
-
-All error responses follow a consistent JSON format:
-
-```json
-{
-  "code": 1,
-  "message": "malformed request",
-  "details": "invalid steam id"
-}
-```
-
-| Code | HTTP Status | Message |
-|---|---|---|
-| 1 | 400 | Malformed request |
-| 2 | 403 | Forbidden |
-| 3 | 404 | Resource not found |
-| 4 | 500 | Internal server error |
-| 5 | 400 | Unknown resource |
-| 6 | 401 | Invalid permission |
-| 7 | 401 | Invalid API key |
-| 8 | 500 | Failed to create resource |
-| 9 | 500 | Failed to read resource |
-| 10 | 500 | Failed to update resource |
-| 11 | 500 | Failed to delete resource |
-| 12 | 400 | Failed to decode JSON |
-| 14 | 429 | Rate limited |
-| 15 | 409 | Resource already exists |
-| 16 | 400 | Invalid resource reference |
