@@ -1,4 +1,4 @@
-package users
+package steam
 
 import (
 	"time"
@@ -10,6 +10,6 @@ import (
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	r.With(ratelimit.ThrottleByIP(time.Minute, 100)).Get("/{steamId}", fetchUserStatus)
+	r.With(ratelimit.ThrottleByIP(time.Minute, 100)).Get("/resolve-vanity", resolveSteamID)
 	return r
 }

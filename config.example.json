@@ -13,6 +13,6 @@
     },
     "Environment": "development",
     "Steam": {
-        "WebAPIKey": ""
+        "WebAPIKeys": ["api-key-1", "api-key-2"]
     }
 }

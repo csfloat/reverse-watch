@@ -17,6 +17,7 @@ import (
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
 	"reverse-watch/server"
+	steamservice "reverse-watch/service/steam"
 )
 
 func main() {
@@ -36,7 +37,11 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	srv, err := server.New(cfg, f)
+	steamSvc := steamservice.New(steamservice.Options{
+		WebAPIKeys: cfg.Steam.WebAPIKeys,
+	})
+
+	srv, err := server.New(cfg, f, steamSvc)
 	if err != nil {
 		panic(err)
 	}

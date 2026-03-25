@@ -444,7 +444,7 @@ func TestFetchUserStatus(t *testing.T) {
 			}
 
 			factoryMiddleware := middleware.FactoryMiddleware(f)
-			handler := fetchUserStatus("")
+			handler := http.HandlerFunc(fetchUserStatus)
 
 			finalHandler := factoryMiddleware(handler)
 

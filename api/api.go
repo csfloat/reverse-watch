@@ -6,8 +6,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(steamWebAPIKey string) chi.Router {
+func Router() chi.Router {
 	r := chi.NewRouter()
-	r.Mount("/v1", v1.Router(steamWebAPIKey))
+	r.Mount("/v1", v1.Router())
 	return r
 }
