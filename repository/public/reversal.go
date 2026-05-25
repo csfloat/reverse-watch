@@ -1,6 +1,8 @@
 package public
 
 import (
+	"time"
+
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
@@ -119,6 +121,75 @@ func (r *reversalRepository) List(opts *dto.ReversalListOptions) ([]*models.Reve
 	query := r.buildListQuery(opts)
 	var reversals []*models.Reversal
 	if err := query.Find(&reversals).Error; err != nil {
+		return nil, err
+	}
+	return reversals, nil
+}
+
+func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
+	cutoffMs := uint64(time.Now().UnixMilli() - 24*60*60*1000)
+
+	var stats dto.SummaryStats
+	err := r.conn.Raw(`
+		SELECT
+			COUNT(DISTINCT steam_id) AS traders_indexed,
+			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL) AS traders_flagged,
+			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL AND created_at >= ?) AS traders_flagged_24h
+		FROM reversals
+		WHERE deleted_at IS NULL
+	`, cutoffMs).Scan(&stats).Error
+	if err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	windowStart := today.AddDate(0, 0, -(days - 1))
+
+	type bucket struct {
+		Date  string
+		Count uint64
+	}
+	var rows []bucket
+	err := r.conn.Raw(`
+		SELECT
+			to_char(to_timestamp(reversed_at / 1000) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+			COUNT(*) AS count
+		FROM reversals
+		WHERE deleted_at IS NULL
+		  AND expunged_at IS NULL
+		  AND reversed_at >= ?
+		GROUP BY date
+		ORDER BY date ASC
+	`, uint64(windowStart.UnixMilli())).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	byDate := make(map[string]uint64, len(rows))
+	for _, row := range rows {
+		byDate[row.Date] = row.Count
+	}
+
+	result := make([]dto.DailyCount, 0, days)
+	for d := windowStart; !d.After(today); d = d.AddDate(0, 0, 1) {
+		key := d.Format("2006-01-02")
+		result = append(result, dto.DailyCount{Date: key, Count: byDate[key]})
+	}
+	return result, nil
+}
+
+func (r *reversalRepository) ListRecent(limit int) ([]*models.Reversal, error) {
+	var reversals []*models.Reversal
+	err := r.conn.Model(&models.Reversal{}).
+		Where("expunged_at IS NULL").
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&reversals).Error
+	if err != nil {
 		return nil, err
 	}
 	return reversals, nil

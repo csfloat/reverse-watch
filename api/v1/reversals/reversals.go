@@ -236,6 +236,56 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf.Bytes())
 }
 
+type recentReversal struct {
+	MarketplaceSlug string         `json:"marketplace_slug"`
+	SteamID         models.SteamID `json:"steam_id"`
+	ReversedAt      uint64         `json:"reversed_at"`
+	CreatedAt       uint64         `json:"created_at"`
+}
+
+type listRecentResponse struct {
+	Data []recentReversal `json:"data"`
+}
+
+func listRecentHandler(w http.ResponseWriter, r *http.Request) {
+	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
+		return
+	}
+
+	const defaultLimit = 100
+	const maxLimit = 100
+
+	limit := defaultLimit
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		parsed, err := strconv.Atoi(limitStr)
+		if err != nil || parsed <= 0 || parsed > maxLimit {
+			render.Errorf(w, r, errors.BadRequest, "limit must be between 1 and %d", maxLimit)
+			return
+		}
+		limit = parsed
+	}
+
+	reversals, err := factory.Reversal().ListRecent(limit)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to list recent reversals")
+		return
+	}
+
+	data := make([]recentReversal, 0, len(reversals))
+	for _, rev := range reversals {
+		data = append(data, recentReversal{
+			MarketplaceSlug: rev.MarketplaceSlug,
+			SteamID:         rev.SteamID,
+			ReversedAt:      rev.ReversedAt,
+			CreatedAt:       rev.CreatedAt,
+		})
+	}
+
+	render.JSON(w, r, listRecentResponse{Data: data})
+}
+
 func expungeReversal(w http.ResponseWriter, r *http.Request) {
 	factory := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	key := r.Context().Value(middleware.KeyContextKey).(*models.Key)

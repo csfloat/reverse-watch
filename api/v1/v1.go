@@ -5,6 +5,7 @@ import (
 	"reverse-watch/api/v1/health"
 	"reverse-watch/api/v1/marketplace"
 	"reverse-watch/api/v1/reversals"
+	"reverse-watch/api/v1/stats"
 	"reverse-watch/api/v1/users"
 
 	"github.com/go-chi/chi/v5"
@@ -15,6 +16,11 @@ func Router() chi.Router {
 	r.Mount("/health", health.Router())
 	r.Mount("/marketplace", marketplace.Router())
 	r.Mount("/reversals", reversals.Router())
+	// /stats owns aggregate read endpoints (summary, reversals/daily). The
+	// /stats/reversals/daily path is semantically adjacent to /reversals/*
+	// but lives here because it's a public, IP-rate-limited read with a
+	// different cache policy.
+	r.Mount("/stats", stats.Router())
 	r.Mount("/users", users.Router())
 	r.Mount("/admin", admin.Router())
 	return r
