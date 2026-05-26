@@ -1,20 +1,22 @@
 // Command seed loads dev-only fixture data into the local Reverse Watch
 // Postgres databases. It is NEVER intended to run in production.
 //
-// Usage:
+// Two modes:
 //
-//	go run ./cmd/seed
-//	go run ./cmd/seed -csv path/to/other.csv
+//	go run ./cmd/seed                  # load the 98-row real CSV fixture
+//	go run ./cmd/seed -csv path/.csv   # load a different CSV
+//	go run ./cmd/seed -synthetic       # generate a deterministic ~9.8k-row
+//	                                   # 6-month dataset with spikes
 //
-// The default CSV path resolves from the repository root, so run it from
-// the repo root. The command is idempotent — re-running inserts no
-// duplicate rows.
+// Run from the repo root. Both modes are idempotent — the underlying
+// INSERT uses ON CONFLICT (id) DO NOTHING.
 package main
 
 import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"reverse-watch/config"
 	"reverse-watch/domain/models"
@@ -26,7 +28,8 @@ import (
 )
 
 func main() {
-	csvPath := flag.String("csv", "internal/devseed/fixtures/reversals_seed.csv", "Path to seed CSV file")
+	csvPath := flag.String("csv", "internal/devseed/fixtures/reversals_seed.csv", "Path to seed CSV file (ignored when -synthetic is set)")
+	synthetic := flag.Bool("synthetic", false, "Generate a deterministic 6-month synthetic dataset instead of loading the CSV")
 	flag.Parse()
 
 	logging.Initialize()
@@ -54,12 +57,18 @@ func main() {
 		}
 	}()
 
-	reversals, err := devseed.LoadFromCSV(*csvPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load CSV: %v\n", err)
-		os.Exit(1)
+	var reversals []*models.Reversal
+	if *synthetic {
+		reversals = devseed.GenerateSynthetic(time.Now().UTC())
+		fmt.Printf("generated %d synthetic reversals (deterministic seed)\n", len(reversals))
+	} else {
+		reversals, err = devseed.LoadFromCSV(*csvPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to load CSV: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("loaded %d reversals from %s\n", len(reversals), *csvPath)
 	}
-	fmt.Printf("loaded %d reversals from %s\n", len(reversals), *csvPath)
 
 	inserted, err := devseed.InsertReversals(f.PublicDB(), reversals)
 	if err != nil {

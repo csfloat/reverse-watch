@@ -172,18 +172,34 @@ func parseRow(rec []string, line int) (*models.Reversal, error) {
 	}, nil
 }
 
+// insertChunkSize is the number of rows GORM bulk-inserts per round trip.
+// Postgres caps a single statement at 65,535 bound parameters (uint16);
+// at ~11 columns per Reversal row, 1,000 rows uses ~11k parameters — well
+// under the limit and big enough to keep network round-trips negligible
+// for the ~10k-row synthetic seed.
+const insertChunkSize = 1000
+
 // InsertReversals inserts the given reversals into the public DB using
 // ON CONFLICT (id) DO NOTHING, so the seed is idempotent — running it
 // twice in a row leaves the DB in the same state as running it once.
-// Returns the number of rows the DB actually inserted (existing rows
-// with matching IDs are silently skipped).
+// Inserts are chunked to stay under Postgres's parameter-per-statement
+// limit (see insertChunkSize). Returns the number of rows the DB
+// actually inserted; rows with matching IDs are silently skipped.
 func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	if len(reversals) == 0 {
 		return 0, nil
 	}
-	res := db.Clauses(clause.OnConflict{DoNothing: true}).Create(reversals)
-	if res.Error != nil {
-		return 0, res.Error
+	var inserted int64
+	for i := 0; i < len(reversals); i += insertChunkSize {
+		end := i + insertChunkSize
+		if end > len(reversals) {
+			end = len(reversals)
+		}
+		res := db.Clauses(clause.OnConflict{DoNothing: true}).Create(reversals[i:end])
+		if res.Error != nil {
+			return inserted, res.Error
+		}
+		inserted += res.RowsAffected
 	}
-	return res.RowsAffected, nil
+	return inserted, nil
 }
