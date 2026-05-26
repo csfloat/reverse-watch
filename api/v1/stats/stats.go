@@ -17,7 +17,7 @@ import (
 
 const cacheTTL = 60 * time.Second
 
-var allowedDays = map[int]bool{30: true, 60: true, 90: true}
+var allowedDays = map[int]bool{7: true, 30: true, 60: true, 90: true, 180: true, 365: true}
 
 type cacheEntry struct {
 	at      time.Time
@@ -81,7 +81,7 @@ func dailyHandler(w http.ResponseWriter, r *http.Request) {
 	if daysStr := r.URL.Query().Get("days"); daysStr != "" {
 		parsed, err := strconv.Atoi(daysStr)
 		if err != nil || !allowedDays[parsed] {
-			render.Errorf(w, r, errors.BadRequest, "days must be one of 30, 60, 90")
+			render.Errorf(w, r, errors.BadRequest, "days must be one of 7, 30, 60, 90, 180, 365")
 			return
 		}
 		days = parsed

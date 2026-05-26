@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -196,13 +197,15 @@ func TestDailyHandler_InvalidDays(t *testing.T) {
 	resetCache()
 	handler, _ := buildHandlerStack(t)
 
+	const wantDetails = "days must be one of 7, 30, 60, 90, 180, 365"
 	testCases := []struct {
 		name string
 		days string
 	}{
-		{name: "outOfRange", days: "7"},
+		{name: "outOfRange", days: "45"},
 		{name: "negative", days: "-1"},
 		{name: "nonNumeric", days: "abc"},
+		{name: "zero", days: "0"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -218,8 +221,37 @@ func TestDailyHandler_InvalidDays(t *testing.T) {
 			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 				t.Fatalf("decode: %v", err)
 			}
-			if body.Details != "days must be one of 30, 60, 90" {
-				t.Errorf("details = %q, want %q", body.Details, "days must be one of 30, 60, 90")
+			if body.Details != wantDetails {
+				t.Errorf("details = %q, want %q", body.Details, wantDetails)
+			}
+		})
+	}
+}
+
+func TestDailyHandler_AcceptedDays(t *testing.T) {
+	// Each accepted value should return a fully zero-filled series of
+	// exactly that many buckets. Empty DB keeps the assertion focused on
+	// the length contract that the picker depends on.
+	for _, days := range []int{7, 30, 60, 90, 180, 365} {
+		days := days
+		t.Run(strconv.Itoa(days), func(t *testing.T) {
+			resetCache()
+			handler, _ := buildHandlerStack(t)
+
+			r := httptest.NewRequest(http.MethodGet, "/reversals/daily?days="+strconv.Itoa(days), nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			resp := w.Result()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+			}
+			var got dailyResponse
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if len(got.Data) != days {
+				t.Errorf("len(data) = %d, want %d", len(got.Data), days)
 			}
 		})
 	}
