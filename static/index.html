@@ -3,23 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The open trade reversal database. Check if a Steam ID has a history of reversed trades, reported by marketplaces, trading tools, and community platforms.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%231d9bf0'/><ellipse cx='16' cy='16' rx='10' ry='7' fill='%230f1419'/><circle cx='16' cy='16' r='4' fill='%23e7e9ea'/></svg>" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <title>reverse.watch</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
+    <title>reverse.watch — The open trade reversal database</title>
     <style>
         :root {
             --bg-primary: #000000;
-            --bg-secondary: #16181c;
-            --bg-card: rgba(22, 24, 28, 0.8);
+            --bg-secondary: #0c0d11;
+            --bg-card: rgba(22, 24, 28, 0.6);
+            --bg-card-solid: #16181c;
+            --bg-input: rgba(0, 0, 0, 0.35);
             --text-primary: #e7e9ea;
-            --text-secondary: #71767b;
+            --text-secondary: #8b909a;
+            --text-muted: #5a6068;
             --accent: #1d9bf0;
             --accent-hover: #1a8cd8;
+            --accent-soft: rgba(29, 155, 240, 0.12);
             --danger: #f4212e;
+            --danger-soft: rgba(244, 33, 46, 0.12);
             --success: #00ba7c;
-            --border: #2f3336;
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --success-soft: rgba(0, 186, 124, 0.12);
+            --border: #232629;
+            --border-strong: #2f3336;
+            --glass-border: rgba(255, 255, 255, 0.06);
             --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --content-max: 1100px;
         }
 
         * {
@@ -28,334 +38,707 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            min-height: 100%;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-primary);
-            background-image: radial-gradient(circle at 50% 0%, #1e2732 0%, #000000 100%);
+            background-image:
+                radial-gradient(ellipse 60% 50% at 50% 0%, rgba(29, 155, 240, 0.10) 0%, transparent 70%),
+                radial-gradient(ellipse 70% 40% at 50% 25%, rgba(29, 155, 240, 0.04) 0%, transparent 70%);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 60px 20px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            max-width: 520px;
+        body.flagged {
+            background-image:
+                radial-gradient(ellipse 60% 50% at 50% 0%, rgba(244, 33, 46, 0.10) 0%, transparent 70%),
+                radial-gradient(ellipse 70% 40% at 50% 25%, rgba(244, 33, 46, 0.04) 0%, transparent 70%);
+        }
+
+        body.clear-result {
+            background-image:
+                radial-gradient(ellipse 60% 50% at 50% 0%, rgba(0, 186, 124, 0.10) 0%, transparent 70%),
+                radial-gradient(ellipse 70% 40% at 50% 25%, rgba(0, 186, 124, 0.04) 0%, transparent 70%);
+        }
+
+        main.container {
             width: 100%;
-            position: relative;
-            z-index: 1;
-
-            header {
-                width: 100%;
-                text-align: center;
-                margin-bottom: 48px;
-                padding: 0 10px;
-
-                .title {
-                    font-size: 48px;
-                    font-weight: 800;
-                    margin-bottom: 12px;
-                    letter-spacing: -1px;
-                    background: linear-gradient(180deg, #fff 0%, #aab 100%);
-                    background-clip: text;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-
-                    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-
-                    @media (max-width: 600px) {
-                        font-size: 36px;
-                    }
-                }
-
-                .subtitle {
-                    color: var(--text-secondary);
-                    font-size: 18px;
-                    font-weight: 400;
-                    line-height: 1.5;
-                }
-            }
-
-            .search-card {
-                width: 100%;
-                background: var(--bg-card);
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                border-radius: 24px;
-                padding: 32px;
-                border: 1px solid var(--glass-border);
-                box-shadow: var(--shadow);
-                transition: all 0.3s ease;
-
-                @media (max-width: 600px) {
-                    padding: 24px;
-                }
-
-                .input-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    margin-bottom: 16px;
-
-                    input[type="text"] {
-                        flex: 1;
-                        background: rgba(0, 0, 0, 0.3);
-                        border: 1px solid var(--border);
-                        border-radius: 12px;
-                        padding: 16px 20px;
-                        font-size: 1.1rem;
-                        color: var(--text-primary);
-                        transition: all 0.2s ease;
-
-                        &:focus {
-                            outline: none;
-                            border-color: var(--accent);
-                            background: rgba(0, 0, 0, 0.5);
-                            box-shadow: 0 0 0 4px rgba(29, 155, 240, 0.15);
-                        }
-
-                        &::placeholder {
-                            color: var(--text-secondary);
-                            opacity: 0.7;
-                        }
-                    }
-
-                    button {
-                        width: auto;
-                        min-width: 120px;
-                        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-                        color: white;
-                        border: none;
-                        border-radius: 12px;
-                        padding: 16px 24px;
-                        font-size: 1.1rem;
-                        font-weight: 700;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 4px 12px rgba(29, 155, 240, 0.3);
-                        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-
-                        &:hover {
-                            transform: translateY(-1px);
-                            box-shadow: 0 8px 20px rgba(29, 155, 240, 0.4);
-                            filter: brightness(1.1);
-                        }
-
-                        &:active {
-                            transform: translateY(1px);
-                        }
-
-                        &:disabled {
-                            opacity: 0.6;
-                            cursor: not-allowed;
-                            transform: none;
-                        }
-
-                        @media (max-width: 600px) {
-                            width: 100%;
-                        }
-                    }
-                }
-
-                .hint {
-                    text-align: center;
-                    font-size: 0.9rem;
-                    color: var(--text-secondary);
-                    margin-top: 16px;
-                }
-            }
-
-            .result-card {
-                width: 100%;
-                background: var(--bg-card);
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                border-radius: 24px;
-                padding: 32px;
-                border: 1px solid var(--glass-border);
-                box-shadow: var(--shadow);
-                transition: all 0.3s ease;
-                margin-top: 24px;
-                display: none;
-
-                @media (max-width: 600px) {
-                    padding: 24px;
-                }
-
-                &.visible {
-                    display: block;
-                    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-
-                &.flagged {
-                    border-color: rgba(244, 33, 46, 0.3);
-                    box-shadow: 0 12px 40px rgba(244, 33, 46, 0.15);
-                }
-
-                &.clear {
-                    border-color: rgba(0, 186, 124, 0.3);
-                    box-shadow: 0 12px 40px rgba(0, 186, 124, 0.15);
-                }
-
-                .result-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    margin-bottom: 24px;
-
-                    .status-icon {
-                        width: 64px;
-                        height: 64px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 2rem;
-                        flex-shrink: 0;
-
-                        @media (max-width: 600px) {
-                            width: 56px;
-                            height: 56px;
-                            font-size: 1.75rem;
-                        }
-
-                        &.clear {
-                            background: rgba(0, 186, 124, 0.1);
-                            color: var(--success);
-                            border: 1px solid rgba(0, 186, 124, 0.2);
-                        }
-
-                        &.flagged {
-                            background: rgba(244, 33, 46, 0.1);
-                            color: var(--danger);
-                            border: 1px solid rgba(244, 33, 46, 0.2);
-                        }
-                    }
-
-                    .result-title {
-                        font-size: 1.5rem;
-                        font-weight: 700;
-
-                        &.clear { 
-                            color: var(--success); 
-                        }
-
-                        &.flagged { 
-                            color: var(--danger); 
-                        }
-                    }
-                }
-
-                .result-details {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid var(--glass-border);
-                    border-radius: 16px;
-                    padding: 16px;
-
-                    .detail-row {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 8px;
-
-                        .detail-label {
-                            color: var(--text-secondary);
-                        }
-
-                        .detail-value {
-                            font-weight: 600;
-                            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-                            color: var(--text-primary);
-                        }
-
-                        @media (max-width: 400px) {
-                            .detail-label {
-                                font-size: 0.9rem;
-                            }
-
-                            .detail-value {
-                                font-size: 0.9rem;
-                            }
-                        }
-                    }
-                }
-            }
-
-            .error-message {
-                width: 100%;
-                text-align: center;
-                margin-top: 24px;
-                background: rgba(244, 33, 46, 0.1);
-                border: 1px solid rgba(244, 33, 46, 0.2);
-                border-radius: 16px;
-                padding: 16px;
-                color: var(--danger);
-                display: none;
-                font-weight: 500;
-
-                &.visible {
-                    display: block;
-                    animation: fadeIn 0.3s ease;
-                }
-            }
+            max-width: var(--content-max);
+            margin: 0 auto;
+            padding: 48px 24px 40px;
+            flex: 1;
         }
 
-        footer {
-            margin-top: auto;
-            padding-top: 40px;
+        /* ─── HERO ───────────────────────────────────────────────────── */
+        .hero {
             text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-
-            a {
-                color: var(--text-primary);
-                text-decoration: none;
-                border-bottom: 1px solid var(--border);
-                padding-bottom: 2px;
-                transition: all 0.2s;
-
-                &:hover {
-                    color: var(--accent);
-                    border-color: var(--accent);
-                }
-            }
+            margin-bottom: 32px;
         }
 
-        .material-symbols-outlined {
-            font-family: 'Material Symbols Outlined';
-            font-size: inherit;
-            line-height: 1;
+        .powered-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            letter-spacing: 0.02em;
+        }
+
+        .csfloat-logo {
+            height: 20px;
+            width: auto;
+            display: inline-block;
             vertical-align: middle;
         }
 
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
+        .powered-badge .csfloat-lockup {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 2px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.95rem;
         }
 
-        @keyframes spin { 
-            to { 
-                transform: rotate(360deg); 
-            } 
+        .powered-badge .csfloat-lockup .float-italic {
+            font-style: italic;
+            font-family: Georgia, "Times New Roman", serif;
+            font-weight: 500;
+            color: var(--text-primary);
         }
-        
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1.05;
+            margin-bottom: 16px;
+            background: linear-gradient(180deg, #ffffff 0%, #aab0b8 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero .lede {
+            color: var(--text-secondary);
+            font-size: 16px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        /* ─── SEARCH ─────────────────────────────────────────────────── */
+        .search-block {
+            max-width: 560px;
+            margin: 32px auto 0;
+        }
+
+        .search-form {
+            position: relative;
+        }
+
+        .search-form .search-input-wrap {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 6px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .search-form .search-input-wrap:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-soft);
+        }
+
+        .search-form .search-icon {
+            display: flex;
+            align-items: center;
+            padding: 0 8px 0 14px;
+            color: var(--text-muted);
+        }
+
+        .search-form input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            padding: 12px 4px;
+            outline: none;
+            min-width: 0;
+        }
+
+        .search-form input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-form button[type="submit"] {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s ease, filter 0.15s ease;
+            min-width: 48px;
+            box-shadow: 0 4px 12px rgba(29, 155, 240, 0.25);
+        }
+
+        .search-form button[type="submit"]:hover:not(:disabled) {
+            filter: brightness(1.1);
+        }
+
+        .search-form button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .search-form button[type="submit"] .material-symbols-outlined {
+            font-size: 22px;
+        }
+
+        .search-helper {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 12px;
+        }
+
+        /* result chip — below search */
+        .result-chip {
+            display: none;
+            margin-top: 16px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 14px 18px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            animation: slideUpFade 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .result-chip.visible {
+            display: flex;
+        }
+
+        .result-chip.flagged {
+            border-color: rgba(244, 33, 46, 0.35);
+            box-shadow: 0 8px 24px rgba(244, 33, 46, 0.10);
+        }
+
+        .result-chip.clear {
+            border-color: rgba(0, 186, 124, 0.35);
+            box-shadow: 0 8px 24px rgba(0, 186, 124, 0.10);
+        }
+
+        .result-chip .chip-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .result-chip .chip-meta .chip-steam {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .result-chip .chip-steam .chip-steam-id {
+            font-weight: 600;
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .result-chip .chip-steam .chip-when {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .result-chip .chip-verdict {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            padding: 6px 10px;
+            border-radius: 10px;
+        }
+
+        .result-chip.flagged .chip-verdict {
+            color: var(--danger);
+            background: var(--danger-soft);
+        }
+
+        .result-chip.clear .chip-verdict {
+            color: var(--success);
+            background: var(--success-soft);
+        }
+
+        .result-chip .chip-verdict .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .search-error {
+            display: none;
+            margin-top: 14px;
+            color: var(--danger);
+            background: var(--danger-soft);
+            border: 1px solid rgba(244, 33, 46, 0.25);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .search-error.visible {
+            display: block;
+        }
+
+        /* ─── KPI CARDS ──────────────────────────────────────────────── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 48px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 20px 24px;
+            text-align: left;
+        }
+
+        .kpi-card .kpi-label {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            letter-spacing: 0.02em;
+            margin-bottom: 6px;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-card .kpi-value.skeleton {
+            color: var(--text-muted);
+        }
+
+        /* ─── SECTION ────────────────────────────────────────────────── */
+        section.block {
+            margin-top: 72px;
+        }
+
+        .block-header {
+            margin-bottom: 20px;
+        }
+
+        .block-header .block-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .block-header h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .block-header .block-meta {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .block-header .block-subtitle {
+            margin-top: 6px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            max-width: 760px;
+        }
+
+        /* ─── CHART ──────────────────────────────────────────────────── */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 360px;
+        }
+
+        .chart-container.is-empty,
+        .chart-container.is-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+        }
+
+        /* uPlot dark-theme overrides */
+        .uplot,
+        .uplot * {
+            font-family: inherit;
+        }
+
+        .uplot .u-legend {
+            display: none;
+        }
+
+        .uplot .u-axis text {
+            fill: var(--text-muted) !important;
+        }
+
+        /* chart hover tooltip */
+        .chart-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(12, 13, 17, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            line-height: 1.3;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            transform: translate(-50%, calc(-100% - 10px));
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .chart-tooltip.visible {
+            opacity: 1;
+        }
+
+        .chart-tooltip .tt-date {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            margin-bottom: 2px;
+        }
+
+        .chart-tooltip .tt-count {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chart-tooltip .tt-count .tt-label {
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+
+        /* ─── TABLE ──────────────────────────────────────────────────── */
+        .reversals-table-wrap {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .reversals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .reversals-table thead th {
+            text-align: left;
+            font-weight: 500;
+            color: var(--text-secondary);
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.015);
+            font-size: 0.85rem;
+        }
+
+        .reversals-table tbody td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .reversals-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .reversals-table tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        .reversals-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .reversals-table .col-trader {
+            white-space: nowrap;
+        }
+
+        .reversals-table .trader-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reversals-table .marketplace-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--bg-card-solid);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .reversals-table .marketplace-icon .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .reversals-table .marketplace-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .reversals-table .col-steam-id .steam-id-mono {
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+        }
+
+        .reversals-table .col-date {
+            text-align: right;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .reversals-table thead .col-date {
+            text-align: right;
+        }
+
+        .table-empty {
+            padding: 32px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .load-more-wrap {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .load-more-btn {
+            background: var(--bg-card-solid);
+            color: var(--text-primary);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 10px 22px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+
+        .load-more-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .load-more-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* ─── FOOTER ─────────────────────────────────────────────────── */
+        footer.site-footer {
+            margin-top: 80px;
+            border-top: 1px solid var(--border);
+            padding: 40px 24px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        footer.site-footer .footer-inner {
+            max-width: var(--content-max);
+            margin: 0 auto;
+        }
+
+        footer.site-footer .footer-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+        }
+
+        footer.site-footer h3 {
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        footer.site-footer p {
+            margin-bottom: 10px;
+            line-height: 1.55;
+        }
+
+        footer.site-footer p:last-of-type {
+            margin-bottom: 16px;
+        }
+
+        footer.site-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+        }
+
+        footer.site-footer a:hover {
+            border-bottom-color: var(--accent);
+        }
+
+        footer.site-footer .footer-cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        footer.site-footer .footer-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 8px 14px;
+            text-decoration: none;
+            transition: border-color 0.15s, color 0.15s;
+        }
+
+        footer.site-footer .footer-cta:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        footer.site-footer .footer-cta .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        footer.site-footer .footer-bottom {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ─── MOBILE ─────────────────────────────────────────────────── */
+        @media (max-width: 720px) {
+            main.container {
+                padding: 32px 16px 24px;
+            }
+
+            .hero h1 {
+                font-size: 36px;
+                letter-spacing: -1px;
+            }
+
+            .hero .lede {
+                font-size: 15px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin-top: 32px;
+            }
+
+            .kpi-card {
+                padding: 16px 18px;
+            }
+
+            .kpi-card .kpi-value {
+                font-size: 1.75rem;
+            }
+
+            section.block {
+                margin-top: 48px;
+            }
+
+            .chart-container {
+                height: 240px;
+            }
+
+            .reversals-table .col-steam-id {
+                display: none;
+            }
+
+            .reversals-table thead th,
+            .reversals-table tbody td {
+                padding: 12px 14px;
+            }
+
+            footer.site-footer {
+                margin-top: 56px;
+                padding: 32px 16px;
+            }
+
+            footer.site-footer .footer-columns {
+                grid-template-columns: 1fr;
+                gap: 28px;
+            }
+        }
+
+        /* ─── ANIMATIONS ─────────────────────────────────────────────── */
         @keyframes slideUpFade {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(8px);
             }
             to {
                 opacity: 1;
@@ -364,171 +747,640 @@
         }
 
         @keyframes fadeIn {
-             from { 
-                opacity: 0; 
-            }
-             to { 
-                opacity: 1; 
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        /* Reduced motion respect */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="title">
-                <a style="text-decoration: none; color: inherit;" href="/">reverse.watch</a>
-            </div>
-            <p class="subtitle">Check if a Steam ID has a history of trade reversals</p>
-        </header>
+    <main class="container">
 
-        <div class="search-card">
-            <form id="searchForm">
-                <div class="input-group">
-                    <input 
-                        type="text" 
-                        id="steamIdInput" 
-                        placeholder="Steam ID (e.g., 76561198012345678)"
-                        autocomplete="off"
-                        required
-                    >
-                    <button type="submit" id="searchBtn">Check History</button>
+        <!-- ─── HERO ──────────────────────────────────────────────── -->
+        <section class="hero">
+            <div class="powered-badge">
+                <span>Powered by</span>
+                <a href="https://csfloat.com" target="_blank" rel="noopener" aria-label="CSFloat">
+                    <img class="csfloat-logo" src="/static/csfloat-logo.png" alt="CSFloat" width="116" height="36">
+                </a>
+            </div>
+            <h1>The open trade<br>reversal database</h1>
+            <p class="lede">
+                Check if a Steam ID has a history of reversed trades, reported by
+                marketplaces, trading tools, and community platforms.
+            </p>
+
+            <!-- search -->
+            <div class="search-block">
+                <form id="searchForm" class="search-form" autocomplete="off">
+                    <div class="search-input-wrap">
+                        <span class="search-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">search</span>
+                        </span>
+                        <input
+                            type="text"
+                            id="steamIdInput"
+                            placeholder="Steam ID (e.g. 76561198012345678)"
+                            inputmode="numeric"
+                            pattern="[0-9]*"
+                            required
+                            aria-label="Steam ID"
+                        />
+                        <button type="submit" id="searchBtn" aria-label="Search">
+                            <span class="material-symbols-outlined" id="searchBtnIcon">arrow_forward</span>
+                        </button>
+                    </div>
+                </form>
+                <p class="search-helper">Enter a 64-bit Steam ID to check their reversal history.</p>
+
+                <!-- result chip (hidden until a search runs) -->
+                <div class="result-chip" id="resultChip" role="status" aria-live="polite">
+                    <div class="chip-meta">
+                        <div class="chip-steam">
+                            <span class="chip-steam-id" id="chipSteamId"></span>
+                            <span class="chip-when" id="chipWhen"></span>
+                        </div>
+                    </div>
+                    <span class="chip-verdict" id="chipVerdict"></span>
                 </div>
-                <p class="hint">Enter a 64-bit Steam ID to check their reversal history</p>
-            </form>
+
+                <div class="search-error" id="searchError" role="alert"></div>
+            </div>
+        </section>
+
+        <!-- ─── KPI CARDS ─────────────────────────────────────────── -->
+        <div class="kpi-grid" id="kpiGrid">
+            <div class="kpi-card">
+                <div class="kpi-label">Traders Indexed</div>
+                <div class="kpi-value skeleton" id="kpiIndexed">—</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Traders Flagged</div>
+                <div class="kpi-value skeleton" id="kpiFlagged">—</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Traders Flagged (24h)</div>
+                <div class="kpi-value skeleton" id="kpiFlagged24h">—</div>
+            </div>
         </div>
 
-        <div class="result-card" id="resultCard">
-            <div class="result-header">
-                <div class="status-icon" id="statusIcon"></div>
-                <div class="result-title" id="resultTitle"></div>
+        <!-- ─── CHART ─────────────────────────────────────────────── -->
+        <section class="block">
+            <div class="block-header">
+                <div class="block-title-row">
+                    <h2>Reversal Graph</h2>
+                    <span class="block-meta">· Last 30 days</span>
+                </div>
+                <p class="block-subtitle">
+                    Total reversal volume over the last 30 days. Updated every minute.
+                </p>
             </div>
-            <div class="result-details">
-                <div class="detail-row">
-                    <span class="detail-label">Steam ID</span>
-                    <span class="detail-value" id="resultSteamId"></span>
+            <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart for the last 30 days"></div>
+        </section>
+
+        <!-- ─── RECENT REVERSALS ──────────────────────────────────── -->
+        <section class="block">
+            <div class="block-header">
+                <div class="block-title-row">
+                    <h2>Recently Reported Reversals</h2>
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value" id="resultStatus"></span>
+                <p class="block-subtitle">
+                    The 100 most recent reversals reported to the database.
+                    Search by Steam ID above to look up a specific trader.
+                </p>
+            </div>
+            <div class="reversals-table-wrap">
+                <table class="reversals-table">
+                    <thead>
+                        <tr>
+                            <th class="col-trader" scope="col">Trader</th>
+                            <th class="col-steam-id" scope="col">Steam ID</th>
+                            <th class="col-date" scope="col">Date Added</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reversalsBody">
+                        <tr><td colspan="3" class="table-empty" id="reversalsLoadingCell">Loading reversals…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="load-more-wrap">
+                <button class="load-more-btn" id="loadMoreBtn" type="button" hidden>
+                    Load More
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ─── FOOTER ────────────────────────────────────────────── -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-columns">
+                <div>
+                    <h3>What is reverse.watch?</h3>
+                    <p>
+                        A shared, open record of trade reversals across the Steam ecosystem.
+                        When a marketplace, trading tool, or community platform reverses a
+                        trade due to fraud, scams, or policy violations, that report can be
+                        contributed to the database. Anyone can then look up a Steam ID and
+                        check whether it has appeared in past reversals, regardless of which
+                        platform originally flagged it.
+                    </p>
+                    <p>
+                        For faster access while browsing, reverse.watch is also integrated into
+                        our extension.
+                    </p>
+                    <div class="footer-cta-row">
+                        <a class="footer-cta" href="https://csfloat.com" target="_blank" rel="noopener">
+                            <span class="material-symbols-outlined">extension</span>
+                            Get the extension
+                        </a>
+                    </div>
                 </div>
-                <div class="detail-row" id="lastReversalRow" style="display: none">
-                    <span class="detail-label">Last Reversal</span>
-                    <span class="detail-value" id="resultLastReversal"></span>
+                <div>
+                    <h3>Want to contribute?</h3>
+                    <p>
+                        If you run a marketplace, trading tool, or community site and want to
+                        participate by contributing reversal reports, reach out at
+                        <a href="mailto:join@reverse.watch">join@reverse.watch</a>.
+                    </p>
+                    <p>
+                        The project is also open source, so if you'd like to help with issues
+                        or contribute code, you can find the repository on
+                        <a href="https://github.com/csfloat/reverse-watch" target="_blank" rel="noopener">GitHub</a>.
+                    </p>
+                    <div class="footer-cta-row">
+                        <a class="footer-cta" href="mailto:join@reverse.watch">
+                            <span class="material-symbols-outlined">mail</span>
+                            Email us
+                        </a>
+                        <a class="footer-cta" href="https://github.com/csfloat/reverse-watch" target="_blank" rel="noopener">
+                            <span class="material-symbols-outlined">code</span>
+                            Join on GitHub
+                        </a>
+                    </div>
                 </div>
+            </div>
+            <div class="footer-bottom">
+                <span>Powered by</span>
+                <a href="https://csfloat.com" target="_blank" rel="noopener" aria-label="CSFloat">
+                    <img class="csfloat-logo" src="/static/csfloat-logo.png" alt="CSFloat" width="116" height="36">
+                </a>
             </div>
         </div>
-
-        <div class="error-message" id="errorMessage"></div>
-    </div>
-
-    <footer>
-        <p>Powered by <a href="https://csfloat.com" target="_blank">CSFloat</a></p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
     <script>
-        const form = document.getElementById('searchForm');
-        const input = document.getElementById('steamIdInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const resultCard = document.getElementById('resultCard');
-        const errorMessage = document.getElementById('errorMessage');
+        // ─── Config ──────────────────────────────────────────────
+        // Marketplace slug → { name, iconKey } map. iconKey resolves to a
+        // Material Symbols glyph. When v1.1 adds GET /api/v1/marketplaces
+        // this static map is replaced by the API response.
+        const MARKETPLACES = {
+            csfloat: { name: 'CSFloat', iconKey: 'verified' },
+            // Add new marketplaces here as data arrives. Keys must match
+            // reversals.marketplace_slug exactly.
+        };
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const steamId = input.value.trim();
-            if (!steamId) {
+        function marketplaceFor(slug) {
+            const m = MARKETPLACES[slug];
+            if (m) return m;
+            return { name: slug || 'Unknown', iconKey: 'storefront' };
+        }
+
+        // ─── DOM refs ────────────────────────────────────────────
+        const els = {
+            searchForm: document.getElementById('searchForm'),
+            steamIdInput: document.getElementById('steamIdInput'),
+            searchBtn: document.getElementById('searchBtn'),
+            searchBtnIcon: document.getElementById('searchBtnIcon'),
+            searchError: document.getElementById('searchError'),
+            resultChip: document.getElementById('resultChip'),
+            chipSteamId: document.getElementById('chipSteamId'),
+            chipWhen: document.getElementById('chipWhen'),
+            chipVerdict: document.getElementById('chipVerdict'),
+            kpiIndexed: document.getElementById('kpiIndexed'),
+            kpiFlagged: document.getElementById('kpiFlagged'),
+            kpiFlagged24h: document.getElementById('kpiFlagged24h'),
+            chartContainer: document.getElementById('chartContainer'),
+            reversalsBody: document.getElementById('reversalsBody'),
+            loadMoreBtn: document.getElementById('loadMoreBtn'),
+        };
+
+        // ─── Helpers ─────────────────────────────────────────────
+        const fmtNumber = new Intl.NumberFormat('en-US');
+
+        function formatDate(ms) {
+            if (!ms) return '';
+            const d = new Date(ms);
+            return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+                + ', '
+                + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function setKpi(el, value) {
+            el.textContent = fmtNumber.format(value);
+            el.classList.remove('skeleton');
+        }
+
+        function setKpiError(el) {
+            el.textContent = '—';
+            el.classList.add('skeleton');
+        }
+
+        // ─── KPI summary ─────────────────────────────────────────
+        async function loadSummary() {
+            try {
+                const r = await fetch('/api/v1/stats/summary');
+                if (!r.ok) throw new Error('summary ' + r.status);
+                const data = await r.json();
+                setKpi(els.kpiIndexed, data.traders_indexed ?? 0);
+                setKpi(els.kpiFlagged, data.traders_flagged ?? 0);
+                setKpi(els.kpiFlagged24h, data.traders_flagged_24h ?? 0);
+            } catch (err) {
+                console.error('summary load failed:', err);
+                setKpiError(els.kpiIndexed);
+                setKpiError(els.kpiFlagged);
+                setKpiError(els.kpiFlagged24h);
+            }
+        }
+
+        // ─── Reversal Graph (uPlot) ──────────────────────────────
+        let chartInstance = null;
+        let chartTooltip = null;
+
+        function showChartEmpty(message) {
+            els.chartContainer.innerHTML = '';
+            els.chartContainer.classList.add('is-empty');
+            els.chartContainer.textContent = message;
+        }
+
+        function ensureTooltip() {
+            if (chartTooltip) return chartTooltip;
+            chartTooltip = document.createElement('div');
+            chartTooltip.className = 'chart-tooltip';
+            chartTooltip.innerHTML = `
+                <div class="tt-date"></div>
+                <div class="tt-count">
+                    <span class="tt-value">0</span>
+                    <span class="tt-label">reversals</span>
+                </div>`;
+            els.chartContainer.appendChild(chartTooltip);
+            return chartTooltip;
+        }
+
+        function renderChart(daily) {
+            els.chartContainer.classList.remove('is-empty', 'is-error');
+            els.chartContainer.innerHTML = '';
+            chartTooltip = null;
+
+            if (!daily || daily.length === 0) {
+                showChartEmpty('No reversal data for this window yet.');
                 return;
             }
 
-            resultCard.classList.remove('visible');
-            errorMessage.classList.remove('visible');
+            // x = unix seconds (uPlot convention), y = count
+            const xs = new Array(daily.length);
+            const ys = new Array(daily.length);
+            for (let i = 0; i < daily.length; i++) {
+                // Parse YYYY-MM-DD as UTC midnight to match server bucketing.
+                xs[i] = Date.parse(daily[i].date + 'T00:00:00Z') / 1000;
+                ys[i] = daily[i].count;
+            }
 
-            searchBtn.disabled = true;
-            searchBtn.innerHTML = '<span class="loading"></span>';
+            const opts = {
+                width: els.chartContainer.getBoundingClientRect().width || 800,
+                height: els.chartContainer.getBoundingClientRect().height || 360,
+                cursor: {
+                    drag: { x: false, y: false },
+                    points: { size: 8, stroke: '#1d9bf0', fill: '#0c0d11', width: 2 },
+                },
+                scales: { x: { time: true }, y: { range: (u, dataMin, dataMax) => [0, Math.max(dataMax, 1) * 1.1] } },
+                axes: [
+                    {
+                        stroke: '#5a6068',
+                        grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                        ticks: { show: false },
+                        values: (u, splits) => splits.map(s => {
+                            const d = new Date(s * 1000);
+                            return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
+                        }),
+                    },
+                    {
+                        stroke: '#5a6068',
+                        grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                        ticks: { show: false },
+                        size: 50,
+                        values: (u, splits) => splits.map(s => fmtNumber.format(Math.round(s))),
+                    }
+                ],
+                series: [
+                    {},
+                    {
+                        label: 'Reversals',
+                        stroke: '#1d9bf0',
+                        width: 2,
+                        fill: (u) => {
+                            const ctx = u.ctx;
+                            const grad = ctx.createLinearGradient(0, 0, 0, u.bbox.height);
+                            grad.addColorStop(0, 'rgba(29, 155, 240, 0.30)');
+                            grad.addColorStop(1, 'rgba(29, 155, 240, 0.00)');
+                            return grad;
+                        },
+                        points: { show: false },
+                    }
+                ],
+                legend: { show: false },
+                hooks: {
+                    setCursor: [
+                        (u) => {
+                            const tt = ensureTooltip();
+                            const idx = u.cursor.idx;
+                            if (idx == null || u.cursor.left < 0 || u.cursor.top < 0) {
+                                tt.classList.remove('visible');
+                                return;
+                            }
+                            const ts = u.data[0][idx];
+                            const ct = u.data[1][idx];
+                            const d = new Date(ts * 1000);
+                            tt.querySelector('.tt-date').textContent =
+                                d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', timeZone: 'UTC' });
+                            tt.querySelector('.tt-value').textContent = fmtNumber.format(ct);
+                            tt.querySelector('.tt-label').textContent = ct === 1 ? 'reversal' : 'reversals';
+
+                            const x = u.valToPos(ts, 'x');
+                            const y = u.valToPos(ct, 'y');
+                            // Clamp x so the tooltip stays inside the chart bounds.
+                            const rect = els.chartContainer.getBoundingClientRect();
+                            const ttRect = tt.getBoundingClientRect();
+                            const half = ttRect.width / 2;
+                            const clampedX = Math.max(half + 4, Math.min(rect.width - half - 4, x));
+                            tt.style.left = clampedX + 'px';
+                            tt.style.top = y + 'px';
+                            tt.classList.add('visible');
+                        }
+                    ],
+                    setSeries: [
+                        (u, _seriesIdx, opts) => {
+                            // Fired when the cursor leaves the chart area.
+                            if (opts && opts.show === false && chartTooltip) {
+                                chartTooltip.classList.remove('visible');
+                            }
+                        }
+                    ],
+                },
+            };
+
+            chartInstance = new uPlot(opts, [xs, ys], els.chartContainer);
+
+            // Hide tooltip when the pointer leaves the chart container.
+            els.chartContainer.addEventListener('mouseleave', () => {
+                if (chartTooltip) chartTooltip.classList.remove('visible');
+            });
+        }
+
+        function resizeChart() {
+            if (!chartInstance) return;
+            const rect = els.chartContainer.getBoundingClientRect();
+            chartInstance.setSize({ width: rect.width, height: rect.height });
+        }
+
+        async function loadDaily() {
+            try {
+                const r = await fetch('/api/v1/stats/reversals/daily?days=30');
+                if (!r.ok) throw new Error('daily ' + r.status);
+                const json = await r.json();
+                renderChart(json.data || []);
+            } catch (err) {
+                console.error('daily load failed:', err);
+                els.chartContainer.classList.add('is-error');
+                els.chartContainer.classList.remove('is-empty');
+                els.chartContainer.textContent = 'Could not load chart.';
+            }
+        }
+
+        // ─── Recently Reported Reversals ─────────────────────────
+        // The /recent endpoint already returns up to 100 rows in one call,
+        // so "Load More" is purely client-side reveal (+10 rows per click)
+        // until all fetched rows are visible. True server-side pagination
+        // is deferred to v1.1 (PRD §6.4).
+        const PAGE_SIZE = 10;
+        const recentState = {
+            rows: [],
+            shown: 0,
+        };
+
+        async function loadRecent() {
+            try {
+                const r = await fetch('/api/v1/reversals/recent?limit=100');
+                if (!r.ok) throw new Error('recent ' + r.status);
+                const json = await r.json();
+                recentState.rows = json.data || [];
+                recentState.shown = 0;
+                renderInitialReversals();
+            } catch (err) {
+                console.error('recent load failed:', err);
+                els.reversalsBody.innerHTML =
+                    '<tr><td colspan="3" class="table-empty">Could not load reversals.</td></tr>';
+                els.loadMoreBtn.hidden = true;
+            }
+        }
+
+        function renderInitialReversals() {
+            els.reversalsBody.innerHTML = '';
+            recentState.shown = 0;
+
+            if (!recentState.rows.length) {
+                els.reversalsBody.innerHTML =
+                    '<tr><td colspan="3" class="table-empty">No reversals reported yet.</td></tr>';
+                els.loadMoreBtn.hidden = true;
+                return;
+            }
+
+            appendNextPage();
+        }
+
+        function appendNextPage() {
+            const start = recentState.shown;
+            const end = Math.min(start + PAGE_SIZE, recentState.rows.length);
+            if (start >= end) return;
+
+            const frag = document.createDocumentFragment();
+            for (let i = start; i < end; i++) {
+                frag.appendChild(buildReversalRow(recentState.rows[i]));
+            }
+            els.reversalsBody.appendChild(frag);
+            recentState.shown = end;
+
+            // Show the button only if more rows are available.
+            els.loadMoreBtn.hidden = recentState.shown >= recentState.rows.length;
+        }
+
+        function buildReversalRow(row) {
+            const mp = marketplaceFor(row.marketplace_slug);
+            const tr = document.createElement('tr');
+
+            const tdTrader = document.createElement('td');
+            tdTrader.className = 'col-trader';
+            tdTrader.innerHTML = `
+                <span class="trader-cell">
+                    <span class="marketplace-icon" aria-hidden="true">
+                        <span class="material-symbols-outlined">${mp.iconKey}</span>
+                    </span>
+                    <span class="marketplace-name"></span>
+                </span>`;
+            tdTrader.querySelector('.marketplace-name').textContent = mp.name;
+
+            const tdId = document.createElement('td');
+            tdId.className = 'col-steam-id';
+            const span = document.createElement('span');
+            span.className = 'steam-id-mono';
+            span.textContent = row.steam_id;
+            tdId.appendChild(span);
+
+            const tdDate = document.createElement('td');
+            tdDate.className = 'col-date';
+            // PRD §6.4: order by created_at DESC; "Date Added" semantic.
+            tdDate.textContent = formatDate(row.created_at);
+
+            tr.appendChild(tdTrader);
+            tr.appendChild(tdId);
+            tr.appendChild(tdDate);
+            return tr;
+        }
+
+        els.loadMoreBtn.addEventListener('click', () => {
+            appendNextPage();
+        });
+
+        // ─── Search (existing flow, restyled) ────────────────────
+        function clearChip() {
+            els.resultChip.classList.remove('visible', 'flagged', 'clear');
+            document.body.classList.remove('flagged', 'clear-result');
+        }
+
+        function showError(msg) {
+            els.searchError.textContent = msg;
+            els.searchError.classList.add('visible');
+        }
+
+        function clearError() {
+            els.searchError.classList.remove('visible');
+            els.searchError.textContent = '';
+        }
+
+        function showChip({ steamId, flagged, lastReversalMs }) {
+            els.chipSteamId.textContent = steamId;
+            els.chipWhen.textContent = flagged && lastReversalMs
+                ? 'Last reversal ' + formatDate(lastReversalMs)
+                : '';
+
+            if (flagged) {
+                els.resultChip.classList.remove('clear');
+                els.resultChip.classList.add('flagged', 'visible');
+                els.chipVerdict.innerHTML =
+                    '<span class="material-symbols-outlined">priority_high</span>Reversals Found';
+                document.body.classList.add('flagged');
+                document.body.classList.remove('clear-result');
+            } else {
+                els.resultChip.classList.remove('flagged');
+                els.resultChip.classList.add('clear', 'visible');
+                els.chipVerdict.innerHTML =
+                    '<span class="material-symbols-outlined">check</span>No Reversals Found';
+                document.body.classList.add('clear-result');
+                document.body.classList.remove('flagged');
+            }
+        }
+
+        els.searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearError();
+            clearChip();
+
+            const steamId = els.steamIdInput.value.trim();
+            if (!steamId) return;
+
+            els.searchBtn.disabled = true;
+            const prevIcon = els.searchBtnIcon.textContent;
+            els.searchBtnIcon.outerHTML = '<span class="loading" id="searchBtnIcon"></span>';
 
             try {
-                const response = await fetch(`/api/v1/users/${steamId}`);
-                if (!response.ok) {
-                    const errorData = await response.json();
-
-                    let errorStr = `${errorData.code} - ${errorData.message}`
-                    if (errorData.details) {
-                        errorStr += ` (${errorData.details})`;
-                    }
-                    throw new Error(errorStr);
+                const r = await fetch('/api/v1/users/' + encodeURIComponent(steamId));
+                if (!r.ok) {
+                    let msg = 'Lookup failed (' + r.status + ').';
+                    try {
+                        const err = await r.json();
+                        if (err && (err.message || err.code)) {
+                            msg = [err.code, err.message].filter(Boolean).join(' — ');
+                            if (err.details) msg += ' (' + err.details + ')';
+                        }
+                    } catch (_) {}
+                    throw new Error(msg);
                 }
-
-                const data = await response.json();
-                displayResult(data);
-            } catch (error) {
-                showError(error.message);
+                const data = await r.json();
+                showChip({
+                    steamId: data.steam_id,
+                    flagged: !!data.has_reversed,
+                    lastReversalMs: data.last_reversal_timestamp || 0,
+                });
+            } catch (err) {
+                showError(err.message || 'Lookup failed.');
             } finally {
-                searchBtn.disabled = false;
-                searchBtn.textContent = 'Check History';
+                els.searchBtn.disabled = false;
+                const icon = document.createElement('span');
+                icon.className = 'material-symbols-outlined';
+                icon.id = 'searchBtnIcon';
+                icon.textContent = 'arrow_forward';
+                const existing = document.getElementById('searchBtnIcon');
+                if (existing) existing.replaceWith(icon);
+                els.searchBtnIcon = icon;
             }
         });
 
-        function displayResult(data) {
-            const statusIcon = document.getElementById('statusIcon');
-            const resultTitle = document.getElementById('resultTitle');
-            const resultSteamId = document.getElementById('resultSteamId');
-            const resultStatus = document.getElementById('resultStatus');
-            const lastReversalRow = document.getElementById('lastReversalRow');
-            const resultLastReversal = document.getElementById('resultLastReversal');
-
-            resultSteamId.textContent = data.steam_id;
-
-            resultCard.classList.remove('flagged', 'clear');
-
-            if (data.has_reversed) {
-                resultCard.classList.add('flagged');
-                statusIcon.className = 'status-icon flagged';
-                statusIcon.innerHTML = `<span class="material-symbols-outlined">priority_high</span>`;
-
-                resultTitle.className = 'result-title flagged';
-                resultTitle.textContent = 'Reversal History Found';
-
-                resultStatus.textContent = 'Has reversed';
-                resultStatus.style.color = 'var(--danger)';
-
-                if (data.last_reversal_timestamp) {
-                    lastReversalRow.style.display = 'flex'
-
-                    const date = new Date(data.last_reversal_timestamp);
-                    resultLastReversal.textContent = date.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                } else {
-                    lastReversalRow.style.display = 'none';
-                }
-            } else {
-                resultCard.classList.add('clear');
-                statusIcon.className = 'status-icon clear';
-                statusIcon.innerHTML = `<span class="material-symbols-outlined">check</span>`;
-
-                resultTitle.className = 'result-title clear';
-                resultTitle.textContent = 'No Reversals Found';
-
-                resultStatus.textContent = 'Clear';
-                resultStatus.style.color = 'var(--success)';
-
-                lastReversalRow.style.display = 'none';
-            }
-
-            resultCard.classList.add('visible');
-        }
-
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.classList.add('visible');
-        }
-
-        input.addEventListener('input', () => {
-            errorMessage.classList.remove('visible');
+        // Hide chip when the user edits the input again.
+        els.steamIdInput.addEventListener('input', () => {
+            clearError();
+            if (els.resultChip.classList.contains('visible')) clearChip();
         });
+
+        // ─── Boot ───────────────────────────────────────────────
+        window.addEventListener('resize', resizeChart);
+
+        // Fire all three in parallel — none of them block search.
+        loadSummary();
+        loadDaily();
+        loadRecent();
     </script>
 </body>
 </html>
