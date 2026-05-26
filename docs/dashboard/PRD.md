@@ -188,6 +188,8 @@ GET /api/v1/stats/reversals/daily?days=30
 
 - `days` is optional. Default `30` (matches Razvan's mockups). Allowed values: `7`, `30`, `60`, `90`, `180`, `365`. Other values → `400 Bad Request`. The frontend period picker uses `7 / 30 / 90 / 180 / 365` directly; `60` stays in the allow-list for v1.1 flexibility. Restricting to a small enumerated set keeps the per-day cache key space tiny (see §9).
 
+**Annotation chips (editorial):** the chart overlays small chips above the line for CS2 events that may explain reversal spikes (patch releases, Steam policy changes, anti-cheat waves). The data source is `static/cs2-events.json` — a flat JSON file with `{date, title, description?, url?}` entries. The frontend fetches it at boot, filters to the currently-selected period, and row-stacks chips when they overlap (up to 3 rows; oldest overflow is dropped with a console warning). Editing the JSON file and refreshing is the entire authoring loop — no rebuild, no backend involvement. If/when this graduates beyond a manually-curated list it becomes its own endpoint, but v1 is editorial-on-disk by design.
+
 **Response:**
 
 ```json

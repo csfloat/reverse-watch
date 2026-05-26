@@ -1,0 +1,23 @@
+{
+  "_comment": "Annotation chips that float above the Reversal Graph at the date of the event. Edit this file directly — it is loaded by static/index.html at boot, no rebuild needed. Each entry needs `date` (YYYY-MM-DD, UTC) and `title` (short, shown on the chip). `description` and `url` are optional and surface in the hover popover. Chips only render for events that fall inside the currently-selected period (7d / 30d / 3m / 6m / 1y). When two chips would overlap, the later one auto-stacks onto a row below; if more than 3 rows are needed the oldest chips are dropped (check the browser console).",
+  "events": [
+    {
+      "date": "2026-05-20",
+      "title": "Trade Revert Update",
+      "description": "Valve enabled merchant-led trade reversals for CS2, broadening the set of disputes that route through reverse.watch.",
+      "url": ""
+    },
+    {
+      "date": "2026-03-08",
+      "title": "Anti-Cheat Wave",
+      "description": "Large VAC ban wave hit account-sharing rings; downstream effect on reversal volume as compromised accounts were flagged.",
+      "url": ""
+    },
+    {
+      "date": "2025-12-18",
+      "title": "Armory Holiday Drop",
+      "description": "Limited holiday case rotation; high-value trades spiked, and so did reported reversals shortly after.",
+      "url": ""
+    }
+  ]
+}

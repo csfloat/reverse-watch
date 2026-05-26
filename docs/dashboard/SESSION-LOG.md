@@ -26,6 +26,16 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 - Extended `allowedDays` in `api/v1/stats/stats.go` from `{30, 60, 90}` to `{7, 30, 60, 90, 180, 365}`. Error string + tests updated. New positive `TestDailyHandler_AcceptedDays` walks every accepted value and asserts the response length equals `days`.
 - Restarted dev server (PID 558 was the stale parent; PID 587 was the actual listener — both killed before relaunching).
 
+**Chart annotation chips (commit pending)**
+
+- Added editorial event timeline chips that float above the chart line at the date of the event — Pricempire-style. Data source: `static/cs2-events.json` (flat JSON, `{date, title, description?, url?}`). Edit the file and refresh — no rebuild.
+- Frontend logic in `static/index.html`:
+  - `loadCS2Events()` fetches the JSON once at boot with `cache: 'no-store'`.
+  - `renderEventChips(chart)` filters events to the chart's visible x-range, computes each chip's pixel position via `chart.valToPos(ts, 'x')`, and row-stacks colliding chips (up to 3 rows; oldest overflow dropped with a console warning).
+  - Re-renders on every chart redraw (period change) and on window resize.
+- Hover popover shows full date, title, description, and optional link.
+- Documented in PRD §6.3 (chart section).
+
 **Dashboard UI (commit `cfac9e8`)**
 
 - Renamed first KPI label "Traders Indexed" → "Steam IDs Searched". JSON contract unchanged (`traders_indexed` stays on the wire); the JS-side comment notes the mapping.

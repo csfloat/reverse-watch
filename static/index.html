@@ -462,6 +462,113 @@
             fill: var(--text-muted) !important;
         }
 
+        /* ─── ANNOTATION CHIPS ───────────────────────────────────────── */
+        .event-chip {
+            position: absolute;
+            transform: translateX(-50%);
+            background: rgba(22, 24, 28, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            cursor: help;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            z-index: 5;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-chip:hover,
+        .event-chip:focus-within {
+            background: var(--accent-soft);
+            color: var(--accent);
+            border-color: var(--accent);
+            z-index: 20;
+            overflow: visible;
+        }
+
+        .event-chip::after {
+            content: '';
+            position: absolute;
+            top: calc(100% - 1px);
+            left: 50%;
+            width: 1px;
+            height: 6px;
+            background: var(--border-strong);
+            transform: translateX(-50%);
+        }
+
+        .event-chip:hover::after,
+        .event-chip:focus-within::after {
+            background: var(--accent);
+        }
+
+        .event-popover {
+            display: none;
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(12, 13, 17, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            padding: 10px 14px;
+            min-width: 220px;
+            max-width: 320px;
+            text-align: left;
+            white-space: normal;
+            color: var(--text-primary);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            z-index: 30;
+            line-height: 1.4;
+            cursor: default;
+        }
+
+        .event-chip:hover .event-popover,
+        .event-chip:focus-within .event-popover {
+            display: block;
+        }
+
+        .event-popover .event-pop-date {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            font-weight: 400;
+        }
+
+        .event-popover .event-pop-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .event-popover .event-pop-desc {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+        }
+
+        .event-popover .event-pop-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: var(--accent);
+            font-size: 0.82rem;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .event-popover .event-pop-link:hover {
+            text-decoration: underline;
+        }
+
         /* chart hover tooltip */
         .chart-tooltip {
             position: absolute;
@@ -764,6 +871,17 @@
             .period-btn {
                 padding: 6px 10px;
                 font-size: 0.8rem;
+            }
+
+            .event-chip {
+                font-size: 0.65rem;
+                padding: 3px 8px;
+                max-width: 110px;
+            }
+
+            .event-popover {
+                min-width: 200px;
+                max-width: 260px;
             }
 
             .reversals-table .col-steam-id {
@@ -1121,6 +1239,114 @@
             }
         }
 
+        // ─── Annotation events (CS2 release timeline) ────────────
+        // Loaded once from /static/cs2-events.json. Re-rendered on each
+        // chart redraw (period change) and on resize. See PRD §6.3 for
+        // the editorial intent.
+        let cs2Events = [];
+
+        async function loadCS2Events() {
+            try {
+                const r = await fetch('/static/cs2-events.json', { cache: 'no-store' });
+                if (!r.ok) return;
+                const json = await r.json();
+                cs2Events = Array.isArray(json.events)
+                    ? json.events.filter(e => e && e.date && e.title)
+                    : [];
+                if (chartInstance) renderEventChips(chartInstance);
+            } catch (err) {
+                console.warn('cs2-events.json failed to load:', err);
+            }
+        }
+
+        function clearEventChips() {
+            els.chartContainer.querySelectorAll('.event-chip').forEach(c => c.remove());
+        }
+
+        function renderEventChips(chart) {
+            clearEventChips();
+            if (!chart || !cs2Events.length) return;
+
+            const xs = chart.data[0];
+            if (!xs || !xs.length) return;
+            const xMin = xs[0];
+            const xMax = xs[xs.length - 1];
+
+            const inWindow = cs2Events
+                .map(e => ({ ...e, ts: Date.parse(e.date + 'T00:00:00Z') / 1000 }))
+                .filter(e => Number.isFinite(e.ts) && e.ts >= xMin && e.ts <= xMax)
+                .sort((a, b) => a.ts - b.ts);
+            if (!inWindow.length) return;
+
+            // Row-stacking collision detection. Up to 3 rows; oldest
+            // overflow is dropped (with a console warning) so the user
+            // knows to space events out in the JSON.
+            const MIN_GAP = 110;
+            const ROW_HEIGHT = 26;
+            const MAX_ROWS = 3;
+            const placed = [];
+            let dropped = 0;
+            for (const ev of inWindow) {
+                const x = chart.valToPos(ev.ts, 'x');
+                if (!Number.isFinite(x)) continue;
+                let row = 0;
+                while (row < MAX_ROWS && placed.some(p => p.row === row && Math.abs(p.x - x) < MIN_GAP)) {
+                    row++;
+                }
+                if (row >= MAX_ROWS) { dropped++; continue; }
+                placed.push({ ev, x, row });
+            }
+            if (dropped > 0) {
+                console.warn(
+                    `cs2-events: ${dropped} chip(s) hidden due to overlap. ` +
+                    `Edit static/cs2-events.json or narrow the chart period to fit more.`
+                );
+            }
+
+            for (const { ev, x, row } of placed) {
+                const chip = document.createElement('div');
+                chip.className = 'event-chip';
+                chip.style.left = x + 'px';
+                chip.style.top = (8 + row * ROW_HEIGHT) + 'px';
+                chip.tabIndex = 0;
+                chip.setAttribute('role', 'note');
+                chip.setAttribute('aria-label', `${ev.title}, ${ev.date}`);
+                chip.innerHTML = `
+                    <span class="event-chip-title"></span>
+                    <div class="event-popover">
+                        <div class="event-pop-date"></div>
+                        <div class="event-pop-title"></div>
+                        <div class="event-pop-desc"></div>
+                    </div>`;
+                chip.querySelector('.event-chip-title').textContent = ev.title;
+                chip.querySelector('.event-pop-date').textContent = formatEventDate(ev.ts);
+                chip.querySelector('.event-pop-title').textContent = ev.title;
+                const descEl = chip.querySelector('.event-pop-desc');
+                if (ev.description) {
+                    descEl.textContent = ev.description;
+                } else {
+                    descEl.remove();
+                }
+                if (ev.url) {
+                    const a = document.createElement('a');
+                    a.className = 'event-pop-link';
+                    a.href = ev.url;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                    a.textContent = 'Read more →';
+                    chip.querySelector('.event-popover').appendChild(a);
+                }
+                els.chartContainer.appendChild(chip);
+            }
+        }
+
+        function formatEventDate(ts) {
+            const d = new Date(ts * 1000);
+            return d.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+            });
+        }
+
         // ─── Reversal Graph (uPlot) ──────────────────────────────
         let chartInstance = null;
         let chartTooltip = null;
@@ -1281,12 +1507,15 @@
             els.chartContainer.addEventListener('mouseleave', () => {
                 if (chartTooltip) chartTooltip.classList.remove('visible');
             });
+
+            renderEventChips(chartInstance);
         }
 
         function resizeChart() {
             if (!chartInstance) return;
             const rect = els.chartContainer.getBoundingClientRect();
             chartInstance.setSize({ width: rect.width, height: rect.height });
+            renderEventChips(chartInstance);
         }
 
         // Picker state. dailyFetchSeq protects against out-of-order
@@ -1518,10 +1747,11 @@
         window.addEventListener('resize', resizeChart);
         wirePeriodPicker();
 
-        // Fire all three in parallel — none of them block search.
+        // Fire in parallel — none of them block search.
         loadSummary();
         loadDaily(currentDays);
         loadRecent();
+        loadCS2Events();
     </script>
 </body>
 </html>
