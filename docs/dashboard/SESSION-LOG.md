@@ -4,6 +4,111 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 
 ---
 
+## 2026-05-24 → 2026-05-26 (Sun–Tue) — Session #2
+
+**Duration:** Three sittings across three days.
+**On branch:** `feature/public-dashboard-v1` — now **7 commits ahead** of `master`.
+**Tests:** `go test ./...` green (full suite + new repo/handler tests).
+**Workflow shift:** Per the updated `ABOUT-MORTEN.md`, Cursor now writes the code; Morten reviews. Local commits at each meaningful milestone, no push until v1 is fully complete (one PR to Zach, not piecemeal).
+
+### What got done
+
+**PR #1 — backend (commit `66f75c5`)**
+
+All 8 build-order steps from Session #1 complete:
+
+1. `domain/dto/stats.go` — `SummaryStats` and `DailyCount` DTOs.
+2. Extended `domain/repository/public.go` `ReversalRepository` with `SummaryStats()`, `DailyCounts(days)`, `ListRecent(limit)`.
+3. Implemented those three in `repository/public/reversal.go`. `SummaryStats` is a single SQL query with `FILTER (WHERE …)` for all three counts. `DailyCounts` zero-fills in Go after the aggregate.
+4. Repo tests in `repository/public/reversal_test.go` covering happy paths, zero-fill, date boundaries, soft-delete exclusion, and `traders_indexed` including expunged.
+5. New `api/v1/stats/{router.go,stats.go}` with `/summary` and `/reversals/daily` handlers and a 60s in-process `sync.Map`-based cache (per-`days` key for daily; single key for summary).
+6. Restructured `api/v1/reversals/router.go` — wrapped existing auth-gated routes in `chi.Group`, added public `/recent` outside.
+7. Mounted `/stats` in `api/v1/v1.go`.
+8. Handler tests for all three endpoints (happy path, cache hit, invalid params, sorting/limit).
+
+KPI definitions follow PRD §6.2 verbatim. `traders_flagged_24h` is `created_at`-bucketed.
+
+**Dev seed (commit `311fe96`)**
+
+- `internal/devseed/fixtures/reversals_seed.csv` — 98 real rows fetched via the Sheets MCP from `1ccGoHiqXTpjy_jtHSOW3QmrNFP2jvfOsqyWFpNBz-UA`. Two rows from the original 100 dropped due to steam_id precision loss in the source sheet (HANDOFF §10).
+- `internal/devseed/sheet.go` — CSV → `[]*models.Reversal`, validates header order, uses `INSERT … ON CONFLICT (id) DO NOTHING` for idempotency.
+- `cmd/seed/main.go` — CLI (`go run ./cmd/seed`). Refuses to run unless `Environment=development`.
+- Verified: first run inserted 98, second run inserted 0. Stats endpoints reflect the seed (KPIs: 100 / 100 / 2 with Morten's two earlier test rows).
+
+**PR #2 — frontend (commit `56a3fbc`)**
+
+Full `static/index.html` rewrite per PRD §§6.1–6.7. Single self-contained file, inline CSS + JS, no build step:
+
+- Hero with CSFloat logo (`static/csfloat-logo.png`), title, lede, restyled search (icon-only arrow button).
+- Search-result chip (clear/flagged) below the input. Background tints follow the verdict via `body.clear-result` / `body.flagged` classes.
+- Three KPI cards populated from `/stats/summary`.
+- 30-day uPlot line chart (CDN, `uplot@1.6.32`) with custom hover tooltip showing day + count, position-clamped to chart bounds.
+- Recently Reported Reversals table — paginated **client-side in 10-row chunks** via "Load More" (button auto-hides when all are shown). Server-side pagination still v1.1 per PRD §6.4.
+- Footer with What is reverse.watch? / Want to contribute? columns + Powered-by-CSFloat lockup (using the same logo image).
+- Hardcoded `MARKETPLACES` slug-map in JS (D9). Currently just `csfloat`; fallback uses the slug verbatim and a generic `storefront` icon.
+- Mobile reflow built against the one mobile mockup we have. Razvan still owes default + flagged mobile mocks.
+
+**Static-file serving workaround (commit `f3fd493`)**
+
+`http.ServeFile` / `http.FileServer` were truncating every static response at exactly 512 bytes (first TCP segment) on Morten's local macOS. JSON endpoints were unaffected (different write path). Replaced both static handlers in `server/server.go` with small in-memory variants (`os.ReadFile` + `w.Write`). New `GET /static/*` route added — same handler. Path traversal rejected. Static payloads are tiny (HTML + logo + future icons), so the read-once cost is negligible. Documented in a code comment.
+
+**Doc updates (commits `2f6bb7e`, `cdb2458`, `5c53975`)**
+
+- `ABOUT-MORTEN.md`: added Git workflow rules (commit-after-bigger-updates, propose-then-commit, never push without explicit ask, never push to master); added Review workflow ("v1 ships as ONE PR to Zach"); added "private code I don't own" caution.
+- `README.md`: dashboard intro, explicit DB + `postgres/postgres` superuser setup (the gotcha Morten hit Session #1), `go run ./cmd/seed` instructions, public API endpoint table, links to PRD + HANDOFF.
+
+### Decisions logged (not yet captured anywhere else)
+
+- **Chart library: uPlot** (HANDOFF D7 locked). ~40KB, zero deps, fast. Loaded via CDN.
+- **"Load More" pagination is purely client-side reveal** — the API still returns 100 rows in one call. v1.1 will add server-side cursor pagination per PRD §6.4.
+- **Search-result chip ignores the marketplace icon from Razvan's mockups** — the existing `/api/v1/users/{steamId}` doesn't return marketplace info, and PRD §6.5 says the lookup endpoint is unchanged. Punt to v1.1 if we want to enrich the response.
+- **No favicon / OG image work yet.** Current SVG favicon is the existing one (blue eye).
+
+### Where we resume — pick from one of these
+
+| Option | Scope | Why |
+|---|---|---|
+| **A. PR #3 — PostHog analytics** | Wire `dashboard_viewed`, `lookup_submitted`, `lookup_result_shown`, `extension_cta_click` via `science.csfloat.io` proxy (PRD §9). | PRD §11 launch criterion. ~30–60 min. |
+| **B. Lighthouse audit** | Run Lighthouse, fix what falls below 90 on Performance + Accessibility. | PRD §11 launch criterion. Open-ended. |
+| **C. Draft Discord pings** | Zach (KPI defs confirmation) + Razvan (mobile mocks). | Unblocks the human-gated items so they progress in parallel. |
+
+A or B is the more productive next step. C is quick prep work.
+
+### Open items still outstanding
+
+- **Zach — KPI defs sign-off (D-open-1)**, especially `traders_flagged_24h` (currently `created_at`-based). Discord/Slack ping not sent yet.
+- **Razvan — mobile default + flagged mockups**. Mobile reflow is best-effort until they arrive.
+- **Marketplace registry** (PRD §14.4) — confirm nezha doesn't already maintain a slug → name/icon map we should reuse instead of hardcoding.
+- **Linear parent issue** CSF-1518 — still no sub-issues filed.
+- **Razvan's mocks show a marketplace chip in the lookup result** — defer to v1.1 (would require API extension).
+
+### Misc state for next session
+
+- Local dev server is **still running in the background** (PID was 558 at last commit, on port 8080). Restart only needed if `server/server.go` is touched again.
+- `config.json` unchanged.
+- Branch `feature/public-dashboard-v1` is 7 commits ahead of `master` (`66f75c5`, `2f6bb7e`, `311fe96`, `cdb2458`, `f3fd493`, `56a3fbc`, `5c53975`). All local. **Do not push** until Morten explicitly says v1 is ready for Zach.
+- All `docs/dashboard/*` files are tracked in git as of commit `66f75c5` (they rode along with the PR #1 backend commit).
+
+### Todo state at session end
+
+- [x] All 8 PR #1 backend steps
+- [x] Dev seed (sheet ingest)
+- [x] PR #2 frontend rewrite (desktop done; mobile reflow done as far as possible)
+- [x] Static-file truncation workaround
+- [x] README update (PRD §11 criterion)
+- [ ] **A — PR #3 analytics (PostHog)** ← strongest candidate for next session
+- [ ] B — Lighthouse pass
+- [ ] C — Discord pings to Zach + Razvan
+- [ ] (Blocked) Razvan delivers missing mobile mockups
+- [ ] (Blocked) Zach confirms KPI definitions
+- [ ] (Last) Push branch + open ONE PR to Zach
+
+### Kick-off prompt for next session
+
+> Continuing v1 of the Reverse Watch dashboard. Read `docs/dashboard/SESSION-LOG.md` top entry — that's where we stopped. Branch `feature/public-dashboard-v1` is 7 commits ahead of master, all local. PR #1 backend + dev seed + PR #2 frontend are done. Next codable items are PR #3 (PostHog analytics) and the Lighthouse pass — both PRD §11 launch criteria. Recommend starting with PR #3.
+
+---
+
 ## 2026-05-23 (Sat eve) — Session #1
 
 **Duration:** ~15 min of dialogue, no application code written yet (intentional).
