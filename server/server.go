@@ -1,8 +1,12 @@
 package server
 
 import (
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"reverse-watch/api"
@@ -60,9 +64,13 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 
 	r.Use(rwmiddleware.FactoryMiddleware(factory))
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/index.html")
-	})
+	// Static files are read into memory and written in a single response
+	// body. We avoid http.ServeFile / http.FileServer because the sendfile
+	// fast path on some local setups truncates large responses at the
+	// first TCP segment. Files served from here are tiny (HTML + a handful
+	// of logos/icons), so the read-once cost is negligible.
+	r.Get("/", serveStaticFile("static/index.html", "text/html; charset=utf-8"))
+	r.Get("/static/*", staticDirHandler("static"))
 
 	r.Mount("/api", api.Router())
 
@@ -73,4 +81,45 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.r.ServeHTTP(w, r)
+}
+
+// serveStaticFile returns a handler that serves exactly the file at path
+// with the given content-type. The file is read once per request.
+func serveStaticFile(path, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+		_, _ = w.Write(b)
+	}
+}
+
+// staticDirHandler serves files from baseDir for any request matching
+// the chi wildcard /<prefix>/*. Path traversal is rejected. Content-Type
+// is inferred from the file extension, falling back to content sniffing.
+func staticDirHandler(baseDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.TrimPrefix(r.URL.Path, "/static/")
+		if rest == "" || strings.Contains(rest, "..") {
+			http.NotFound(w, r)
+			return
+		}
+		full := filepath.Join(baseDir, filepath.Clean("/"+rest))
+		b, err := os.ReadFile(full)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		ctype := mime.TypeByExtension(filepath.Ext(full))
+		if ctype == "" {
+			ctype = http.DetectContentType(b)
+		}
+		w.Header().Set("Content-Type", ctype)
+		w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+		_, _ = w.Write(b)
+	}
 }
