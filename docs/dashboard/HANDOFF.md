@@ -46,6 +46,7 @@ See `ABOUT-MORTEN.md` in this folder. ABOUT-MORTEN is authoritative for working 
 D-list items still **open** (need Zach input — see §10):
 
 - **D-open-1** KPI definitions (PRD §6.2). Specifically: 24h KPI bucketed by `created_at` vs `reversed_at`.
+- **D-open-4** Steam display name source for the Trader column (PRD §6.4). Options: Steam Web API + cache, a `steam_users` table, or "ship without display names in v1." Current local dashboard renders a deterministic fake derived from `steam_id` as a stopgap.
 
 (D-open-2 and D-open-3 are now locked — see PRD §14: recent-reversals Steam IDs ship unmasked; analytics is PostHog via `science.csfloat.io`.)
 

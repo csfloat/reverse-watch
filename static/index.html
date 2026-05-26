@@ -555,7 +555,7 @@
             gap: 10px;
         }
 
-        .reversals-table .marketplace-icon {
+        .reversals-table .trader-avatar {
             width: 28px;
             height: 28px;
             border-radius: 8px;
@@ -567,14 +567,15 @@
             flex-shrink: 0;
         }
 
-        .reversals-table .marketplace-icon .material-symbols-outlined {
+        .reversals-table .trader-avatar .material-symbols-outlined {
             font-size: 18px;
         }
 
-        .reversals-table .marketplace-name {
+        .reversals-table .trader-name {
             font-weight: 600;
             color: var(--text-primary);
             font-size: 0.9rem;
+            font-variant-numeric: tabular-nums;
         }
 
         .reversals-table .col-steam-id .steam-id-mono {
@@ -1024,20 +1025,43 @@
 
     <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
     <script>
-        // ─── Config ──────────────────────────────────────────────
-        // Marketplace slug → { name, iconKey } map. iconKey resolves to a
-        // Material Symbols glyph. When v1.1 adds GET /api/v1/marketplaces
-        // this static map is replaced by the API response.
-        const MARKETPLACES = {
-            csfloat: { name: 'CSFloat', iconKey: 'verified' },
-            // Add new marketplaces here as data arrives. Keys must match
-            // reversals.marketplace_slug exactly.
-        };
+        // ─── Trader display-name (DEV PLACEHOLDER) ───────────────
+        // The Trader column shows a Steam display name. Production has no
+        // such field yet — see PRD §6.4 / D-open-N (pending Zach): sourcing
+        // real names will likely route through Steam's GetPlayerSummaries
+        // (rate-limited, needs caching) or a separate steam_users table.
+        // Until that decision lands, we synthesize a stable fake name from
+        // the steam_id on the client. Same id → same name across reloads.
+        // Remove this block when real names ship.
+        const TRADER_ADJECTIVES = [
+            'Shadow', 'Golden', 'Crimson', 'Frozen', 'Stealth', 'Iron', 'Silent',
+            'Quick', 'Rogue', 'Mighty', 'Phantom', 'Toxic', 'Wild', 'Lone', 'Lucky',
+            'Cosmic', 'Royal', 'Savage', 'Mystic', 'Dark', 'Vivid', 'Solar', 'Lunar',
+            'Electric', 'Neon', 'Cyber', 'Mecha', 'Ghost', 'Steel', 'Radiant',
+        ];
+        const TRADER_NOUNS = [
+            'Wolf', 'Hawk', 'Tiger', 'Fox', 'Bear', 'Dragon', 'Phoenix', 'Viper',
+            'Hunter', 'Sniper', 'Ranger', 'Knight', 'Reaper', 'Warden', 'Mage',
+            'Trader', 'Ace', 'Bandit', 'Ninja', 'Samurai', 'Pirate', 'Demon',
+            'Spirit', 'Storm', 'Blade', 'Shadow', 'Wraith', 'Beast', 'Falcon', 'Specter',
+        ];
+        const TRADER_SUFFIXES = [
+            '', '', '', '_HD', '47', '88', '99', '_TR', 'X', 'TV', '_GG', '_RU', 'Z', '03', '13',
+        ];
 
-        function marketplaceFor(slug) {
-            const m = MARKETPLACES[slug];
-            if (m) return m;
-            return { name: slug || 'Unknown', iconKey: 'storefront' };
+        function fakeTraderName(steamId) {
+            // djb2 over the steam_id string. Stable and well-distributed.
+            const s = String(steamId);
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) {
+                h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+            }
+            const adj = TRADER_ADJECTIVES[h % TRADER_ADJECTIVES.length];
+            h = Math.floor(h / TRADER_ADJECTIVES.length);
+            const noun = TRADER_NOUNS[h % TRADER_NOUNS.length];
+            h = Math.floor(h / TRADER_NOUNS.length);
+            const suf = TRADER_SUFFIXES[h % TRADER_SUFFIXES.length];
+            return `${adj}${noun}${suf}`;
         }
 
         // ─── DOM refs ────────────────────────────────────────────
@@ -1144,9 +1168,26 @@
             // collapse to month-only so 6m/1y don't overlap labels.
             const showDayOnAxis = days <= 60;
 
+            // Pair the label format with a matching increment ladder so
+            // uPlot never picks a sub-month increment when we're rendering
+            // month-only labels (otherwise the 3m view would draw 14-day
+            // ticks that all render as "Apr Apr May May Jun Jun"). Above
+            // 30 days uPlot does month-aware iteration, so ticks land on
+            // the 1st/cadence-aligned points of each month.
+            const xIncrs = showDayOnAxis
+                ? [86400, 2 * 86400, 7 * 86400, 14 * 86400]
+                : [30 * 86400, 61 * 86400, 91 * 86400, 182 * 86400];
+
             const opts = {
                 width: els.chartContainer.getBoundingClientRect().width || 800,
                 height: els.chartContainer.getBoundingClientRect().height || 360,
+                // Force uPlot to compute tick splits in UTC so they line up
+                // exactly with our UTC-midnight data x-values. Without this,
+                // uPlot uses local time — in any non-UTC zone, the "May 24"
+                // tick lands 1–12 hours off from the May-24 data point and
+                // the tick label can read "May 23" while the tooltip reads
+                // "May 24".
+                tzDate: (ts) => uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC'),
                 cursor: {
                     drag: { x: false, y: false },
                     points: { size: 8, stroke: '#1d9bf0', fill: '#0c0d11', width: 2 },
@@ -1157,6 +1198,11 @@
                         stroke: '#5a6068',
                         grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
                         ticks: { show: false },
+                        // Period-aware tick cadence. See xIncrs above for
+                        // why this matters. `space: 70` keeps any window
+                        // from over-crowding (smallest tick gap ≥ 70px).
+                        space: 70,
+                        incrs: xIncrs,
                         values: (u, splits) => splits.map(s => {
                             const d = new Date(s * 1000);
                             return showDayOnAxis
@@ -1343,19 +1389,18 @@
         }
 
         function buildReversalRow(row) {
-            const mp = marketplaceFor(row.marketplace_slug);
             const tr = document.createElement('tr');
 
             const tdTrader = document.createElement('td');
             tdTrader.className = 'col-trader';
             tdTrader.innerHTML = `
                 <span class="trader-cell">
-                    <span class="marketplace-icon" aria-hidden="true">
-                        <span class="material-symbols-outlined">${mp.iconKey}</span>
+                    <span class="trader-avatar" aria-hidden="true">
+                        <span class="material-symbols-outlined">person</span>
                     </span>
-                    <span class="marketplace-name"></span>
+                    <span class="trader-name"></span>
                 </span>`;
-            tdTrader.querySelector('.marketplace-name').textContent = mp.name;
+            tdTrader.querySelector('.trader-name').textContent = fakeTraderName(row.steam_id);
 
             const tdId = document.createElement('td');
             tdId.className = 'col-steam-id';

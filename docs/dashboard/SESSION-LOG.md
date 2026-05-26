@@ -51,7 +51,11 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 
 ### Open items still outstanding
 
-Unchanged from Session #2 — same five items. Synthetic data unblocks the chart visually but doesn't replace Zach's KPI sign-off or Razvan's mobile mocks.
+Same five items from Session #2, **plus one new**:
+
+- **D-open-4 (new) — Steam display name source for the Trader column.** The original `static/index.html` was rendering the marketplace slug in the "Trader" column, which was incorrect — Razvan's mockup wants the Steam display name there. Local dashboard now renders a deterministic fake name derived from `steam_id` (djb2 hash → adjective + noun + suffix from ~13.5k combos). Real names need to come from somewhere: Steam's `GetPlayerSummaries` (rate-limited, needs cache layer), a `steam_users` table (cleanest but violates "no schema changes"), or punt to v1.1. PRD §6.4 + §14 D-open-4 + HANDOFF §3 all flagged. Needs Zach.
+
+Synthetic data unblocks the chart visually but doesn't replace Zach's KPI sign-off, Razvan's mobile mocks, or this new question.
 
 ### Misc state for next session
 

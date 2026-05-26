@@ -238,6 +238,16 @@ GET /api/v1/reversals/recent?limit=100
 - Slim public projection: only the fields needed for the table. Notably no `id`, no `source`, no `related_steam_id` — those ride on the auth-gated `/api/v1/reversals` endpoint and don't belong on the public surface.
 - "Load More" pagination is **deferred to v1.1**. v1 fetches the latest 100 once and renders. The button shows but is `disabled` with a tooltip "More coming soon" — or removed entirely. Decide in HANDOFF §3.
 
+**Table columns:**
+
+| Column      | Source                                           | Notes                                                                                                          |
+| ----------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Trader      | Steam display name (e.g. `ShadowWolf42`)         | **Pending Zach** — see §14 D-open-4. Locally rendered as a deterministic fake derived from `steam_id` until the real source is wired. |
+| Steam ID    | `steam_id` (64-bit, string)                      | Monospace. Hidden on mobile.                                                                                   |
+| Date Added  | `created_at`                                     | Right-aligned. "MMM DD, HH:MM" in viewer's locale.                                                              |
+
+Marketplace is **not** rendered in this table. Razvan's mockup intentionally drops it; the API still returns `marketplace_slug` for v1.1 column additions.
+
 ### 6.5 Single-Steam-ID lookup (existing, unchanged)
 
 `[GET /api/v1/users/{steamId}](https://github.com/csfloat/reverse-watch/blob/master/api/v1/users/users.go)` — unchanged. The new homepage rewires the existing form to it. Result chip below the search input adopts the new visual treatment from the *Clear* and *Flagged* mockups.
@@ -428,12 +438,20 @@ Mirror existing patterns in `[api/v1/reversals/reversals_test.go](https://github
 
 These are the items where I'm flagging assumptions rather than asserting facts. Confirm or correct before we lock the PRD.
 
-1. **KPI definitions** (§6.2). Especially: does "Traders Flagged (24h)" mean 24h by `created_at` (newly reported) or 24h by `reversed_at` (recently reversed)?
-2. **Public exposure of recent-reversals table** (§8). Default is unmasked Steam IDs to match the design. That is okay for now.
-3. **Analytics choice** (§9). We will use PostHog via `science.csfloat.io`.
-4. **Marketplace registry** (§6.7). Hardcoding slug→{name, icon} in the frontend is fine for v1. Confirm we don't already maintain this mapping somewhere reusable inside CSFloat (e.g. an internal config in `nezha`). **Unverified by me — Knowledge folder doesn't cover this.**
-5. ~~**Google Sheet access**~~ — **resolved 2026-05-22.** Read 100 real rows from sheet `1ccGoHiqXTpjy_jtHSOW3QmrNFP2jvfOsqyWFpNBz-UA` (Studio export, 2026-05-15 → 2026-05-18). Schema matches `models.Reversal` 1:1. Dataset is single-marketplace (`csfloat`) and single-source (`direct`) only — fine as a fixture, not representative for breakdown features (already deferred to v1.1). Note: 2 of 100 `steam_id` cells were truncated to scientific notation (`7.65612E+16`) by Google Sheets formatting — the ingest path must use `UNFORMATTED_VALUE` (Sheets API) or a text-formatted column on CSV export.
-6. **Razvan design fidelity**. Dark theme confirmed (no light variant). Will not have lightmode for this. One mobile mockup received (`[design/04-mobile-clear.png](design/04-mobile-clear.png)`) — covers the clear-state result chip only. **Mobile default and mobile flagged states are pending** before we touch PR #2 (frontend rewrite). Filed back to Razvan.
+1. **KPI definitions** (§6.2). Especially: does "Traders Flagged (24h)" mean 24h by `created_at` (newly reported) or 24h by `reversed_at` (recently reversed)? *(D-open-1)*
+
+2. **Steam display name source** (§6.4). The "Trader" column in `Recently Reported Reversals` is meant to show the Steam display name, not the marketplace. The `reversals` table doesn't carry display names today. Options:
+   - **Steam Web API** `ISteamUser/GetPlayerSummaries` — rate-limited (~100k calls/day per key), returns persona names + avatars in batches of 100. Would need a cache layer; cold-render performance is the risk.
+   - **Local `steam_users` table** populated by a background fetcher and joined at read time. Cleanest UX, biggest scope creep — violates the "no schema changes" rule.
+   - **No display name in v1** — leave the column showing Steam IDs again, defer to v1.1. Cheapest, weakest UX.
+   - Local dashboard currently renders a deterministic fake name on the client as a stopgap so the column reads right against synthetic data.
+
+   Needs Zach to weigh in. *(D-open-4)*
+3. **Public exposure of recent-reversals table** (§8). Default is unmasked Steam IDs to match the design. That is okay for now.
+4. **Analytics choice** (§9). We will use PostHog via `science.csfloat.io`.
+5. **Marketplace registry** (§6.7). Hardcoding slug→{name, icon} in the frontend is fine for v1. Confirm we don't already maintain this mapping somewhere reusable inside CSFloat (e.g. an internal config in `nezha`). **Unverified by me — Knowledge folder doesn't cover this.**
+6. ~~**Google Sheet access**~~ — **resolved 2026-05-22.** Read 100 real rows from sheet `1ccGoHiqXTpjy_jtHSOW3QmrNFP2jvfOsqyWFpNBz-UA` (Studio export, 2026-05-15 → 2026-05-18). Schema matches `models.Reversal` 1:1. Dataset is single-marketplace (`csfloat`) and single-source (`direct`) only — fine as a fixture, not representative for breakdown features (already deferred to v1.1). Note: 2 of 100 `steam_id` cells were truncated to scientific notation (`7.65612E+16`) by Google Sheets formatting — the ingest path must use `UNFORMATTED_VALUE` (Sheets API) or a text-formatted column on CSV export.
+7. **Razvan design fidelity**. Dark theme confirmed (no light variant). Will not have lightmode for this. One mobile mockup received (`[design/04-mobile-clear.png](design/04-mobile-clear.png)`) — covers the clear-state result chip only. **Mobile default and mobile flagged states are pending** before we touch PR #2 (frontend rewrite). Filed back to Razvan.
 
 ---
 
