@@ -97,12 +97,17 @@ The existing `Reversal` model already has every field we need: `steam_id`, `mark
 
 The dashboard runs on **dummy data sourced from the Google Sheet** (`1ccGoHiqXTpjy_jtHSOW3QmrNFP2jvfOsqyWFpNBz-UA`, the 100-row CSFloat export covering 2026-05-15 → 2026-05-18). This applies to **local development and staging only**. Production at `reverse.watch` is unchanged — it continues to ingest live data from contributing marketplaces via the existing pipeline.
 
+Two seed modes are supported for local development (still local-only — production is unchanged):
+
+- **CSV seed** (`go run ./cmd/seed`) loads the 98 clean rows from the Google Sheet for verifying real-data behavior.
+- **Synthetic seed** (`go run ./cmd/seed -synthetic`) generates a deterministic ~9,800-row dataset spanning the last 180 days, with at least one reversal per day and occasional spikes. Used to exercise the chart's full period range (7d / 30d / 3m / 6m / 1y) without waiting for real data. Lives in `internal/devseed/synthetic.go`.
+
 Implications for v1:
 
-- A small ingest script seeds local Postgres from the Sheet (`internal/devseed/sheet.go` — see HANDOFF §5).
-- Local KPIs and the 30-day chart show **sparse, narrow data** — every row is `marketplace_slug=csfloat`, `source=direct`, no expungements, only 3 days of activity. Expected and acceptable for v1.
-- Tests use `pgtestdb` with inline fixtures — independent of the seed.
-- **No synthetic data generator.** Dense-data demo screenshots are a v1.1 concern if needed. v1 ships with whatever the Sheet contains.
+- A small ingest script seeds local Postgres (`internal/devseed/` — see HANDOFF §5).
+- Local KPIs and the chart reflect whichever seed was loaded; both modes are idempotent (`ON CONFLICT (id) DO NOTHING`) and can coexist.
+- Tests use `pgtestdb` with inline fixtures — independent of either seed.
+- The synthetic generator is **dev-only**: `cmd/seed` refuses to run unless `Environment == development`.
 
 ---
 
@@ -154,8 +159,8 @@ Mobile: `[design/04-mobile-clear.png](design/04-mobile-clear.png)` (clear state 
 
 1. **Hero** — "Powered by CSFloat" badge, title "The open trade reversal database", one-sentence subtitle, Steam-ID search input, search button.
 2. **Search result chip** — appears below the search input after a query (existing behavior, restyled). Two states from the mockups: *Clear* (green "No Reversals Found") and *Flagged* (red "Reversals Found").
-3. **KPI cards** — three side-by-side cards: "Traders Indexed", "Traders Flagged", "Traders Flagged (24h)". Definitions in §6.2.
-4. **Reversal Graph** — title "Reversal Graph · Last 30 days", one-sentence subtitle, single-line chart of daily reversal counts.
+3. **KPI cards** — three side-by-side cards: "Steam IDs Searched", "Traders Flagged", "Traders Flagged (24h)". Definitions in §6.2.
+4. **Reversal Graph** — title "Reversal Graph", segmented period picker (`7d / 30d / 3m / 6m / 1y`, defaulting to `30d`), one-sentence subtitle, single-line chart of daily reversal counts.
 5. **Recently Reported Reversals** — title, one-sentence subtitle, table with columns Trader / Steam ID / Date Added, "Load More" button.
 6. **Footer** — "What is reverse.watch?" + "Want to contribute?" copy blocks, "Get the extension" CTA, "Powered by CSFloat" lockup.
 
@@ -166,7 +171,7 @@ These are the three numbers in the cards. Locking these requires a sign-off from
 
 | KPI                       | Working definition (v1 proposal)                                                                                                       | SQL sketch                                                                                                                |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Traders Indexed**       | Distinct `steam_id`s that have ≥1 row in `reversals`, including expunged. Captures the total population the database has ever touched. | `SELECT COUNT(DISTINCT steam_id) FROM reversals;`                                                                         |
+| **Steam IDs Searched**    | Distinct `steam_id`s that have ≥1 row in `reversals`, including expunged. Captures the total population the database has ever touched. (Underlying API field stays `traders_indexed` — the rename is UI-only.) | `SELECT COUNT(DISTINCT steam_id) FROM reversals;`                                                                         |
 | **Traders Flagged**       | Distinct `steam_id`s that currently have ≥1 non-expunged reversal. Matches the existing `/users/{steamId}` "has reversed" logic.       | `SELECT COUNT(DISTINCT steam_id) FROM reversals WHERE expunged_at IS NULL;`                                               |
 | **Traders Flagged (24h)** | Distinct `steam_id`s with a non-expunged row whose `created_at` is within the last 24 hours. Reads as "newly flagged today."           | `SELECT COUNT(DISTINCT steam_id) FROM reversals WHERE expunged_at IS NULL AND created_at >= NOW() - INTERVAL '24 hours';` |
 
@@ -181,7 +186,7 @@ These are the three numbers in the cards. Locking these requires a sign-off from
 GET /api/v1/stats/reversals/daily?days=30
 ```
 
-- `days` is optional. Default `30` (matches Razvan's mockups). Allowed values: `30`, `60`, `90`. Other values → `400 Bad Request`. Restricting to a small enumerated set lets us cache trivially (see §9). The 60 and 90 values are not used by the v1 frontend but cost ~nothing to support and pre-position us for v1.1.
+- `days` is optional. Default `30` (matches Razvan's mockups). Allowed values: `7`, `30`, `60`, `90`, `180`, `365`. Other values → `400 Bad Request`. The frontend period picker uses `7 / 30 / 90 / 180 / 365` directly; `60` stays in the allow-list for v1.1 flexibility. Restricting to a small enumerated set keeps the per-day cache key space tiny (see §9).
 
 **Response:**
 

@@ -389,6 +389,47 @@
             max-width: 760px;
         }
 
+        /* ─── PERIOD PICKER ──────────────────────────────────────────── */
+        .period-picker {
+            display: inline-flex;
+            background: var(--bg-card);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
+            margin-left: auto;
+        }
+
+        .period-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+            line-height: 1;
+        }
+
+        .period-btn:hover:not(.active) {
+            color: var(--text-primary);
+        }
+
+        .period-btn.active {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .period-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+
         /* ─── CHART ──────────────────────────────────────────────────── */
         .chart-container {
             position: relative;
@@ -714,6 +755,16 @@
                 height: 240px;
             }
 
+            .period-picker {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+
+            .period-btn {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
             .reversals-table .col-steam-id {
                 display: none;
             }
@@ -842,7 +893,11 @@
         <!-- ─── KPI CARDS ─────────────────────────────────────────── -->
         <div class="kpi-grid" id="kpiGrid">
             <div class="kpi-card">
-                <div class="kpi-label">Traders Indexed</div>
+                <!-- "Steam IDs Searched" is the user-facing rename of the
+                     underlying `traders_indexed` field (distinct steam_ids
+                     present in the reversals index). The JSON contract is
+                     unchanged. -->
+                <div class="kpi-label">Steam IDs Searched</div>
                 <div class="kpi-value skeleton" id="kpiIndexed">—</div>
             </div>
             <div class="kpi-card">
@@ -860,13 +915,19 @@
             <div class="block-header">
                 <div class="block-title-row">
                     <h2>Reversal Graph</h2>
-                    <span class="block-meta">· Last 30 days</span>
+                    <div class="period-picker" role="group" aria-label="Chart time range">
+                        <button type="button" class="period-btn" data-days="7"   aria-pressed="false">7d</button>
+                        <button type="button" class="period-btn active" data-days="30"  aria-pressed="true">30d</button>
+                        <button type="button" class="period-btn" data-days="90"  aria-pressed="false">3m</button>
+                        <button type="button" class="period-btn" data-days="180" aria-pressed="false">6m</button>
+                        <button type="button" class="period-btn" data-days="365" aria-pressed="false">1y</button>
+                    </div>
                 </div>
                 <p class="block-subtitle">
-                    Total reversal volume over the last 30 days. Updated every minute.
+                    Total reversal volume across the selected window. Updated every minute.
                 </p>
             </div>
-            <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart for the last 30 days"></div>
+            <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart"></div>
         </section>
 
         <!-- ─── RECENT REVERSALS ──────────────────────────────────── -->
@@ -1060,7 +1121,7 @@
             return chartTooltip;
         }
 
-        function renderChart(daily) {
+        function renderChart(daily, days) {
             els.chartContainer.classList.remove('is-empty', 'is-error');
             els.chartContainer.innerHTML = '';
             chartTooltip = null;
@@ -1079,6 +1140,10 @@
                 ys[i] = daily[i].count;
             }
 
+            // For ≤60 days, show "MMM DD" on the x-axis; for longer windows,
+            // collapse to month-only so 6m/1y don't overlap labels.
+            const showDayOnAxis = days <= 60;
+
             const opts = {
                 width: els.chartContainer.getBoundingClientRect().width || 800,
                 height: els.chartContainer.getBoundingClientRect().height || 360,
@@ -1094,7 +1159,9 @@
                         ticks: { show: false },
                         values: (u, splits) => splits.map(s => {
                             const d = new Date(s * 1000);
-                            return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
+                            return showDayOnAxis
+                                ? d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' })
+                                : d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
                         }),
                     },
                     {
@@ -1176,18 +1243,46 @@
             chartInstance.setSize({ width: rect.width, height: rect.height });
         }
 
-        async function loadDaily() {
+        // Picker state. dailyFetchSeq protects against out-of-order
+        // responses when the user clicks several buttons quickly: only
+        // the latest request's render is allowed to win.
+        const DEFAULT_DAYS = 30;
+        let currentDays = DEFAULT_DAYS;
+        let dailyFetchSeq = 0;
+
+        async function loadDaily(days) {
+            const seq = ++dailyFetchSeq;
             try {
-                const r = await fetch('/api/v1/stats/reversals/daily?days=30');
+                const r = await fetch('/api/v1/stats/reversals/daily?days=' + days);
+                if (seq !== dailyFetchSeq) return;
                 if (!r.ok) throw new Error('daily ' + r.status);
                 const json = await r.json();
-                renderChart(json.data || []);
+                if (seq !== dailyFetchSeq) return;
+                renderChart(json.data || [], days);
             } catch (err) {
+                if (seq !== dailyFetchSeq) return;
                 console.error('daily load failed:', err);
                 els.chartContainer.classList.add('is-error');
                 els.chartContainer.classList.remove('is-empty');
                 els.chartContainer.textContent = 'Could not load chart.';
             }
+        }
+
+        function wirePeriodPicker() {
+            const buttons = document.querySelectorAll('.period-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const days = parseInt(btn.dataset.days, 10);
+                    if (!Number.isFinite(days) || days === currentDays) return;
+                    currentDays = days;
+                    buttons.forEach(b => {
+                        const active = b === btn;
+                        b.classList.toggle('active', active);
+                        b.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                    loadDaily(days);
+                });
+            });
         }
 
         // ─── Recently Reported Reversals ─────────────────────────
@@ -1376,10 +1471,11 @@
 
         // ─── Boot ───────────────────────────────────────────────
         window.addEventListener('resize', resizeChart);
+        wirePeriodPicker();
 
         // Fire all three in parallel — none of them block search.
         loadSummary();
-        loadDaily();
+        loadDaily(currentDays);
         loadRecent();
     </script>
 </body>
