@@ -1263,7 +1263,19 @@
             els.chartContainer.querySelectorAll('.event-chip').forEach(c => c.remove());
         }
 
+        let eventChipsRaf = 0;
         function renderEventChips(chart) {
+            // Defer to the next animation frame so uPlot's layout (and
+            // its valToPos scale math) is fully settled. Without this,
+            // calling renderEventChips synchronously right after
+            // `new uPlot(...)` can hit a stale/zero-width bbox on the
+            // first paint after a period switch, returning positions
+            // that fall outside the visible container.
+            cancelAnimationFrame(eventChipsRaf);
+            eventChipsRaf = requestAnimationFrame(() => paintEventChips(chart));
+        }
+
+        function paintEventChips(chart) {
             clearEventChips();
             if (!chart || !cs2Events.length) return;
 
