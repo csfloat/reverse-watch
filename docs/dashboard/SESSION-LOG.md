@@ -4,6 +4,67 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 
 ---
 
+## 2026-05-26 (Tue, evening) — Session #3
+
+**Duration:** Single sitting.
+**On branch:** `feature/public-dashboard-v1` — now **11 commits ahead** of `master`.
+**Tests:** `go test ./api/v1/stats/...` green; rest of suite unchanged from Session #2.
+**Theme:** UI polish + denser data for the new chart range.
+
+### What got done
+
+**Synthetic seed (commit `9ef639b`)**
+
+- New `internal/devseed/synthetic.go`. `GenerateSynthetic(now)` is deterministic (fixed RNG seed = 42), produces ~9,800 reversals over the last 180 UTC days, at least 1 per day. Daily counts follow a gentle sinusoid around ~50/day with ~5% spike days (2.5–5×) and ~10% quiet days (0.2–0.5×). Marketplace mix 80% csfloat / 10% tradeit / 5% skinport / 5% swap.gg. Sources: 90% direct, 5% related_user (with valid related_steam_id), 5% user_report. ~1.5% rows expunged.
+- Snowflake IDs are constructed from each row's `created_at` (mirroring `domain/models/snowflake.go` bit layout), so they don't collide with the real CSV seed or with each other.
+- `internal/devseed/sheet.go` `InsertReversals` now chunks at 1,000 rows per round trip (Postgres 65,535-parameter limit on a single statement).
+- `cmd/seed` gains `-synthetic`. Both modes idempotent via `ON CONFLICT (id) DO NOTHING`; they can coexist (different ID ranges).
+- Verified: `go run ./cmd/seed -synthetic` inserts 9,800. KPIs jumped from 100 → 9,900 traders_indexed.
+
+**Backend period allow-list (commit `6b8d708`)**
+
+- Extended `allowedDays` in `api/v1/stats/stats.go` from `{30, 60, 90}` to `{7, 30, 60, 90, 180, 365}`. Error string + tests updated. New positive `TestDailyHandler_AcceptedDays` walks every accepted value and asserts the response length equals `days`.
+- Restarted dev server (PID 558 was the stale parent; PID 587 was the actual listener — both killed before relaunching).
+
+**Dashboard UI (commit `cfac9e8`)**
+
+- Renamed first KPI label "Traders Indexed" → "Steam IDs Searched". JSON contract unchanged (`traders_indexed` stays on the wire); the JS-side comment notes the mapping.
+- Added a segmented period picker next to the chart title: `7d / 30d / 3m / 6m / 1y`. Default `30d`. Active state styled with the accent color. Mobile reflow drops `margin-left: auto` so the picker wraps cleanly under the title.
+- Removed the static "· Last 30 days" subtitle and rephrased the chart subtitle.
+- `loadDaily(days)` now race-safe via a `dailyFetchSeq` counter — rapid picker clicks always settle on the latest selection.
+- `renderChart(daily, days)` switches the x-axis label format to month-only when `days > 60`, so 6m and 1y don't overlap.
+- PRD updates: §3.1 (label + picker), §3.5 (synthetic seed now in scope — reverses the earlier "no synthetic data" stance), §6.2 (UI-only rename note), §6.3 (new `days` allow-list).
+
+### Decisions logged
+
+- **Synthetic data is dev-only.** `cmd/seed` still refuses to run unless `Environment=development`. PRD §3.5 explicitly carves out production from this change.
+- **`60d` stays in the allow-list** even though the picker doesn't expose it. Cost is trivial; keeps v1.1 free to add a "2 months" tile without another PR.
+- **The KPI rename is UI-only.** Underlying field stays `traders_indexed` because "Steam IDs Searched" is, strictly, a rebrand of the same definition (distinct steam_ids present in the index). A future "actual public search counter" would be a different metric entirely and is a v1.x scope question, not v1.
+
+### Where we resume — pick from one of these
+
+| Option | Scope | Why |
+|---|---|---|
+| **A. PR #3 — PostHog analytics** | Wire `dashboard_viewed`, `lookup_submitted`, `lookup_result_shown`, `extension_cta_click` via `science.csfloat.io` proxy (PRD §9). | PRD §11 launch criterion. ~30–60 min. |
+| **B. Lighthouse audit** | Run Lighthouse, fix what falls below 90 on Performance + Accessibility. | PRD §11 launch criterion. Open-ended. |
+| **C. Draft Discord pings** | Zach (KPI defs confirmation) + Razvan (mobile mocks). | Unblocks the human-gated items so they progress in parallel. |
+
+### Open items still outstanding
+
+Unchanged from Session #2 — same five items. Synthetic data unblocks the chart visually but doesn't replace Zach's KPI sign-off or Razvan's mobile mocks.
+
+### Misc state for next session
+
+- Local dev server is **running in the background** with the new binary (re-spawned during this session, PID at restart was 33315).
+- DB now contains 9,800 synthetic rows on top of the 98 real CSV rows and the 2 manual `BulkCreate` rows from Session #1.
+- Branch `feature/public-dashboard-v1` is 11 commits ahead of `master`. All local. **Do not push** until Morten explicitly says v1 is ready for Zach.
+
+### Kick-off prompt for next session
+
+> Continuing v1 of the Reverse Watch dashboard. Read `docs/dashboard/SESSION-LOG.md` top entry — that's where we stopped. Branch `feature/public-dashboard-v1` is 11 commits ahead of master, all local. KPI rename, period picker, and synthetic seed all in. Next codable items are PR #3 (PostHog analytics) and the Lighthouse pass — both PRD §11 launch criteria. Recommend starting with PR #3.
+
+---
+
 ## 2026-05-24 → 2026-05-26 (Sun–Tue) — Session #2
 
 **Duration:** Three sittings across three days.
