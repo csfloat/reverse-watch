@@ -42,6 +42,11 @@
 - Prefer two small commits with separate concerns over one big commit, unless I ask for a single one.
 - Never push without me explicitly asking.
 - Never push to `master`. `master` is protected on `csfloat/reverse-watch` — all changes go through PR.
+- **`csfloat/reverse-watch` is private code I do not own.** Default to extreme caution: no force-pushes, no rewrites of public history, no merges I haven't asked for.
+
+### Review workflow for this project
+- **The Reverse Watch v1 dashboard ships to Zach as ONE review, not piecemeal.** Even though HANDOFF.md frames the work as "PR #1" (backend) and "PR #2" (frontend), we keep both on the same local branch and push only when v1 is complete and I say so. Treat "PR #1 / PR #2" as scoping milestones, not separate GitHub PRs.
+- I am the only one who decides when v1 is review-ready. Never assume "ready" because a sub-milestone is done.
 
 ## Project context lives in these files (always read at session start)
 - `docs/dashboard/PRD.md` — what we're building (public Reverse Watch dashboard v1) and why.
