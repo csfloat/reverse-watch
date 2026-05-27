@@ -4,6 +4,18 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 
 ---
 
+## 2026-05-27 (Wed, afternoon) — Session #6
+
+**Branch:** `feature/public-dashboard-v1` (commits `d44dbd4`, `71324f7`).
+**Theme:** Design pass against Razvan's mocks.
+
+- Result chip redesign (commit `d44dbd4`): avatar + fake display name + Steam/CSFloat icon links; mobile chip stacks the verdict pill below the user info; subtitle reads "Last reversal {date}" for flagged, "Added on {date}" for clear. Steam display names are still dev placeholders (PRD §14 D-open-4 — Zach to confirm source).
+- Background pattern attempt #2 — inlined Razvan's `docs/dashboard/design/Pattern.svg` with per-line `<g>` classes and CSS animation. Several rounds of size/position/mask tweaks couldn't match the design (over-large, `mix-blend-mode: overlay` darkened the dark backdrop into a black blob, edge cropping). Screen started flickering on one iteration. Full revert via `git restore`. Source SVG kept untracked at `docs/dashboard/design/Pattern.svg` for the next attempt — next try should treat it as a static `<img>` / `background-image`, not animated inline.
+- Design polish (commit `71324f7`): single thin-bordered card now wraps search input + helper text + result chip; chip lost its own card chrome (subtle nested fill at 14px radius instead); flagged/clear no longer have a colored top divider; KPI cards centered; "Powered by" logo properly center-aligned with text in hero and footer (line-height + flex); footer disclaimer added — "Reverse.Watch 2026. Not affiliated with Valve Corp."; copy tweaks — "Recent Reversals", trimmed chart and table subtitles, "the CSFloat extension".
+- Pending list: PR #3 (PostHog), Lighthouse audit, background pattern revisit (static image approach), Discord pings to Zach + Razvan.
+
+---
+
 ## 2026-05-27 (Wed, morning) — Session #5
 
 **Branch:** `feature/public-dashboard-v1`.
