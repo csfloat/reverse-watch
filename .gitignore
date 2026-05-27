@@ -12,3 +12,6 @@ static/*.db-wal
 
 .secrets
 .env
+
+internal-docs/
+internal/devseed/fixtures/
