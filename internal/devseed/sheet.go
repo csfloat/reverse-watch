@@ -1,11 +1,6 @@
 // Package devseed loads dev-only fixture data into the local Postgres
-// instance. It is intentionally NOT wired into the main binary — call it
+// instance. It is intentionally not wired into the main binary — call it
 // from cmd/seed (or a test) when you need realistic data locally.
-//
-// The fixture CSV at fixtures/reversals_seed.csv is a 98-row export of
-// the "Reverse Watch - Studio Results 2026-05-22 11:13" Google Sheet.
-// Two rows from the original 100-row export had steam_id precision loss
-// (see docs/dashboard/HANDOFF.md §10) and were dropped before commit.
 package devseed
 
 import (
@@ -172,19 +167,13 @@ func parseRow(rec []string, line int) (*models.Reversal, error) {
 	}, nil
 }
 
-// insertChunkSize is the number of rows GORM bulk-inserts per round trip.
-// Postgres caps a single statement at 65,535 bound parameters (uint16);
-// at ~11 columns per Reversal row, 1,000 rows uses ~11k parameters — well
-// under the limit and big enough to keep network round-trips negligible
-// for the ~10k-row synthetic seed.
+// insertChunkSize keeps each bulk insert under Postgres's 65,535
+// parameter-per-statement cap. At ~11 columns per Reversal, 1,000 rows
+// uses ~11k parameters.
 const insertChunkSize = 1000
 
-// InsertReversals inserts the given reversals into the public DB using
-// ON CONFLICT (id) DO NOTHING, so the seed is idempotent — running it
-// twice in a row leaves the DB in the same state as running it once.
-// Inserts are chunked to stay under Postgres's parameter-per-statement
-// limit (see insertChunkSize). Returns the number of rows the DB
-// actually inserted; rows with matching IDs are silently skipped.
+// InsertReversals bulk-inserts reversals with ON CONFLICT (id) DO NOTHING,
+// so the seed is idempotent. Returns the number of rows actually inserted.
 func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	if len(reversals) == 0 {
 		return 0, nil

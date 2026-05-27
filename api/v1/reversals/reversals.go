@@ -254,14 +254,13 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const defaultLimit = 100
-	const maxLimit = 100
+	const maxRecentLimit = 100
 
-	limit := defaultLimit
+	limit := maxRecentLimit
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
-		if err != nil || parsed <= 0 || parsed > maxLimit {
-			render.Errorf(w, r, errors.BadRequest, "limit must be between 1 and %d", maxLimit)
+		if err != nil || parsed <= 0 || parsed > maxRecentLimit {
+			render.Errorf(w, r, errors.BadRequest, "limit must be between 1 and %d", maxRecentLimit)
 			return
 		}
 		limit = parsed

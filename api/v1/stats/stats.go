@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 const cacheTTL = 60 * time.Second
 
-var allowedDays = map[int]bool{7: true, 30: true, 60: true, 90: true, 180: true, 365: true}
+var allowedDays = []int{7, 30, 60, 90, 180, 365}
 
 type cacheEntry struct {
 	at      time.Time
@@ -42,6 +43,8 @@ func cacheSet(key string, payload []byte) {
 	cache.Store(key, cacheEntry{at: time.Now(), payload: payload})
 }
 
+// writeCachedJSON bypasses render.JSON so we can serve the same marshalled
+// bytes on every cache hit without re-encoding.
 func writeCachedJSON(w http.ResponseWriter, payload []byte) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -80,7 +83,7 @@ func dailyHandler(w http.ResponseWriter, r *http.Request) {
 	days := 30
 	if daysStr := r.URL.Query().Get("days"); daysStr != "" {
 		parsed, err := strconv.Atoi(daysStr)
-		if err != nil || !allowedDays[parsed] {
+		if err != nil || !slices.Contains(allowedDays, parsed) {
 			render.Errorf(w, r, errors.BadRequest, "days must be one of 7, 30, 60, 90, 180, 365")
 			return
 		}

@@ -11,10 +11,8 @@
     <style>
         :root {
             --bg-primary: #000000;
-            --bg-secondary: #0c0d11;
             --bg-card: rgba(22, 24, 28, 0.6);
             --bg-card-solid: #16181c;
-            --bg-input: rgba(0, 0, 0, 0.35);
             --text-primary: #e7e9ea;
             --text-secondary: #8b909a;
             --text-muted: #5a6068;
@@ -28,7 +26,6 @@
             --border: #232629;
             --border-strong: #2f3336;
             --glass-border: rgba(255, 255, 255, 0.06);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             --content-max: 1100px;
         }
 
@@ -38,16 +35,14 @@
             box-sizing: border-box;
         }
 
-        html, body {
-            min-height: 100%;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-primary);
-            background-image:
-                radial-gradient(ellipse 60% 50% at 50% 0%, rgba(29, 155, 240, 0.10) 0%, transparent 70%),
-                radial-gradient(ellipse 70% 40% at 50% 25%, rgba(29, 155, 240, 0.04) 0%, transparent 70%);
+            /* Soft radial glow anchored to the TOP of the page (around
+               the hero title). Default background-attachment: scroll
+               means the glow scrolls away with the page — once you're
+               past the hero, the bg fades into solid #000. */
+            background-image: radial-gradient(circle 600px at 50% 80px, #1e2732 0%, #000000 100%);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -96,23 +91,6 @@
             height: 20px;
             width: auto;
             display: inline-block;
-            vertical-align: middle;
-        }
-
-        .powered-badge .csfloat-lockup {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 2px;
-            font-weight: 700;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-        }
-
-        .powered-badge .csfloat-lockup .float-italic {
-            font-style: italic;
-            font-family: Georgia, "Times New Roman", serif;
-            font-weight: 500;
-            color: var(--text-primary);
         }
 
         .hero h1 {
@@ -195,7 +173,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.15s ease, filter 0.15s ease;
+            transition: filter 0.15s ease;
             min-width: 48px;
             box-shadow: 0 4px 12px rgba(29, 155, 240, 0.25);
         }
@@ -220,7 +198,6 @@
             margin-top: 12px;
         }
 
-        /* result chip — below search */
         .result-chip {
             display: none;
             margin-top: 16px;
@@ -377,11 +354,6 @@
             color: var(--text-primary);
         }
 
-        .block-header .block-meta {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
         .block-header .block-subtitle {
             margin-top: 6px;
             color: var(--text-secondary);
@@ -448,14 +420,9 @@
             border-radius: 12px;
         }
 
-        /* uPlot dark-theme overrides */
         .uplot,
         .uplot * {
             font-family: inherit;
-        }
-
-        .uplot .u-legend {
-            display: none;
         }
 
         .uplot .u-axis text {
@@ -569,7 +536,6 @@
             text-decoration: underline;
         }
 
-        /* chart hover tooltip */
         .chart-tooltip {
             position: absolute;
             pointer-events: none;
@@ -916,11 +882,6 @@
             }
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -943,7 +904,6 @@
             vertical-align: middle;
         }
 
-        /* Reduced motion respect */
         @media (prefers-reduced-motion: reduce) {
             *,
             *::before,
@@ -957,7 +917,6 @@
 <body>
     <main class="container">
 
-        <!-- ─── HERO ──────────────────────────────────────────────── -->
         <section class="hero">
             <div class="powered-badge">
                 <span>Powered by</span>
@@ -971,7 +930,6 @@
                 marketplaces, trading tools, and community platforms.
             </p>
 
-            <!-- search -->
             <div class="search-block">
                 <form id="searchForm" class="search-form" autocomplete="off">
                     <div class="search-input-wrap">
@@ -994,7 +952,6 @@
                 </form>
                 <p class="search-helper">Enter a 64-bit Steam ID to check their reversal history.</p>
 
-                <!-- result chip (hidden until a search runs) -->
                 <div class="result-chip" id="resultChip" role="status" aria-live="polite">
                     <div class="chip-meta">
                         <div class="chip-steam">
@@ -1009,8 +966,7 @@
             </div>
         </section>
 
-        <!-- ─── KPI CARDS ─────────────────────────────────────────── -->
-        <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-grid">
             <div class="kpi-card">
                 <!-- "Steam IDs Searched" is the user-facing rename of the
                      underlying `traders_indexed` field (distinct steam_ids
@@ -1029,7 +985,6 @@
             </div>
         </div>
 
-        <!-- ─── CHART ─────────────────────────────────────────────── -->
         <section class="block">
             <div class="block-header">
                 <div class="block-title-row">
@@ -1049,7 +1004,6 @@
             <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart"></div>
         </section>
 
-        <!-- ─── RECENT REVERSALS ──────────────────────────────────── -->
         <section class="block">
             <div class="block-header">
                 <div class="block-title-row">
@@ -1070,7 +1024,7 @@
                         </tr>
                     </thead>
                     <tbody id="reversalsBody">
-                        <tr><td colspan="3" class="table-empty" id="reversalsLoadingCell">Loading reversals…</td></tr>
+                        <tr><td colspan="3" class="table-empty">Loading reversals…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1083,7 +1037,6 @@
 
     </main>
 
-    <!-- ─── FOOTER ────────────────────────────────────────────── -->
     <footer class="site-footer">
         <div class="footer-inner">
             <div class="footer-columns">
@@ -1143,14 +1096,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
     <script>
-        // ─── Trader display-name (DEV PLACEHOLDER) ───────────────
-        // The Trader column shows a Steam display name. Production has no
-        // such field yet — see PRD §6.4 / D-open-N (pending Zach): sourcing
-        // real names will likely route through Steam's GetPlayerSummaries
-        // (rate-limited, needs caching) or a separate steam_users table.
-        // Until that decision lands, we synthesize a stable fake name from
-        // the steam_id on the client. Same id → same name across reloads.
-        // Remove this block when real names ship.
+        // Dev placeholder: deterministic fake Steam display names derived
+        // from steam_id. Remove when real names ship (PRD §14 D-open-4).
         const TRADER_ADJECTIVES = [
             'Shadow', 'Golden', 'Crimson', 'Frozen', 'Stealth', 'Iron', 'Silent',
             'Quick', 'Rogue', 'Mighty', 'Phantom', 'Toxic', 'Wild', 'Lone', 'Lucky',
@@ -1168,7 +1115,6 @@
         ];
 
         function fakeTraderName(steamId) {
-            // djb2 over the steam_id string. Stable and well-distributed.
             const s = String(steamId);
             let h = 5381;
             for (let i = 0; i < s.length; i++) {
@@ -1182,7 +1128,6 @@
             return `${adj}${noun}${suf}`;
         }
 
-        // ─── DOM refs ────────────────────────────────────────────
         const els = {
             searchForm: document.getElementById('searchForm'),
             steamIdInput: document.getElementById('steamIdInput'),
@@ -1201,15 +1146,14 @@
             loadMoreBtn: document.getElementById('loadMoreBtn'),
         };
 
-        // ─── Helpers ─────────────────────────────────────────────
         const fmtNumber = new Intl.NumberFormat('en-US');
 
         function formatDate(ms) {
             if (!ms) return '';
             const d = new Date(ms);
-            return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+            return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' })
                 + ', '
-                + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
         }
 
         function setKpi(el, value) {
@@ -1222,7 +1166,6 @@
             el.classList.add('skeleton');
         }
 
-        // ─── KPI summary ─────────────────────────────────────────
         async function loadSummary() {
             try {
                 const r = await fetch('/api/v1/stats/summary');
@@ -1239,7 +1182,6 @@
             }
         }
 
-        // ─── Annotation events (CS2 release timeline) ────────────
         // Loaded once from /static/cs2-events.json. Re-rendered on each
         // chart redraw (period change) and on resize. See PRD §6.3 for
         // the editorial intent.
@@ -1359,7 +1301,6 @@
             });
         }
 
-        // ─── Reversal Graph (uPlot) ──────────────────────────────
         let chartInstance = null;
         let chartTooltip = null;
 
@@ -1385,6 +1326,10 @@
 
         function renderChart(daily, days) {
             els.chartContainer.classList.remove('is-empty', 'is-error');
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
             els.chartContainer.innerHTML = '';
             chartTooltip = null;
 
@@ -1393,7 +1338,6 @@
                 return;
             }
 
-            // x = unix seconds (uPlot convention), y = count
             const xs = new Array(daily.length);
             const ys = new Array(daily.length);
             for (let i = 0; i < daily.length; i++) {
@@ -1436,9 +1380,6 @@
                         stroke: '#5a6068',
                         grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
                         ticks: { show: false },
-                        // Period-aware tick cadence. See xIncrs above for
-                        // why this matters. `space: 70` keeps any window
-                        // from over-crowding (smallest tick gap ≥ 70px).
                         space: 70,
                         incrs: xIncrs,
                         values: (u, splits) => splits.map(s => {
@@ -1504,7 +1445,6 @@
                     ],
                     setSeries: [
                         (u, _seriesIdx, opts) => {
-                            // Fired when the cursor leaves the chart area.
                             if (opts && opts.show === false && chartTooltip) {
                                 chartTooltip.classList.remove('visible');
                             }
@@ -1514,14 +1454,12 @@
             };
 
             chartInstance = new uPlot(opts, [xs, ys], els.chartContainer);
-
-            // Hide tooltip when the pointer leaves the chart container.
-            els.chartContainer.addEventListener('mouseleave', () => {
-                if (chartTooltip) chartTooltip.classList.remove('visible');
-            });
-
             renderEventChips(chartInstance);
         }
+
+        els.chartContainer.addEventListener('mouseleave', () => {
+            if (chartTooltip) chartTooltip.classList.remove('visible');
+        });
 
         function resizeChart() {
             if (!chartInstance) return;
@@ -1549,6 +1487,11 @@
             } catch (err) {
                 if (seq !== dailyFetchSeq) return;
                 console.error('daily load failed:', err);
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
+                chartTooltip = null;
                 els.chartContainer.classList.add('is-error');
                 els.chartContainer.classList.remove('is-empty');
                 els.chartContainer.textContent = 'Could not load chart.';
@@ -1572,7 +1515,6 @@
             });
         }
 
-        // ─── Recently Reported Reversals ─────────────────────────
         // The /recent endpoint already returns up to 100 rows in one call,
         // so "Load More" is purely client-side reveal (+10 rows per click)
         // until all fetched rows are visible. True server-side pagination
@@ -1625,7 +1567,6 @@
             els.reversalsBody.appendChild(frag);
             recentState.shown = end;
 
-            // Show the button only if more rows are available.
             els.loadMoreBtn.hidden = recentState.shown >= recentState.rows.length;
         }
 
@@ -1665,7 +1606,6 @@
             appendNextPage();
         });
 
-        // ─── Search (existing flow, restyled) ────────────────────
         function clearChip() {
             els.resultChip.classList.remove('visible', 'flagged', 'clear');
             document.body.classList.remove('flagged', 'clear-result');
@@ -1713,7 +1653,6 @@
             if (!steamId) return;
 
             els.searchBtn.disabled = true;
-            const prevIcon = els.searchBtnIcon.textContent;
             els.searchBtnIcon.outerHTML = '<span class="loading" id="searchBtnIcon"></span>';
 
             try {
@@ -1749,17 +1688,14 @@
             }
         });
 
-        // Hide chip when the user edits the input again.
         els.steamIdInput.addEventListener('input', () => {
             clearError();
             if (els.resultChip.classList.contains('visible')) clearChip();
         });
 
-        // ─── Boot ───────────────────────────────────────────────
         window.addEventListener('resize', resizeChart);
         wirePeriodPicker();
 
-        // Fire in parallel — none of them block search.
         loadSummary();
         loadDaily(currentDays);
         loadRecent();

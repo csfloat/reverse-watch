@@ -4,6 +4,29 @@ Rolling log of work sessions on the public dashboard build. Newest at top. Each 
 
 ---
 
+## 2026-05-27 (Wed, morning) — Session #5
+
+**Branch:** `feature/public-dashboard-v1`.
+**Theme:** Pre-review cleanup pass.
+
+- Backend: dropped GORM tags from `domain/dto/stats.go`, collapsed the local `bucket` struct in `DailyCounts`, switched `allowedDays` to a slice + `slices.Contains`, collapsed duplicate `100` limit, trimmed verbose narration comments across `internal/devseed/*` and `server/server.go`. Full test suite green.
+- Frontend (`static/index.html`): three real correctness fixes — `chartInstance.destroy()` before re-render (was leaking uPlot instances), `mouseleave` listener attached once at boot (was duplicating on every period change), `formatDate` now uses `timeZone: 'UTC'` (table dates now match chart). Dead-code sweep: orphan CSS custom properties, unused class rules, dead element IDs, unused JS variables. Comment hygiene: removed ~15 narration comments / section banners; kept the ~6 high-value "why" comments. 1772 → 1705 lines.
+- Docs: appended a "Project Summary (for a reviewer's first pass)" section to `docs/dashboard/ENVIRONMENT.md` — what the branch adds, file map, mermaid request-flow, design decisions, open items, run commands.
+- Pending list unchanged: PR #3 (PostHog), Lighthouse audit, Discord pings to Zach + Razvan.
+
+---
+
+## 2026-05-26 (Tue, late evening) — Session #4
+
+**Branch:** `feature/public-dashboard-v1` (background tweak uncommitted).
+**Theme:** Background atmosphere.
+
+- Tried adding animated SVG background lines/arcs to match Razvan's mock. Didn't work — reverted via `git restore`.
+- Checked prod: the "lines" are just a radial gradient artifact, not real geometry. Adopted the prod approach with a tightened `circle 600px at 50% 80px` so the glow stays around the hero and scrolls away with the page.
+- Pending list unchanged: PR #3 (PostHog), Lighthouse audit, Discord pings to Zach + Razvan.
+
+---
+
 ## 2026-05-26 (Tue, evening) — Session #3
 
 **Duration:** Single sitting.

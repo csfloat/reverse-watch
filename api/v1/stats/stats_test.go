@@ -19,6 +19,7 @@ import (
 	"reverse-watch/secret"
 	"reverse-watch/util"
 
+	"github.com/google/go-cmp/cmp"
 	"gorm.io/gorm"
 )
 
@@ -92,8 +93,8 @@ func TestSummaryHandler(t *testing.T) {
 		TradersFlagged:    2,
 		TradersFlagged24h: 1,
 	}
-	if got != want {
-		t.Errorf("got %+v, want %+v", got, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("SummaryStats mismatch (-want +got):\n%s", diff)
 	}
 }
 

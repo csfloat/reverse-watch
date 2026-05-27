@@ -134,7 +134,7 @@ func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
 		SELECT
 			COUNT(DISTINCT steam_id) AS traders_indexed,
 			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL) AS traders_flagged,
-			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL AND created_at >= ?) AS traders_flagged_24h
+			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL AND created_at >= ?) AS traders_flagged24h
 		FROM reversals
 		WHERE deleted_at IS NULL
 	`, cutoffMs).Scan(&stats).Error
@@ -149,11 +149,7 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	windowStart := today.AddDate(0, 0, -(days - 1))
 
-	type bucket struct {
-		Date  string
-		Count uint64
-	}
-	var rows []bucket
+	var rows []dto.DailyCount
 	err := r.conn.Raw(`
 		SELECT
 			to_char(to_timestamp(reversed_at / 1000) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,

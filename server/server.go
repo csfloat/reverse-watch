@@ -83,8 +83,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.r.ServeHTTP(w, r)
 }
 
-// serveStaticFile returns a handler that serves exactly the file at path
-// with the given content-type. The file is read once per request.
+// serveStaticFile returns a handler that reads the file fresh on every
+// request and writes its bytes with the given content-type.
 func serveStaticFile(path, contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := os.ReadFile(path)
@@ -98,9 +98,8 @@ func serveStaticFile(path, contentType string) http.HandlerFunc {
 	}
 }
 
-// staticDirHandler serves files from baseDir for any request matching
-// the chi wildcard /<prefix>/*. Path traversal is rejected. Content-Type
-// is inferred from the file extension, falling back to content sniffing.
+// staticDirHandler serves files from baseDir under a chi wildcard
+// /<prefix>/*. Path traversal is rejected.
 func staticDirHandler(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rest := strings.TrimPrefix(r.URL.Path, "/static/")
