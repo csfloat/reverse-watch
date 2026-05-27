@@ -82,15 +82,21 @@
             align-items: center;
             gap: 10px;
             font-size: 0.8rem;
+            line-height: 1;
             color: var(--text-secondary);
             margin-bottom: 24px;
             letter-spacing: 0.02em;
         }
 
+        .powered-badge a {
+            display: inline-flex;
+            align-items: center;
+        }
+
         .csfloat-logo {
             height: 20px;
             width: auto;
-            display: inline-block;
+            display: block;
         }
 
         .hero h1 {
@@ -116,6 +122,9 @@
         .search-block {
             max-width: 560px;
             margin: 32px auto 0;
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 10px;
         }
 
         .search-form {
@@ -200,13 +209,10 @@
 
         .result-chip {
             display: none;
-            margin-top: 16px;
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
+            margin-top: 6px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
             border-radius: 14px;
-            padding: 14px 18px;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
@@ -215,16 +221,6 @@
 
         .result-chip.visible {
             display: flex;
-        }
-
-        .result-chip.flagged {
-            border-color: rgba(244, 33, 46, 0.35);
-            box-shadow: 0 8px 24px rgba(244, 33, 46, 0.10);
-        }
-
-        .result-chip.clear {
-            border-color: rgba(0, 186, 124, 0.35);
-            box-shadow: 0 8px 24px rgba(0, 186, 124, 0.10);
         }
 
         .result-chip .chip-meta {
@@ -357,7 +353,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 14px;
             padding: 20px 24px;
-            text-align: left;
+            text-align: center;
         }
 
         .kpi-card .kpi-label {
@@ -830,13 +826,30 @@
             margin-top: 40px;
             padding-top: 24px;
             border-top: 1px solid var(--border);
-            text-align: center;
             color: var(--text-muted);
             font-size: 0.85rem;
+            line-height: 1;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 12px;
+        }
+
+        footer.site-footer .footer-powered {
+            display: inline-flex;
+            align-items: center;
             gap: 8px;
+        }
+
+        footer.site-footer .footer-powered a {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        footer.site-footer .footer-disclaimer {
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
 
         /* ─── MOBILE ─────────────────────────────────────────────────── */
@@ -1007,7 +1020,6 @@
                         </button>
                     </div>
                 </form>
-                <p class="search-helper">Enter a 64-bit Steam ID to check their reversal history.</p>
 
                 <div class="result-chip" id="resultChip" role="status" aria-live="polite">
                     <div class="chip-meta">
@@ -1027,6 +1039,8 @@
                     </div>
                     <span class="chip-verdict" id="chipVerdict"></span>
                 </div>
+
+                <p class="search-helper">Enter a 64-bit Steam ID to check their reversal history.</p>
 
                 <div class="search-error" id="searchError" role="alert"></div>
             </div>
@@ -1064,7 +1078,7 @@
                     </div>
                 </div>
                 <p class="block-subtitle">
-                    Total reversal volume across the selected window. Updated every minute.
+                    Total reversals across the selected time period.
                 </p>
             </div>
             <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart"></div>
@@ -1073,10 +1087,10 @@
         <section class="block">
             <div class="block-header">
                 <div class="block-title-row">
-                    <h2>Recently Reported Reversals</h2>
+                    <h2>Recent Reversals</h2>
                 </div>
                 <p class="block-subtitle">
-                    The 100 most recent reversals reported to the database.
+                    The most recent reversals reported to the database.
                     Search by Steam ID above to look up a specific trader.
                 </p>
             </div>
@@ -1118,7 +1132,7 @@
                     </p>
                     <p>
                         For faster access while browsing, reverse.watch is also integrated into
-                        our extension.
+                        the CSFloat extension.
                     </p>
                     <div class="footer-cta-row">
                         <a class="footer-cta" href="https://csfloat.com" target="_blank" rel="noopener">
@@ -1152,10 +1166,13 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <span>Powered by</span>
-                <a href="https://csfloat.com" target="_blank" rel="noopener" aria-label="CSFloat">
-                    <img class="csfloat-logo" src="/static/csfloat-logo.png" alt="CSFloat" width="116" height="36">
-                </a>
+                <div class="footer-powered">
+                    <span>Powered by</span>
+                    <a href="https://csfloat.com" target="_blank" rel="noopener" aria-label="CSFloat">
+                        <img class="csfloat-logo" src="/static/csfloat-logo.png" alt="CSFloat" width="116" height="36">
+                    </a>
+                </div>
+                <p class="footer-disclaimer">Reverse.Watch 2026. Not affiliated with Valve Corp.</p>
             </div>
         </div>
     </footer>
