@@ -232,24 +232,71 @@
             align-items: center;
             gap: 12px;
             min-width: 0;
+            flex: 1;
         }
 
-        .result-chip .chip-meta .chip-steam {
+        .result-chip .chip-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #fff;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+            flex-shrink: 0;
+        }
+
+        .result-chip .chip-user {
             display: flex;
             flex-direction: column;
+            align-items: flex-start;
             min-width: 0;
+            gap: 2px;
         }
 
-        .result-chip .chip-steam .chip-steam-id {
-            font-weight: 600;
-            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
-            font-size: 0.95rem;
+        .result-chip .chip-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-chip .chip-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        .result-chip .chip-steam .chip-when {
+        .result-chip .chip-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: background 0.15s ease, color 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .result-chip .chip-link:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+        }
+
+        .result-chip .chip-link img {
+            width: 13px;
+            height: 13px;
+            display: block;
+            opacity: 0.85;
+        }
+
+        .result-chip .chip-when {
             color: var(--text-muted);
             font-size: 0.8rem;
         }
@@ -868,6 +915,16 @@
                 grid-template-columns: 1fr;
                 gap: 28px;
             }
+
+            .result-chip.visible {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .result-chip .chip-verdict {
+                align-self: flex-start;
+            }
         }
 
         /* ─── ANIMATIONS ─────────────────────────────────────────────── */
@@ -954,8 +1011,17 @@
 
                 <div class="result-chip" id="resultChip" role="status" aria-live="polite">
                     <div class="chip-meta">
-                        <div class="chip-steam">
-                            <span class="chip-steam-id" id="chipSteamId"></span>
+                        <div class="chip-avatar" id="chipAvatar"></div>
+                        <div class="chip-user">
+                            <div class="chip-name-row">
+                                <span class="chip-name" id="chipName"></span>
+                                <a class="chip-link" id="chipSteamLink" target="_blank" rel="noopener" aria-label="View on Steam">
+                                    <img src="/static/steam-icon.png" alt="" width="13" height="13">
+                                </a>
+                                <a class="chip-link" id="chipCsfloatLink" target="_blank" rel="noopener" aria-label="View on CSFloat">
+                                    <img src="/static/csfloat-icon.png" alt="" width="13" height="13">
+                                </a>
+                            </div>
                             <span class="chip-when" id="chipWhen"></span>
                         </div>
                     </div>
@@ -1135,7 +1201,10 @@
             searchBtnIcon: document.getElementById('searchBtnIcon'),
             searchError: document.getElementById('searchError'),
             resultChip: document.getElementById('resultChip'),
-            chipSteamId: document.getElementById('chipSteamId'),
+            chipAvatar: document.getElementById('chipAvatar'),
+            chipName: document.getElementById('chipName'),
+            chipSteamLink: document.getElementById('chipSteamLink'),
+            chipCsfloatLink: document.getElementById('chipCsfloatLink'),
             chipWhen: document.getElementById('chipWhen'),
             chipVerdict: document.getElementById('chipVerdict'),
             kpiIndexed: document.getElementById('kpiIndexed'),
@@ -1621,8 +1690,25 @@
             els.searchError.textContent = '';
         }
 
+        function avatarGradient(steamId) {
+            const s = String(steamId);
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) {
+                h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+            }
+            const hue = h % 360;
+            return `linear-gradient(135deg, hsl(${hue}, 55%, 48%), hsl(${(hue + 60) % 360}, 60%, 32%))`;
+        }
+
         function showChip({ steamId, flagged, lastReversalMs }) {
-            els.chipSteamId.textContent = steamId;
+            // Display name + avatar are dev placeholders until real Steam
+            // profile data is sourced (PRD §14 D-open-4).
+            const name = fakeTraderName(steamId);
+            els.chipName.textContent = name;
+            els.chipAvatar.textContent = name.charAt(0).toUpperCase();
+            els.chipAvatar.style.background = avatarGradient(steamId);
+            els.chipSteamLink.href = 'https://steamcommunity.com/profiles/' + encodeURIComponent(steamId);
+            els.chipCsfloatLink.href = 'https://csfloat.com/stall/' + encodeURIComponent(steamId);
             els.chipWhen.textContent = flagged && lastReversalMs
                 ? 'Last reversal ' + formatDate(lastReversalMs)
                 : '';
