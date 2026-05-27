@@ -812,6 +812,240 @@ func TestReversalRepository_List(t *testing.T) {
 	}
 }
 
+func TestReversalRepository_SummaryStats(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := uint64(time.Now().UnixMilli())
+	hourMs := uint64(60 * 60 * 1000)
+	withinDay := now - hourMs       // -1h: counts as "last 24h"
+	olderThanDay := now - 36*hourMs // -36h: outside "last 24h"
+
+	// A: 1 non-expunged within 24h + 1 non-expunged older  -> indexed, flagged, flagged_24h
+	// B: 1 expunged within 24h + 1 non-expunged older      -> indexed, flagged (not 24h)
+	// C: 1 expunged older                                  -> indexed only
+	// D: 1 non-expunged within 24h                         -> indexed, flagged, flagged_24h
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat-2",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(now),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat-2",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(now - 24*hourMs),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 6, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+		},
+	)
+
+	got, err := reversalRepo.SummaryStats()
+	if err != nil {
+		t.Fatalf("SummaryStats(): %v", err)
+	}
+	want := &dto.SummaryStats{
+		TradersIndexed:    4,
+		TradersFlagged:    3,
+		TradersFlagged24h: 2,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("SummaryStats() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestReversalRepository_DailyCounts(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	dayMs := func(offset int, addHours int) uint64 {
+		return uint64(today.AddDate(0, 0, offset).Add(time.Duration(addHours) * time.Hour).UnixMilli())
+	}
+
+	// today:    2 non-expunged (very early today, safely past)
+	// today-1:  1 non-expunged + 1 expunged (excluded)
+	// today-2:  1 non-expunged
+	// today-3:  1 non-expunged (outside days=3 window)
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.UnixMilli()) + 1,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.UnixMilli()) + 2,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-1, 12),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: dayMs(-1, 15)},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-1, 15),
+			ExpungedAt:      util.Ptr(dayMs(-1, 16)),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-2, 5),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 6},
+			SteamID:         models.SteamID(76561197960287935),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-3, 1),
+		},
+	)
+
+	got, err := reversalRepo.DailyCounts(3)
+	if err != nil {
+		t.Fatalf("DailyCounts(3): %v", err)
+	}
+	want := []dto.DailyCount{
+		{Date: today.AddDate(0, 0, -2).Format("2006-01-02"), Count: 1},
+		{Date: today.AddDate(0, 0, -1).Format("2006-01-02"), Count: 1},
+		{Date: today.Format("2006-01-02"), Count: 2},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("DailyCounts(3) mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestReversalRepository_DailyCounts_ZeroFill(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	got, err := reversalRepo.DailyCounts(5)
+	if err != nil {
+		t.Fatalf("DailyCounts(5): %v", err)
+	}
+	if len(got) != 5 {
+		t.Fatalf("DailyCounts(5): got %d buckets, want 5", len(got))
+	}
+	for i, b := range got {
+		wantDate := today.AddDate(0, 0, -(4 - i)).Format("2006-01-02")
+		if b.Date != wantDate {
+			t.Errorf("bucket[%d].Date = %q, want %q", i, b.Date, wantDate)
+		}
+		if b.Count != 0 {
+			t.Errorf("bucket[%d].Count = %d, want 0", i, b.Count)
+		}
+	}
+}
+
+func TestReversalRepository_ListRecent(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	base := models.Epoch + 1000
+
+	// 5 rows with strictly increasing CreatedAt. Row id=3 is expunged.
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: base + 100},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: base + 200},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: base + 300},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(base + 400),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: base + 500},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5, CreatedAt: base + 600},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+		},
+	)
+
+	testCases := []struct {
+		name    string
+		limit   int
+		wantIDs []models.Snowflake
+	}{
+		{
+			name:    "newestFirstExcludingExpunged",
+			limit:   10,
+			wantIDs: []models.Snowflake{5, 4, 2, 1},
+		},
+		{
+			name:    "respectsLimit",
+			limit:   2,
+			wantIDs: []models.Snowflake{5, 4},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := reversalRepo.ListRecent(tc.limit)
+			if err != nil {
+				t.Fatalf("ListRecent(%d): %v", tc.limit, err)
+			}
+			if len(got) != len(tc.wantIDs) {
+				t.Fatalf("ListRecent(%d): got %d rows, want %d", tc.limit, len(got), len(tc.wantIDs))
+			}
+			for i, wantID := range tc.wantIDs {
+				if got[i].ID != wantID {
+					t.Errorf("ListRecent(%d)[%d].ID = %d, want %d", tc.limit, i, got[i].ID, wantID)
+				}
+			}
+		})
+	}
+}
+
 func TestReversalRepository_List_Pagination(t *testing.T) {
 	t.Parallel()
 

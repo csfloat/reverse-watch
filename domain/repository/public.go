@@ -13,4 +13,8 @@ type ReversalRepository interface {
 	Delete(id models.Snowflake) error
 	DeleteAllUserReports(steamId models.SteamID) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
+
+	SummaryStats() (*dto.SummaryStats, error)
+	DailyCounts(days int) ([]dto.DailyCount, error)
+	ListRecent(limit int) ([]*models.Reversal, error)
 }
