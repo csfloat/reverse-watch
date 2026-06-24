@@ -13,7 +13,10 @@ type ReversalListOptions struct {
 	Cursor          *Cursor
 	Limit           *uint
 	OrderParam      *OrderParam
-	ExcludeExpunged bool
+	// SecondaryOrderParam is an optional tiebreaker applied after OrderParam,
+	// producing deterministic, stable ordering when the primary column has ties.
+	SecondaryOrderParam *OrderParam
+	ExcludeExpunged     bool
 }
 
 type ReversalUpdates struct {

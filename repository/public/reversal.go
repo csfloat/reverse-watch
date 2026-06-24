@@ -96,6 +96,14 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 
 		query = query.Order(orderBy)
 	}
+	if opts.SecondaryOrderParam != nil {
+		tiebreaker := clause.OrderByColumn{
+			Column: clause.Column{Name: opts.SecondaryOrderParam.Column},
+			Desc:   opts.SecondaryOrderParam.Direction == dto.DESC,
+		}
+
+		query = query.Order(tiebreaker)
+	}
 
 	if opts.SteamID.IsValid() {
 		query = query.Where("steam_id = ?", opts.SteamID)

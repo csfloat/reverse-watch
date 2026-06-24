@@ -812,6 +812,63 @@ func TestReversalRepository_List(t *testing.T) {
 	}
 }
 
+func TestReversalRepository_List_SecondaryOrder(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	base := models.Epoch + 1000
+
+	// id=3 is a backfill row: highest id but the oldest reversed_at, so it must
+	// sort last under reversed_at DESC. id=1 and id=2 share a reversed_at to
+	// exercise the id DESC tiebreaker (id=2 must come before id=1).
+	id1 := &models.Reversal{
+		Model:           models.Model{ID: 1},
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 100,
+	}
+	id2 := &models.Reversal{
+		Model:           models.Model{ID: 2},
+		SteamID:         models.SteamID(76561197960287931),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 100,
+	}
+	id3 := &models.Reversal{
+		Model:           models.Model{ID: 3},
+		SteamID:         models.SteamID(76561197960287932),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 50,
+	}
+	id4 := &models.Reversal{
+		Model:           models.Model{ID: 4},
+		SteamID:         models.SteamID(76561197960287933),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 500,
+	}
+	testutil.Insert(t, db, id1, id2, id3, id4)
+
+	got, err := reversalRepo.List(&dto.ReversalListOptions{
+		OrderParam: &dto.OrderParam{
+			Column:    "reversed_at",
+			Direction: dto.DESC,
+		},
+		SecondaryOrderParam: &dto.OrderParam{
+			Column:    "id",
+			Direction: dto.DESC,
+		},
+	})
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+
+	want := []*models.Reversal{id4, id2, id1, id3}
+	if diff := cmp.Diff(got, want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestReversalRepository_SummaryStats(t *testing.T) {
 	t.Parallel()
 

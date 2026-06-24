@@ -268,7 +268,15 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 
 	opts := &dto.ReversalListOptions{
 		Limit: &limit,
+		// Order by when the reversal actually occurred so the feed agrees with
+		// the daily stats (which bucket on reversed_at) and "latest reversals"
+		// semantics. id DESC is a deterministic tiebreaker for stable ordering
+		// (e.g. backfilled rows with a high id but older reversed_at).
 		OrderParam: &dto.OrderParam{
+			Column:    "reversed_at",
+			Direction: dto.DESC,
+		},
+		SecondaryOrderParam: &dto.OrderParam{
 			Column:    "id",
 			Direction: dto.DESC,
 		},

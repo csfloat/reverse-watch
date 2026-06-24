@@ -43,33 +43,43 @@ func TestListRecentHandler(t *testing.T) {
 
 	base := models.Epoch + 1000
 
-	// 5 rows, monotonically increasing CreatedAt. Row id=3 is expunged.
+	// 5 rows. The feed orders by reversed_at DESC, id DESC. CreatedAt is set
+	// in ascending id order (i.e. ingest order) to prove the feed does NOT use
+	// id/ingest order. Row id=3 is expunged and must be excluded. Row id=5 is a
+	// backfill case: it has the highest id but the oldest reversed_at, so it
+	// must sort last rather than first. Rows id=1 and id=4 share a reversed_at
+	// to exercise the id DESC tiebreaker (id=4 must come before id=1).
 	testutil.Insert(t, db,
 		&models.Reversal{
 			Model:           models.Model{ID: 1, CreatedAt: base + 100},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 100,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 2, CreatedAt: base + 200},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 500,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 3, CreatedAt: base + 300},
 			SteamID:         models.SteamID(76561197960287932),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 900,
 			ExpungedAt:      util.Ptr(base + 400),
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 4, CreatedAt: base + 500},
 			SteamID:         models.SteamID(76561197960287933),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 100,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 5, CreatedAt: base + 600},
 			SteamID:         models.SteamID(76561197960287934),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 50,
 		},
 	)
 
@@ -88,10 +98,10 @@ func TestListRecentHandler(t *testing.T) {
 	}
 
 	wantSteamIDs := []models.SteamID{
-		76561197960287934, // id=5
-		76561197960287933, // id=4
-		76561197960287931, // id=2
-		76561197960287930, // id=1
+		76561197960287931, // id=2, reversed_at=base+500
+		76561197960287933, // id=4, reversed_at=base+100 (id tiebreaker over id=1)
+		76561197960287930, // id=1, reversed_at=base+100
+		76561197960287934, // id=5, reversed_at=base+50 (backfill: high id, oldest)
 	}
 	if len(body.Data) != len(wantSteamIDs) {
 		t.Fatalf("len(data) = %d, want %d", len(body.Data), len(wantSteamIDs))
