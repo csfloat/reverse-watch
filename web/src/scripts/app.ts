@@ -79,7 +79,7 @@ async function loadSummary() {
         const r = await fetch('/api/v1/stats/summary');
         if (!r.ok) throw new Error('summary ' + r.status);
         const data = await r.json();
-        setKpi(els.kpiIndexed, data.traders_indexed ?? 0);
+        setKpi(els.kpiIndexed, data.steam_ids_searched ?? 0);
         setKpi(els.kpiFlagged, data.traders_flagged ?? 0);
         setKpi(els.kpiFlagged24h, data.traders_flagged_24h ?? 0);
     } catch (err) {
