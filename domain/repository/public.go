@@ -16,5 +16,4 @@ type ReversalRepository interface {
 
 	SummaryStats() (*dto.SummaryStats, error)
 	DailyCounts(days int) ([]dto.DailyCount, error)
-	ListRecent(limit int) ([]*models.Reversal, error)
 }

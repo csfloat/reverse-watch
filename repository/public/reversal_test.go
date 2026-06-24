@@ -973,7 +973,7 @@ func TestReversalRepository_DailyCounts_ZeroFill(t *testing.T) {
 	}
 }
 
-func TestReversalRepository_ListRecent(t *testing.T) {
+func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.NewTestDB(t)
@@ -1013,33 +1013,46 @@ func TestReversalRepository_ListRecent(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		limit   int
+		opts    *dto.ReversalListOptions
 		wantIDs []models.Snowflake
 	}{
 		{
-			name:    "newestFirstExcludingExpunged",
-			limit:   10,
+			name: "newestFirstExcludingExpunged",
+			opts: &dto.ReversalListOptions{
+				ExcludeExpunged: true,
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+			},
 			wantIDs: []models.Snowflake{5, 4, 2, 1},
 		},
 		{
-			name:    "respectsLimit",
-			limit:   2,
+			name: "respectsLimit",
+			opts: &dto.ReversalListOptions{
+				ExcludeExpunged: true,
+				Limit:           util.Ptr[uint](2),
+				OrderParam: &dto.OrderParam{
+					Column:    "id",
+					Direction: dto.DESC,
+				},
+			},
 			wantIDs: []models.Snowflake{5, 4},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := reversalRepo.ListRecent(tc.limit)
+			got, err := reversalRepo.List(tc.opts)
 			if err != nil {
-				t.Fatalf("ListRecent(%d): %v", tc.limit, err)
+				t.Fatalf("List(): %v", err)
 			}
 			if len(got) != len(tc.wantIDs) {
-				t.Fatalf("ListRecent(%d): got %d rows, want %d", tc.limit, len(got), len(tc.wantIDs))
+				t.Fatalf("List(): got %d rows, want %d", len(got), len(tc.wantIDs))
 			}
 			for i, wantID := range tc.wantIDs {
 				if got[i].ID != wantID {
-					t.Errorf("ListRecent(%d)[%d].ID = %d, want %d", tc.limit, i, got[i].ID, wantID)
+					t.Errorf("List()[%d].ID = %d, want %d", i, got[i].ID, wantID)
 				}
 			}
 		})

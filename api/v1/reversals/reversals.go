@@ -256,17 +256,26 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 
 	const maxRecentLimit = 100
 
-	limit := maxRecentLimit
+	limit := uint(maxRecentLimit)
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
 		if err != nil || parsed <= 0 || parsed > maxRecentLimit {
 			render.Errorf(w, r, errors.BadRequest, "limit must be between 1 and %d", maxRecentLimit)
 			return
 		}
-		limit = parsed
+		limit = uint(parsed)
 	}
 
-	reversals, err := factory.Reversal().ListRecent(limit)
+	opts := &dto.ReversalListOptions{
+		Limit: &limit,
+		OrderParam: &dto.OrderParam{
+			Column:    "id",
+			Direction: dto.DESC,
+		},
+		ExcludeExpunged: true,
+	}
+
+	reversals, err := factory.Reversal().List(opts)
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list recent reversals")
 		return

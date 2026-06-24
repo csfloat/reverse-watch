@@ -13,6 +13,7 @@ type ReversalListOptions struct {
 	Cursor          *Cursor
 	Limit           *uint
 	OrderParam      *OrderParam
+	ExcludeExpunged bool
 }
 
 type ReversalUpdates struct {

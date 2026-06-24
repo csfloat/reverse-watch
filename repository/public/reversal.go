@@ -103,6 +103,9 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
 	}
+	if opts.ExcludeExpunged {
+		query = query.Where("expunged_at IS NULL")
+	}
 	if opts.Cursor != nil {
 		// Adjust direction based on order specified
 		if desc {
@@ -176,17 +179,4 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 		result = append(result, dto.DailyCount{Date: key, Count: byDate[key]})
 	}
 	return result, nil
-}
-
-func (r *reversalRepository) ListRecent(limit int) ([]*models.Reversal, error) {
-	var reversals []*models.Reversal
-	err := r.conn.Model(&models.Reversal{}).
-		Where("expunged_at IS NULL").
-		Order("created_at DESC").
-		Limit(limit).
-		Find(&reversals).Error
-	if err != nil {
-		return nil, err
-	}
-	return reversals, nil
 }

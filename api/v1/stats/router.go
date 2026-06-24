@@ -10,8 +10,10 @@ import (
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	throttle := ratelimit.ThrottleByIP(time.Minute, 60)
-	r.With(throttle).Get("/summary", summaryHandler)
-	r.With(throttle).Get("/reversals/daily", dailyHandler)
+	r.Group(func(r chi.Router) {
+		r.Use(ratelimit.ThrottleByIP(time.Minute, 60))
+		r.Get("/summary", summaryHandler)
+		r.Get("/reversals/daily", dailyHandler)
+	})
 	return r
 }

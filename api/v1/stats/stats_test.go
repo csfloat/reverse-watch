@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -22,10 +21,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"gorm.io/gorm"
 )
-
-func resetCache() {
-	cache = sync.Map{}
-}
 
 func buildHandlerStack(t *testing.T) (http.Handler, *gorm.DB) {
 	t.Helper()
@@ -47,8 +42,6 @@ func buildHandlerStack(t *testing.T) (http.Handler, *gorm.DB) {
 }
 
 func TestSummaryHandler(t *testing.T) {
-	resetCache()
-
 	handler, db := buildHandlerStack(t)
 
 	now := uint64(time.Now().UnixMilli())
@@ -98,50 +91,7 @@ func TestSummaryHandler(t *testing.T) {
 	}
 }
 
-func TestSummaryHandler_Caches(t *testing.T) {
-	resetCache()
-
-	handler, db := buildHandlerStack(t)
-
-	now := uint64(time.Now().UnixMilli())
-	testutil.Insert(t, db,
-		&models.Reversal{
-			Model:           models.Model{ID: 1, CreatedAt: now - 60*60*1000},
-			SteamID:         models.SteamID(76561197960287930),
-			MarketplaceSlug: "csfloat",
-		},
-	)
-
-	hit := func() dto.SummaryStats {
-		r := httptest.NewRequest(http.MethodGet, "/summary", nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-		var s dto.SummaryStats
-		if err := json.NewDecoder(w.Result().Body).Decode(&s); err != nil {
-			t.Fatalf("decode: %v", err)
-		}
-		return s
-	}
-
-	first := hit()
-
-	testutil.Insert(t, db,
-		&models.Reversal{
-			Model:           models.Model{ID: 2, CreatedAt: now - 30*60*1000},
-			SteamID:         models.SteamID(76561197960287931),
-			MarketplaceSlug: "csfloat",
-		},
-	)
-
-	second := hit()
-	if second != first {
-		t.Errorf("expected cached response unchanged: first=%+v second=%+v", first, second)
-	}
-}
-
 func TestDailyHandler(t *testing.T) {
-	resetCache()
-
 	handler, db := buildHandlerStack(t)
 
 	now := time.Now().UTC()
@@ -195,7 +145,6 @@ func TestDailyHandler(t *testing.T) {
 }
 
 func TestDailyHandler_InvalidDays(t *testing.T) {
-	resetCache()
 	handler, _ := buildHandlerStack(t)
 
 	const wantDetails = "days must be one of 7, 30, 60, 90, 180, 365"
@@ -236,7 +185,6 @@ func TestDailyHandler_AcceptedDays(t *testing.T) {
 	for _, days := range []int{7, 30, 60, 90, 180, 365} {
 		days := days
 		t.Run(strconv.Itoa(days), func(t *testing.T) {
-			resetCache()
 			handler, _ := buildHandlerStack(t)
 
 			r := httptest.NewRequest(http.MethodGet, "/reversals/daily?days="+strconv.Itoa(days), nil)
@@ -259,7 +207,6 @@ func TestDailyHandler_AcceptedDays(t *testing.T) {
 }
 
 func TestDailyHandler_DefaultDays(t *testing.T) {
-	resetCache()
 	handler, _ := buildHandlerStack(t)
 
 	r := httptest.NewRequest(http.MethodGet, "/reversals/daily", nil)
