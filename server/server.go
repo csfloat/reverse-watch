@@ -60,8 +60,16 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 
 	r.Use(rwmiddleware.FactoryMiddleware(factory))
 
+	// Serve the Astro-built dashboard from web/dist. `npm run build`
+	// emits the hashed bundles under web/dist/_astro and copies
+	// public/static verbatim to web/dist/static, so we hand both
+	// prefixes to a single FileServer and fall back to index.html for
+	// the root document.
+	fs := http.FileServer(http.Dir("web/dist"))
+	r.Handle("/static/*", fs)
+	r.Handle("/_astro/*", fs)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/index.html")
+		http.ServeFile(w, r, "web/dist/index.html")
 	})
 
 	r.Mount("/api", api.Router())

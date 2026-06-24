@@ -12,3 +12,7 @@ static/*.db-wal
 
 .secrets
 .env
+
+web/dist/
+web/node_modules/
+web/.astro/

@@ -1,0 +1,49 @@
+---
+// Steam-ID search form, result chip (avatar + display name + Steam/CSFloat
+// profile links + verdict) and inline error. All wiring lives in
+// src/scripts/app.ts, keyed off the element IDs below.
+---
+<div class="search-block">
+    <form id="searchForm" class="search-form" autocomplete="off">
+        <div class="search-input-wrap">
+            <span class="search-icon" aria-hidden="true">
+                <span class="material-symbols-outlined">search</span>
+            </span>
+            <input
+                type="text"
+                id="steamIdInput"
+                placeholder="Steam ID (e.g. 76561198012345678)"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                required
+                aria-label="Steam ID"
+            />
+            <button type="submit" id="searchBtn" aria-label="Search">
+                <span class="material-symbols-outlined" id="searchBtnIcon">arrow_forward</span>
+            </button>
+        </div>
+    </form>
+
+    <div class="result-chip" id="resultChip" role="status" aria-live="polite">
+        <div class="chip-meta">
+            <div class="chip-avatar" id="chipAvatar"></div>
+            <div class="chip-user">
+                <div class="chip-name-row">
+                    <span class="chip-name" id="chipName"></span>
+                    <a class="chip-link" id="chipSteamLink" target="_blank" rel="noopener" aria-label="View on Steam">
+                        <img src="/static/steam-icon.png" alt="" width="13" height="13">
+                    </a>
+                    <a class="chip-link" id="chipCsfloatLink" target="_blank" rel="noopener" aria-label="View on CSFloat">
+                        <img src="/static/csfloat-icon.png" alt="" width="13" height="13">
+                    </a>
+                </div>
+                <span class="chip-when" id="chipWhen"></span>
+            </div>
+        </div>
+        <span class="chip-verdict" id="chipVerdict"></span>
+    </div>
+
+    <p class="search-helper">Enter a 64-bit Steam ID to check their reversal history.</p>
+
+    <div class="search-error" id="searchError" role="alert"></div>
+</div>

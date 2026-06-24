@@ -1,6 +1,6 @@
 # [reverse.watch](https://reverse.watch)
 
-Community-driven open trade reversal tracking database for Steam. Participating entities can report trade reversals to the open database, and anyone can browse activity at [reverse.watch](https://reverse.watch) — a public dashboard served from [`static/index.html`](static/index.html) at `/`.
+Community-driven open trade reversal tracking database for Steam. Participating entities can report trade reversals to the open database, and anyone can browse activity at [reverse.watch](https://reverse.watch) — a public dashboard built with [Astro](https://astro.build) in [`web/`](web) and served from `web/dist` at `/`.
 
 ## Interested in Participating?
 
@@ -8,12 +8,16 @@ If you're looking to participate by contributing reversal reports (i.e. marketpl
 
 ## Running Locally
 
-1. Ensure Go 1.24+ and PostgreSQL are installed.
+1. Ensure Go 1.24+, Node 22+, and PostgreSQL are installed.
 2. Copy the config template and fill in your local database credentials:
    ```bash
    cp config.example.json config.json
    ```
-3. Run the service:
+3. Build the dashboard (emits `web/dist`, which the server serves at `/`):
+   ```bash
+   cd web && npm ci && npm run build && cd ..
+   ```
+4. Run the service:
    ```bash
    go run main.go
    ```

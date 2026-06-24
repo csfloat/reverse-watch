@@ -1,0 +1,21 @@
+---
+// Summary KPI cards, populated from /api/v1/stats/summary in app.ts.
+---
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <!-- "Steam IDs Searched" is the user-facing rename of the
+             underlying `traders_indexed` field (distinct steam_ids
+             present in the reversals index). The JSON contract is
+             unchanged. -->
+        <div class="kpi-label">Steam IDs Searched</div>
+        <div class="kpi-value skeleton" id="kpiIndexed">—</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Traders Flagged</div>
+        <div class="kpi-value skeleton" id="kpiFlagged">—</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Traders Flagged (24h)</div>
+        <div class="kpi-value skeleton" id="kpiFlagged24h">—</div>
+    </div>
+</div>

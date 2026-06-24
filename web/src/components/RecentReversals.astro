@@ -1,0 +1,34 @@
+---
+// Recent reversals table with client-side "Load More" paging. Rows are
+// fetched once from /api/v1/reversals/recent and revealed in app.ts.
+---
+<section class="block">
+    <div class="block-header">
+        <div class="block-title-row">
+            <h2>Recent Reversals</h2>
+        </div>
+        <p class="block-subtitle">
+            The most recent reversals reported to the database.
+            Search by Steam ID above to look up a specific trader.
+        </p>
+    </div>
+    <div class="reversals-table-wrap">
+        <table class="reversals-table">
+            <thead>
+                <tr>
+                    <th class="col-trader" scope="col">Trader</th>
+                    <th class="col-steam-id" scope="col">Steam ID</th>
+                    <th class="col-date" scope="col">Date Added</th>
+                </tr>
+            </thead>
+            <tbody id="reversalsBody">
+                <tr><td colspan="3" class="table-empty">Loading reversals…</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="load-more-wrap">
+        <button class="load-more-btn" id="loadMoreBtn" type="button" hidden>
+            Load More
+        </button>
+    </div>
+</section>
