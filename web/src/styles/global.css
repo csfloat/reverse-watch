@@ -227,11 +227,13 @@ main.container {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    color: #fff;
-    font-size: 1rem;
-    letter-spacing: 0.02em;
+    background: var(--bg-card-solid);
+    color: var(--text-secondary);
     flex-shrink: 0;
+}
+
+.result-chip .chip-avatar .material-symbols-outlined {
+    font-size: 22px;
 }
 
 .result-chip .chip-user {

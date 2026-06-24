@@ -1,38 +1,6 @@
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 
-// Dev placeholder: deterministic fake Steam display names derived
-// from steam_id. Remove when real names ship (PRD §14 D-open-4).
-const TRADER_ADJECTIVES = [
-    'Shadow', 'Golden', 'Crimson', 'Frozen', 'Stealth', 'Iron', 'Silent',
-    'Quick', 'Rogue', 'Mighty', 'Phantom', 'Toxic', 'Wild', 'Lone', 'Lucky',
-    'Cosmic', 'Royal', 'Savage', 'Mystic', 'Dark', 'Vivid', 'Solar', 'Lunar',
-    'Electric', 'Neon', 'Cyber', 'Mecha', 'Ghost', 'Steel', 'Radiant',
-];
-const TRADER_NOUNS = [
-    'Wolf', 'Hawk', 'Tiger', 'Fox', 'Bear', 'Dragon', 'Phoenix', 'Viper',
-    'Hunter', 'Sniper', 'Ranger', 'Knight', 'Reaper', 'Warden', 'Mage',
-    'Trader', 'Ace', 'Bandit', 'Ninja', 'Samurai', 'Pirate', 'Demon',
-    'Spirit', 'Storm', 'Blade', 'Shadow', 'Wraith', 'Beast', 'Falcon', 'Specter',
-];
-const TRADER_SUFFIXES = [
-    '', '', '', '_HD', '47', '88', '99', '_TR', 'X', 'TV', '_GG', '_RU', 'Z', '03', '13',
-];
-
-function fakeTraderName(steamId) {
-    const s = String(steamId);
-    let h = 5381;
-    for (let i = 0; i < s.length; i++) {
-        h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-    }
-    const adj = TRADER_ADJECTIVES[h % TRADER_ADJECTIVES.length];
-    h = Math.floor(h / TRADER_ADJECTIVES.length);
-    const noun = TRADER_NOUNS[h % TRADER_NOUNS.length];
-    h = Math.floor(h / TRADER_NOUNS.length);
-    const suf = TRADER_SUFFIXES[h % TRADER_SUFFIXES.length];
-    return `${adj}${noun}${suf}`;
-}
-
 const els = {
     searchForm: document.getElementById('searchForm'),
     steamIdInput: document.getElementById('steamIdInput'),
@@ -40,7 +8,6 @@ const els = {
     searchBtnIcon: document.getElementById('searchBtnIcon'),
     searchError: document.getElementById('searchError'),
     resultChip: document.getElementById('resultChip'),
-    chipAvatar: document.getElementById('chipAvatar'),
     chipName: document.getElementById('chipName'),
     chipSteamLink: document.getElementById('chipSteamLink'),
     chipCsfloatLink: document.getElementById('chipCsfloatLink'),
@@ -162,8 +129,15 @@ function paintEventChips(chart) {
     const MAX_ROWS = 3;
     const placed = [];
     let dropped = 0;
+    // valToPos (canvasPixels=false) returns coordinates relative to the
+    // plot area, but chips are absolutely positioned relative to the
+    // chart container, so add the plot-area left inset. bbox.left is in
+    // canvas pixels, so divide by devicePixelRatio to get CSS px. Mirrors
+    // how the area-fill gradient anchors to u.bbox.top.
+    const pxRatio = window.devicePixelRatio || 1;
+    const xOffset = chart.bbox.left / pxRatio;
     for (const ev of inWindow) {
-        const x = chart.valToPos(ev.ts, 'x');
+        const x = chart.valToPos(ev.ts, 'x') + xOffset;
         if (!Number.isFinite(x)) continue;
         let row = 0;
         while (row < MAX_ROWS && placed.some(p => p.row === row && Math.abs(p.x - x) < MIN_GAP)) {
@@ -353,8 +327,13 @@ function renderChart(daily, days) {
                     tt.querySelector('.tt-value').textContent = fmtNumber.format(ct);
                     tt.querySelector('.tt-label').textContent = ct === 1 ? 'reversal' : 'reversals';
 
-                    const x = u.valToPos(ts, 'x');
-                    const y = u.valToPos(ct, 'y');
+                    // valToPos (canvasPixels=false) is relative to the plot
+                    // area; the tooltip is positioned relative to the chart
+                    // container, so add the plot-area inset (bbox is in canvas
+                    // pixels, so divide by devicePixelRatio for CSS px).
+                    const pxRatio = window.devicePixelRatio || 1;
+                    const x = u.valToPos(ts, 'x') + u.bbox.left / pxRatio;
+                    const y = u.valToPos(ct, 'y') + u.bbox.top / pxRatio;
                     // Clamp x so the tooltip stays inside the chart bounds.
                     const rect = els.chartContainer.getBoundingClientRect();
                     const ttRect = tt.getBoundingClientRect();
@@ -507,7 +486,7 @@ function buildReversalRow(row) {
     // steam_id is a uint64 string from the API; keep it as a string
     // so the full precision survives (never parse it as a Number).
     const steamId = String(row.steam_id);
-    tdTrader.querySelector('.trader-name').textContent = fakeTraderName(steamId);
+    tdTrader.querySelector('.trader-name').textContent = steamId;
 
     const tdId = document.createElement('td');
     tdId.className = 'col-steam-id';
@@ -546,27 +525,12 @@ function clearError() {
     els.searchError.textContent = '';
 }
 
-function avatarGradient(steamId) {
-    const s = String(steamId);
-    let h = 5381;
-    for (let i = 0; i < s.length; i++) {
-        h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-    }
-    const hue = h % 360;
-    return `linear-gradient(135deg, hsl(${hue}, 55%, 48%), hsl(${(hue + 60) % 360}, 60%, 32%))`;
-}
-
 function showChip({ steamId, flagged, lastReversalMs }) {
     // Steam IDs are uint64 and exceed Number.MAX_SAFE_INTEGER, so
     // they must stay strings end-to-end — never coerced through
     // Number/parseInt — or the profile links lose precision.
     const id = String(steamId);
-    // Display name + avatar are dev placeholders until real Steam
-    // profile data is sourced (PRD §14 D-open-4).
-    const name = fakeTraderName(id);
-    els.chipName.textContent = name;
-    els.chipAvatar.textContent = name.charAt(0).toUpperCase();
-    els.chipAvatar.style.background = avatarGradient(id);
+    els.chipName.textContent = id;
     els.chipSteamLink.href = 'https://steamcommunity.com/profiles/' + encodeURIComponent(id);
     els.chipCsfloatLink.href = 'https://csfloat.com/stall/' + encodeURIComponent(id);
     els.chipWhen.textContent = flagged && lastReversalMs

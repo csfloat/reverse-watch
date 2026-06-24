@@ -26,15 +26,17 @@
 
     <div class="result-chip" id="resultChip" role="status" aria-live="polite">
         <div class="chip-meta">
-            <div class="chip-avatar" id="chipAvatar"></div>
+            <div class="chip-avatar" id="chipAvatar" aria-hidden="true">
+                <span class="material-symbols-outlined">person</span>
+            </div>
             <div class="chip-user">
                 <div class="chip-name-row">
                     <span class="chip-name" id="chipName"></span>
                     <a class="chip-link" id="chipSteamLink" target="_blank" rel="noopener" aria-label="View on Steam">
-                        <img src="/static/steam-icon.png" alt="" width="13" height="13">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAARVJREFUeAGNVAsNgzAQbWdglcAUDAk4GBJwAA7GFAwHxQFzUKYAHIAD5qC7y67ZhXCFl7w0lNd3P6hWArz3BpYMaGhrBo5a6486AjBIgM7LsKjZMyn9cVSSyX3n4ELZONGMyomhIU1KK3Ii84Qb2YjJRJoOmGMWxJzeu6PZWDqUscCYoWEac4L9VMXxAOLIDds7AxP2nKHRCHxJJvDdzMAeA1J2NZnfmO4fhEpsWRO7LWcq6bkqv1ARcYG9WQUahD5mQYSHkg3D0NSSspRgwgHHJmSYEQaofBwWtTqkDctATWuAb/WbJk7rCiyUjAsOhJfBI1tg7eM/L0L83/bKCFhEk9V02oiJ8xuD0RHD9cWG/eqli+0LHcKW1MgT5WYAAAAASUVORK5CYII=" alt="" width="13" height="13">
                     </a>
                     <a class="chip-link" id="chipCsfloatLink" target="_blank" rel="noopener" aria-label="View on CSFloat">
-                        <img src="/static/csfloat-icon.png" alt="" width="13" height="13">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAARNJREFUeAG1lTEKwkAQRWdFFC0EtVEQ7D2BJ7CwtrD2BB4kRY5hkRN4gtQWnkCwCQoptFCM88kEgiRmJ64ffjaBzcvPZDZriJUkSZOHIbvFblB93dhXY8zTCHT8IzCvF/sMWN8hlIQ1xKFL9dQTF6lVJylgHvsgXhXMaTRJr53AffaEHRZN0oKRbsZelwEzaUuxYcdVUMg2MZLitZH2xN4KPHQBznfAnH38dgMWyJTs5MkDllVQSFNjlCG2gWrAPQFXfjQteC6jc/DiX2AkRptZ1dcWjNqih31SqKyP0VZe7hrQgJRg/Jg/k6OWe0rbKyBFbTNhgYx4bJNb3ZE0ojS1K4F1MTiTfW/A7lB9AfhgR9hM39ApO8DtuBPaAAAAAElFTkSuQmCC" alt="" width="13" height="13">
                     </a>
                 </div>
                 <span class="chip-when" id="chipWhen"></span>
