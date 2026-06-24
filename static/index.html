@@ -1268,24 +1268,38 @@
             }
         }
 
-        // Loaded once from /static/cs2-events.json. Re-rendered on each
-        // chart redraw (period change) and on resize. See PRD §6.3 for
-        // the editorial intent.
-        let cs2Events = [];
+        // Annotation chips that float above the Reversal Graph at the date
+        // of the event. Edit this array directly. Each entry needs `date`
+        // (YYYY-MM-DD, UTC) and `title` (short, shown on the chip).
+        // `description` and `url` are optional and surface in the hover
+        // popover. Chips only render for events that fall inside the
+        // currently-selected period (7d / 30d / 3m / 6m / 1y). When two
+        // chips would overlap, the later one auto-stacks onto a row below;
+        // if more than 3 rows are needed the oldest chips are dropped
+        // (check the browser console). Re-rendered on each chart redraw
+        // (period change) and on resize. See PRD §6.3 for editorial intent.
+        const CS2_EVENTS = [
+            {
+                date: '2026-05-20',
+                title: 'Trade Revert Update',
+                description: 'Valve enabled merchant-led trade reversals for CS2, broadening the set of disputes that route through reverse.watch.',
+                url: '',
+            },
+            {
+                date: '2026-03-08',
+                title: 'Anti-Cheat Wave',
+                description: 'Large VAC ban wave hit account-sharing rings; downstream effect on reversal volume as compromised accounts were flagged.',
+                url: '',
+            },
+            {
+                date: '2025-10-22',
+                title: 'Retake Update',
+                description: 'New Retake game mode re-introduced + users can now use covert skins to trade up to a knife or gloves',
+                url: '',
+            },
+        ];
 
-        async function loadCS2Events() {
-            try {
-                const r = await fetch('/static/cs2-events.json', { cache: 'no-store' });
-                if (!r.ok) return;
-                const json = await r.json();
-                cs2Events = Array.isArray(json.events)
-                    ? json.events.filter(e => e && e.date && e.title)
-                    : [];
-                if (chartInstance) renderEventChips(chartInstance);
-            } catch (err) {
-                console.warn('cs2-events.json failed to load:', err);
-            }
-        }
+        const cs2Events = CS2_EVENTS.filter(e => e && e.date && e.title);
 
         function clearEventChips() {
             els.chartContainer.querySelectorAll('.event-chip').forEach(c => c.remove());
@@ -1339,7 +1353,7 @@
             if (dropped > 0) {
                 console.warn(
                     `cs2-events: ${dropped} chip(s) hidden due to overlap. ` +
-                    `Edit static/cs2-events.json or narrow the chart period to fit more.`
+                    `Edit the CS2_EVENTS array in static/index.html or narrow the chart period to fit more.`
                 );
             }
 
@@ -1491,7 +1505,7 @@
                         width: 2,
                         fill: (u) => {
                             const ctx = u.ctx;
-                            const grad = ctx.createLinearGradient(0, 0, 0, u.bbox.height);
+                            const grad = ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height);
                             grad.addColorStop(0, 'rgba(29, 155, 240, 0.30)');
                             grad.addColorStop(1, 'rgba(29, 155, 240, 0.00)');
                             return grad;
@@ -1668,13 +1682,16 @@
                     </span>
                     <span class="trader-name"></span>
                 </span>`;
-            tdTrader.querySelector('.trader-name').textContent = fakeTraderName(row.steam_id);
+            // steam_id is a uint64 string from the API; keep it as a string
+            // so the full precision survives (never parse it as a Number).
+            const steamId = String(row.steam_id);
+            tdTrader.querySelector('.trader-name').textContent = fakeTraderName(steamId);
 
             const tdId = document.createElement('td');
             tdId.className = 'col-steam-id';
             const span = document.createElement('span');
             span.className = 'steam-id-mono';
-            span.textContent = row.steam_id;
+            span.textContent = steamId;
             tdId.appendChild(span);
 
             const tdDate = document.createElement('td');
@@ -1718,14 +1735,18 @@
         }
 
         function showChip({ steamId, flagged, lastReversalMs }) {
+            // Steam IDs are uint64 and exceed Number.MAX_SAFE_INTEGER, so
+            // they must stay strings end-to-end — never coerced through
+            // Number/parseInt — or the profile links lose precision.
+            const id = String(steamId);
             // Display name + avatar are dev placeholders until real Steam
             // profile data is sourced (PRD §14 D-open-4).
-            const name = fakeTraderName(steamId);
+            const name = fakeTraderName(id);
             els.chipName.textContent = name;
             els.chipAvatar.textContent = name.charAt(0).toUpperCase();
-            els.chipAvatar.style.background = avatarGradient(steamId);
-            els.chipSteamLink.href = 'https://steamcommunity.com/profiles/' + encodeURIComponent(steamId);
-            els.chipCsfloatLink.href = 'https://csfloat.com/stall/' + encodeURIComponent(steamId);
+            els.chipAvatar.style.background = avatarGradient(id);
+            els.chipSteamLink.href = 'https://steamcommunity.com/profiles/' + encodeURIComponent(id);
+            els.chipCsfloatLink.href = 'https://csfloat.com/stall/' + encodeURIComponent(id);
             els.chipWhen.textContent = flagged && lastReversalMs
                 ? 'Last reversal ' + formatDate(lastReversalMs)
                 : '';
@@ -1802,7 +1823,6 @@
         loadSummary();
         loadDaily(currentDays);
         loadRecent();
-        loadCS2Events();
     </script>
 </body>
 </html>
