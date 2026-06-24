@@ -135,13 +135,23 @@ func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
 	var stats dto.SummaryStats
 	err := r.conn.Raw(`
 		SELECT
-			COUNT(DISTINCT steam_id) AS traders_indexed,
 			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL) AS traders_flagged,
 			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL AND created_at >= ?) AS traders_flagged24h
 		FROM reversals
 		WHERE deleted_at IS NULL
 	`, cutoffMs).Scan(&stats).Error
 	if err != nil {
+		return nil, err
+	}
+
+	// "Steam IDs Searched" comes from the dedicated search_counts table: the
+	// number of rows is the count of distinct Steam IDs ever searched, and the
+	// sum of count is the total number of searches. Read positionally to avoid
+	// depending on column-name mapping for the aggregate aliases.
+	if err := r.conn.Raw(`
+		SELECT COUNT(*), COALESCE(SUM(count), 0)
+		FROM search_counts
+	`).Row().Scan(&stats.SteamIDsSearched, &stats.TotalSearches); err != nil {
 		return nil, err
 	}
 	return &stats, nil

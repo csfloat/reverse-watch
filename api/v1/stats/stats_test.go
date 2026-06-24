@@ -68,6 +68,12 @@ func TestSummaryHandler(t *testing.T) {
 		},
 	)
 
+	// 2 distinct Steam IDs searched a total of 3 times.
+	testutil.Insert(t, db,
+		&models.SearchCount{SteamID: models.SteamID(76561197960287940), Count: 2, LastSearchedAt: now},
+		&models.SearchCount{SteamID: models.SteamID(76561197960287941), Count: 1, LastSearchedAt: now},
+	)
+
 	r := httptest.NewRequest(http.MethodGet, "/summary", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
@@ -82,7 +88,8 @@ func TestSummaryHandler(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	want := dto.SummaryStats{
-		TradersIndexed:    3,
+		SteamIDsSearched:  2,
+		TotalSearches:     3,
 		TradersFlagged:    2,
 		TradersFlagged24h: 1,
 	}

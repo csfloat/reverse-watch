@@ -11,6 +11,7 @@ import (
 	"reverse-watch/domain/models/constants"
 	"reverse-watch/errors"
 	"reverse-watch/internal/testutil"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/repository/factory"
 	"reverse-watch/secret"
@@ -455,5 +456,95 @@ func TestFetchUserStatus(t *testing.T) {
 
 			tc.validateFunc(t, expectedResp, w.Result())
 		})
+	}
+}
+
+func newUserStatusHandler(t *testing.T, db *gorm.DB) http.Handler {
+	t.Helper()
+
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+	return middleware.FactoryMiddleware(f)(http.HandlerFunc(fetchUserStatus))
+}
+
+func userStatusRequest(steamID models.SteamID) *http.Request {
+	r := httptest.NewRequest(http.MethodGet, "/"+steamID.String(), nil)
+	chiContext := chi.NewRouteContext()
+	chiContext.URLParams.Add("steamId", steamID.String())
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiContext))
+}
+
+func TestFetchUserStatus_IncrementsSearchCount(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	handler := newUserStatusHandler(t, db)
+	steamID := models.SteamID(76561197960287930)
+
+	do := func() {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, userStatusRequest(steamID))
+		if w.Result().StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Result().StatusCode, http.StatusOK)
+		}
+	}
+
+	do()
+	var sc models.SearchCount
+	if err := db.Where("steam_id = ?", uint64(steamID)).First(&sc).Error; err != nil {
+		t.Fatalf("First(): %v", err)
+	}
+	if sc.Count != 1 {
+		t.Errorf("Count = %d, want 1", sc.Count)
+	}
+	if sc.LastSearchedAt == 0 {
+		t.Errorf("LastSearchedAt = 0, want non-zero")
+	}
+
+	do()
+	if err := db.Where("steam_id = ?", uint64(steamID)).First(&sc).Error; err != nil {
+		t.Fatalf("First(): %v", err)
+	}
+	if sc.Count != 2 {
+		t.Errorf("Count = %d, want 2", sc.Count)
+	}
+}
+
+func TestFetchUserStatus_IncrementFailureDoesNotFailLookup(t *testing.T) {
+	// A counting failure must never break the user-facing lookup. Drop the
+	// search_counts table so the increment errors, then assert the lookup still
+	// succeeds. logging.Initialize() is required because the handler logs the
+	// swallowed error.
+	logging.Initialize()
+
+	db := testutil.NewTestDB(t)
+	handler := newUserStatusHandler(t, db)
+
+	if err := db.Migrator().DropTable(&models.SearchCount{}); err != nil {
+		t.Fatalf("DropTable(): %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, userStatusRequest(models.SteamID(76561197960287930)))
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d (lookup must succeed despite count failure)", resp.StatusCode, http.StatusOK)
+	}
+
+	defer resp.Body.Close()
+	var respData fetchUserStatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		t.Fatalf("failed to decode response body: %v", err)
+	}
+	if respData.HasReversed {
+		t.Errorf("HasReversed = true, want false")
 	}
 }

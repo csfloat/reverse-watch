@@ -9,6 +9,7 @@ import (
 func MigrateModels(tx *gorm.DB) error {
 	publicModels := []interface{}{
 		(*models.Reversal)(nil),
+		(*models.SearchCount)(nil),
 	}
 
 	for _, model := range publicModels {

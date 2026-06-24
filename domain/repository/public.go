@@ -17,3 +17,9 @@ type ReversalRepository interface {
 	SummaryStats() (*dto.SummaryStats, error)
 	DailyCounts(days int) ([]dto.DailyCount, error)
 }
+
+type SearchCountRepository interface {
+	// Increment records a single lookup of the given Steam ID, inserting a new
+	// row or atomically incrementing the existing count.
+	Increment(steamID models.SteamID) error
+}

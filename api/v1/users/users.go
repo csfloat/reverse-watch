@@ -7,6 +7,7 @@ import (
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 	"reverse-watch/errors"
+	"reverse-watch/logging"
 	"reverse-watch/middleware"
 	"reverse-watch/render"
 
@@ -36,6 +37,13 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list reversals for steam id %q", steamId)
 		return
+	}
+
+	// Record the lookup for the "Steam IDs Searched" KPI. This is analytics
+	// only, so a failure here must never fail the user-facing lookup: log and
+	// continue.
+	if err := factory.SearchCount().Increment(*steamId); err != nil {
+		logging.Log.Errorf("failed to increment search count for steam id %q: %v", steamId, err)
 	}
 
 	data := &fetchUserStatusResponse{

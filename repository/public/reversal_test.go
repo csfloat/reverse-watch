@@ -862,12 +862,28 @@ func TestReversalRepository_SummaryStats(t *testing.T) {
 		},
 	)
 
+	// "Steam IDs Searched" is sourced from the search_counts table and is
+	// independent of the reversal data above: 2 distinct Steam IDs searched a
+	// total of 5 times.
+	searchRepo := NewSearchCountRepository(db)
+	for i := 0; i < 3; i++ {
+		if err := searchRepo.Increment(models.SteamID(76561197960287940)); err != nil {
+			t.Fatalf("Increment(): %v", err)
+		}
+	}
+	for i := 0; i < 2; i++ {
+		if err := searchRepo.Increment(models.SteamID(76561197960287941)); err != nil {
+			t.Fatalf("Increment(): %v", err)
+		}
+	}
+
 	got, err := reversalRepo.SummaryStats()
 	if err != nil {
 		t.Fatalf("SummaryStats(): %v", err)
 	}
 	want := &dto.SummaryStats{
-		TradersIndexed:    4,
+		SteamIDsSearched:  2,
+		TotalSearches:     5,
 		TradersFlagged:    3,
 		TradersFlagged24h: 2,
 	}
