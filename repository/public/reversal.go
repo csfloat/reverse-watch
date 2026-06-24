@@ -171,8 +171,8 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 		WHERE deleted_at IS NULL
 		  AND expunged_at IS NULL
 		  AND reversed_at >= ?
-		GROUP BY date
-		ORDER BY date ASC
+		GROUP BY 1
+		ORDER BY 1 ASC
 	`, uint64(windowStart.UnixMilli())).Scan(&rows).Error
 	if err != nil {
 		return nil, err
