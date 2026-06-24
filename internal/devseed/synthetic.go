@@ -17,7 +17,7 @@ import (
 const (
 	syntheticRNGSeed      int64  = 42
 	syntheticDays                = 180
-	syntheticTargetTotal         = 9800
+	syntheticTargetTotal  int    = 2000
 	syntheticBaseSteamID  uint64 = 76561198000000000
 	syntheticBaseReporter uint   = 2_900_000
 )
@@ -32,12 +32,12 @@ var syntheticMarketplaces = []struct {
 	{"swap.gg", 0.05},
 }
 
-// GenerateSynthetic returns a deterministic ~6-month dataset (~9,800 rows,
-// at least one per day, gentle sinusoid with occasional spikes / quiet
-// days). Snowflake IDs are unique within the slice and won't collide with
-// real CSV-seeded IDs, so callers can pipe the result straight into
-// InsertReversals.
+// GenerateSynthetic returns a ~6-month dataset (~2,000 rows, at least one
+// per day, gentle sinusoid with occasional spikes / quiet days). Snowflake
+// IDs are unique within the slice and won't collide with real CSV-seeded
+// IDs, so callers can pipe the result straight into InsertReversals.
 func GenerateSynthetic(now time.Time) []*models.Reversal {
+	now = now.UTC()
 	rng := rand.New(rand.NewSource(syntheticRNGSeed))
 	nowMs := uint64(now.UnixMilli())
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
@@ -157,8 +157,10 @@ func pickMarketplace(rng *rand.Rand) string {
 // uses ~11k parameters.
 const insertChunkSize = 1000
 
-// InsertReversals bulk-inserts reversals with ON CONFLICT (id) DO NOTHING,
-// so the seed is idempotent. Returns the number of rows actually inserted.
+// InsertReversals bulk-inserts reversals with ON CONFLICT (id) DO NOTHING.
+// Snowflake IDs are derived from wall-clock time, so re-running the seed
+// produces new IDs and inserts additional rows rather than being a no-op.
+// Returns the number of rows actually inserted.
 func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	if len(reversals) == 0 {
 		return 0, nil

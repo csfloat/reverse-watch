@@ -20,21 +20,6 @@ If you're looking to participate by contributing reversal reports (i.e. marketpl
 
 The server starts on port `80` by default (configurable via `HTTP_PORT`).
 
-### Seeding local data
-
-Production ingests live data from contributing marketplaces. For local development, a deterministic synthetic dataset (~6 months, ~9.8k rows with realistic daily variance) can be loaded with:
-
-```bash
-go run ./cmd/seed
-```
-
-The seed:
-
-- Refuses to run unless `Environment` is `development`.
-- Uses `INSERT … ON CONFLICT (id) DO NOTHING`, so it's safe to re-run.
-- Generates a deterministic 6-month dataset so the dashboard at `/` has enough data to exercise every period (7d / 30d / 3m / 6m / 1y).
-- Uses a synthetic Steam ID prefix (`76561198000000000`) so generated IDs are clearly fake.
-
 ## Configuration
 
 Configuration is loaded from environment variables or a `config.json` file.
@@ -63,3 +48,18 @@ API keys are scoped to an entity and carry a permission bitfield. Keys are prefi
 ## Rate Limiting
 
 Rate limits are enforced in-memory per process. Throttled responses return `429 Too Many Requests` with `X-RateLimit-*` and `Retry-After` headers.
+
+## Seeding local data
+
+Production ingests live data from contributing marketplaces. For local development, a synthetic dataset (~6 months, ~2k rows with realistic daily variance) can be loaded with:
+
+```bash
+go run ./cmd/seed
+```
+
+The seed:
+
+- Must be run in a development environment.
+- Generates a 6-month dataset so the dashboard at `/` has enough data to exercise every period (7d / 30d / 3m / 6m / 1y).
+- Uses a synthetic Steam ID prefix (`76561198000000000`) so generated IDs are clearly fake.
+- Re-running the seed inserts additional rows rather than being a no-op, since IDs are derived from wall-clock time.
