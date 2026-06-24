@@ -5,7 +5,8 @@
 //
 //	go run ./cmd/seed
 //
-// The insert uses ON CONFLICT (id) DO NOTHING, so re-running is safe.
+// The insert uses ON CONFLICT (steam_id, marketplace_slug) DO NOTHING, so
+// re-running is safe: rows that already exist are skipped rather than erroring.
 package main
 
 import (

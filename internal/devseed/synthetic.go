@@ -115,7 +115,15 @@ func GenerateSynthetic(now time.Time) []*models.Reversal {
 			// mirrors domain/models/snowflake.go so generated IDs sort
 			// chronologically alongside production rows.
 			seq = (seq + 1) & 0x0FFF
-			sfTs := uint64(createdAt.UnixMilli()) - models.Epoch
+			// createdAt is always well after models.Epoch for the ~6-month
+			// synthetic window, but clamp defensively so an out-of-range
+			// createdAt can't underflow the unsigned subtraction into a
+			// garbage snowflake (mirrors the guard in genSnowflakeWithParts).
+			createdAtMs := uint64(createdAt.UnixMilli())
+			if createdAtMs < models.Epoch {
+				createdAtMs = models.Epoch
+			}
+			sfTs := createdAtMs - models.Epoch
 			sf := models.Snowflake((sfTs << 22) | uint64(seq))
 
 			reporter := syntheticBaseReporter + uint(steamOffset)
@@ -157,13 +165,22 @@ func pickMarketplace(rng *rand.Rand) string {
 // uses ~11k parameters.
 const insertChunkSize = 1000
 
-// InsertReversals bulk-inserts reversals with ON CONFLICT (id) DO NOTHING.
-// Snowflake IDs are derived from wall-clock time, so re-running the seed
-// produces new IDs and inserts additional rows rather than being a no-op.
+// InsertReversals bulk-inserts reversals, skipping any row whose
+// (steam_id, marketplace_slug) already exists via ON CONFLICT DO NOTHING.
+// That pair is deterministic across runs (it does not depend on wall-clock
+// time), so re-running the seed is safe and idempotent: already-present rows
+// are skipped instead of raising a unique-constraint error. The conflict
+// target matches the partial unique index created in repository/public
+// (idx_reversals_steam_id_marketplace_slug ... WHERE deleted_at IS NULL).
 // Returns the number of rows actually inserted.
 func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	if len(reversals) == 0 {
 		return 0, nil
+	}
+	onConflict := clause.OnConflict{
+		Columns:     []clause.Column{{Name: "steam_id"}, {Name: "marketplace_slug"}},
+		TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Expr{SQL: "deleted_at IS NULL"}}},
+		DoNothing:   true,
 	}
 	var inserted int64
 	for i := 0; i < len(reversals); i += insertChunkSize {
@@ -171,7 +188,7 @@ func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 		if end > len(reversals) {
 			end = len(reversals)
 		}
-		res := db.Clauses(clause.OnConflict{DoNothing: true}).Create(reversals[i:end])
+		res := db.Clauses(onConflict).Create(reversals[i:end])
 		if res.Error != nil {
 			return inserted, res.Error
 		}

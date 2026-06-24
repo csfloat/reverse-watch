@@ -62,4 +62,4 @@ The seed:
 - Must be run in a development environment.
 - Generates a 6-month dataset so the dashboard at `/` has enough data to exercise every period (7d / 30d / 3m / 6m / 1y).
 - Uses a synthetic Steam ID prefix (`76561198000000000`) so generated IDs are clearly fake.
-- Re-running the seed inserts additional rows rather than being a no-op, since IDs are derived from wall-clock time.
+- Is safe to re-run: rows are de-duplicated on `(steam_id, marketplace_slug)` via `ON CONFLICT DO NOTHING`, so a rerun skips rows that already exist instead of raising a unique-constraint error.
