@@ -9,44 +9,16 @@ If you're looking to participate by contributing reversal reports (i.e. marketpl
 ## Running Locally
 
 1. Ensure Go 1.24+ and PostgreSQL are installed.
-2. Create the two local databases and (for tests) a `postgres` superuser:
-   ```bash
-   createdb private
-   createdb public
-   psql -d postgres -c "CREATE USER postgres WITH SUPERUSER PASSWORD 'postgres';"
-   # If the user already exists:
-   # psql -d postgres -c "ALTER USER postgres WITH SUPERUSER PASSWORD 'postgres';"
-   ```
-   The superuser is required by [`pgtestdb`](https://github.com/peterldowns/pgtestdb), which spins up disposable databases per test.
-3. Copy the config template and fill in your local database credentials:
+2. Copy the config template and fill in your local database credentials:
    ```bash
    cp config.example.json config.json
    ```
-4. Run the service:
+3. Run the service:
    ```bash
    go run main.go
    ```
 
 The server starts on port `80` by default (configurable via `HTTP_PORT`).
-
-### Running tests
-
-```bash
-go test ./...
-```
-
-Tests use `pgtestdb` to provision a fresh database per test against the local Postgres. The `postgres/postgres` superuser from step 2 above is required.
-
-## Public read endpoints
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/v1/users/{steamId}` | Single Steam-ID lookup (existing) |
-| `GET /api/v1/stats/summary` | Three KPI counts in one call |
-| `GET /api/v1/stats/reversals/daily?days={7\|30\|60\|90\|180\|365}` | Daily reversal counts, UTC, zero-filled |
-| `GET /api/v1/reversals/recent?limit={1..100}` | Latest non-expunged reversals (slim public projection) |
-
-All four are public, IP-rate-limited, and return JSON. The two `/stats` endpoints have a 60-second in-process cache.
 
 ## Configuration
 

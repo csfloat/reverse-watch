@@ -77,11 +77,8 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 
 func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
 	opts := &dto.ReversalListOptions{
-		Limit: &defaultLimit,
-		OrderParam: &dto.OrderParam{
-			Column:    "id",
-			Direction: dto.DESC,
-		},
+		Limit:   &defaultLimit,
+		OrderBy: dto.OrderByCol("id", dto.DESC),
 	}
 
 	if steamIdStr := values.Get("steam_id"); steamIdStr != "" {
@@ -240,7 +237,6 @@ type recentReversal struct {
 	MarketplaceSlug string         `json:"marketplace_slug"`
 	SteamID         models.SteamID `json:"steam_id"`
 	ReversedAt      uint64         `json:"reversed_at"`
-	CreatedAt       uint64         `json:"created_at"`
 }
 
 type listRecentResponse struct {
@@ -272,14 +268,7 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 		// the daily stats (which bucket on reversed_at) and "latest reversals"
 		// semantics. id DESC is a deterministic tiebreaker for stable ordering
 		// (e.g. backfilled rows with a high id but older reversed_at).
-		OrderParam: &dto.OrderParam{
-			Column:    "reversed_at",
-			Direction: dto.DESC,
-		},
-		SecondaryOrderParam: &dto.OrderParam{
-			Column:    "id",
-			Direction: dto.DESC,
-		},
+		OrderBy:         dto.OrderByDesc("reversed_at", "id"),
 		ExcludeExpunged: true,
 	}
 
@@ -295,7 +284,6 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 			MarketplaceSlug: rev.MarketplaceSlug,
 			SteamID:         rev.SteamID,
 			ReversedAt:      rev.ReversedAt,
-			CreatedAt:       rev.CreatedAt,
 		})
 	}
 

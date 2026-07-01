@@ -142,10 +142,7 @@ func (i *csfloatIngestor) sync(ctx context.Context) error {
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
 		Limit:           util.Ptr[uint](1),
-		OrderParam: &dto.OrderParam{
-			Column:    "reporter_internal_id",
-			Direction: dto.DESC,
-		},
+		OrderBy: dto.OrderByCol("reporter_internal_id", dto.DESC),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list recently inserted reversals: %v", err)

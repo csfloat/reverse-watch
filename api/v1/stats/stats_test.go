@@ -54,17 +54,20 @@ func TestSummaryHandler(t *testing.T) {
 			Model:           models.Model{ID: 1, CreatedAt: withinDay},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      withinDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 2, CreatedAt: olderThanDay},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      olderThanDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 3, CreatedAt: olderThanDay},
 			SteamID:         models.SteamID(76561197960287932),
 			MarketplaceSlug: "csfloat",
 			ExpungedAt:      util.Ptr(now - 24*hourMs),
+			ReversedAt:      olderThanDay,
 		},
 	)
 

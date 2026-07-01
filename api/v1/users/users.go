@@ -31,8 +31,8 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reversals, err := factory.Reversal().List(&dto.ReversalListOptions{
-		SteamID:    steamId,
-		OrderParam: &dto.OrderParam{Column: "id", Direction: dto.DESC},
+		SteamID: steamId,
+		OrderBy: dto.OrderByCol("id", dto.DESC),
 	})
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list reversals for steam id %q", steamId)

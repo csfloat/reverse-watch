@@ -8,7 +8,6 @@ import (
 	"reverse-watch/domain/repository"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type reversalRepository struct {
@@ -87,22 +86,9 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 	}
 
 	var desc bool
-	if opts.OrderParam != nil {
-		desc = opts.OrderParam.Direction == dto.DESC
-		orderBy := clause.OrderByColumn{
-			Column: clause.Column{Name: opts.OrderParam.Column},
-			Desc:   desc,
-		}
-
-		query = query.Order(orderBy)
-	}
-	if opts.SecondaryOrderParam != nil {
-		tiebreaker := clause.OrderByColumn{
-			Column: clause.Column{Name: opts.SecondaryOrderParam.Column},
-			Desc:   opts.SecondaryOrderParam.Direction == dto.DESC,
-		}
-
-		query = query.Order(tiebreaker)
+	if opts.OrderBy != nil && len(opts.OrderBy.Columns) > 0 {
+		query = query.Order(opts.OrderBy)
+		desc = opts.OrderBy.Columns[0].Desc
 	}
 
 	if opts.SteamID.IsValid() {
@@ -143,10 +129,11 @@ func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
 	var stats dto.SummaryStats
 	err := r.conn.Raw(`
 		SELECT
-			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL) AS traders_flagged,
-			COUNT(DISTINCT steam_id) FILTER (WHERE expunged_at IS NULL AND created_at >= ?) AS traders_flagged24h
+			COUNT(DISTINCT steam_id) AS traders_flagged,
+			COUNT(DISTINCT steam_id) FILTER (WHERE reversed_at >= ?) AS traders_flagged24h
 		FROM reversals
 		WHERE deleted_at IS NULL
+		  AND expunged_at IS NULL
 	`, cutoffMs).Scan(&stats).Error
 	if err != nil {
 		return nil, err

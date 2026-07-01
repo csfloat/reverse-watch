@@ -221,7 +221,7 @@ func TestListRecentHandler_ResponseShape(t *testing.T) {
 	}
 	row := raw.Data[0]
 
-	expectedKeys := []string{"marketplace_slug", "steam_id", "reversed_at", "created_at"}
+	expectedKeys := []string{"marketplace_slug", "steam_id", "reversed_at"}
 	for _, k := range expectedKeys {
 		if _, ok := row[k]; !ok {
 			t.Errorf("missing key %q in response", k)

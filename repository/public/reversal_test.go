@@ -747,10 +747,7 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 3,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -763,10 +760,7 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 1,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.ASC),
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -785,10 +779,7 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "withOrder",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -850,14 +841,7 @@ func TestReversalRepository_List_SecondaryOrder(t *testing.T) {
 	testutil.Insert(t, db, id1, id2, id3, id4)
 
 	got, err := reversalRepo.List(&dto.ReversalListOptions{
-		OrderParam: &dto.OrderParam{
-			Column:    "reversed_at",
-			Direction: dto.DESC,
-		},
-		SecondaryOrderParam: &dto.OrderParam{
-			Column:    "id",
-			Direction: dto.DESC,
-		},
+		OrderBy: dto.OrderByDesc("reversed_at", "id"),
 	})
 	if err != nil {
 		t.Fatalf("List(): %v", err)
@@ -889,33 +873,39 @@ func TestReversalRepository_SummaryStats(t *testing.T) {
 			Model:           models.Model{ID: 1, CreatedAt: withinDay},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      withinDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 2, CreatedAt: olderThanDay},
 			SteamID:         models.SteamID(76561197960287930),
 			MarketplaceSlug: "csfloat-2",
+			ReversedAt:      olderThanDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 3, CreatedAt: withinDay},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "csfloat",
 			ExpungedAt:      util.Ptr(now),
+			ReversedAt:      withinDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 4, CreatedAt: olderThanDay},
 			SteamID:         models.SteamID(76561197960287931),
 			MarketplaceSlug: "csfloat-2",
+			ReversedAt:      olderThanDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 5, CreatedAt: olderThanDay},
 			SteamID:         models.SteamID(76561197960287932),
 			MarketplaceSlug: "csfloat",
 			ExpungedAt:      util.Ptr(now - 24*hourMs),
+			ReversedAt:      olderThanDay,
 		},
 		&models.Reversal{
 			Model:           models.Model{ID: 6, CreatedAt: withinDay},
 			SteamID:         models.SteamID(76561197960287933),
 			MarketplaceSlug: "csfloat",
+			ReversedAt:      withinDay,
 		},
 	)
 
@@ -1093,10 +1083,7 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			name: "newestFirstExcludingExpunged",
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 			},
 			wantIDs: []models.Snowflake{5, 4, 2, 1},
 		},
@@ -1105,10 +1092,7 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
 				Limit:           util.Ptr[uint](2),
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 			},
 			wantIDs: []models.Snowflake{5, 4},
 		},
@@ -1185,10 +1169,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageDESC",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
@@ -1202,10 +1183,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
@@ -1219,10 +1197,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.DESC),
 				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
@@ -1232,10 +1207,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageASC",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.ASC),
 				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
@@ -1249,10 +1221,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.ASC),
 				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
@@ -1266,10 +1235,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
-				},
+				OrderBy: dto.OrderByCol("id", dto.ASC),
 			},
 			want: []*models.Reversal{
 				testReversals[0],

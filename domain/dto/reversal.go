@@ -5,6 +5,8 @@ import (
 
 	"reverse-watch/domain/models"
 	"reverse-watch/errors"
+
+	"gorm.io/gorm/clause"
 )
 
 type ReversalListOptions struct {
@@ -12,11 +14,8 @@ type ReversalListOptions struct {
 	MarketplaceSlug *string
 	Cursor          *Cursor
 	Limit           *uint
-	OrderParam      *OrderParam
-	// SecondaryOrderParam is an optional tiebreaker applied after OrderParam,
-	// producing deterministic, stable ordering when the primary column has ties.
-	SecondaryOrderParam *OrderParam
-	ExcludeExpunged     bool
+	OrderBy         *clause.OrderBy
+	ExcludeExpunged bool
 }
 
 type ReversalUpdates struct {
