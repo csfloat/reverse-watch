@@ -87,7 +87,7 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 
 	var desc bool
 	if opts.OrderBy != nil && len(opts.OrderBy.Columns) > 0 {
-		query = query.Order(opts.OrderBy)
+		query = query.Order(*opts.OrderBy)
 		desc = opts.OrderBy.Columns[0].Desc
 	}
 
