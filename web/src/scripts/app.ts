@@ -237,8 +237,12 @@ function renderChart(daily, days) {
     const xs = new Array(daily.length);
     const ys = new Array(daily.length);
     for (let i = 0; i < daily.length; i++) {
-        // Parse YYYY-MM-DD as UTC midnight to match server bucketing.
-        xs[i] = Date.parse(daily[i].date + 'T00:00:00Z') / 1000;
+        // The API returns each bucket's date as an RFC3339 UTC
+        // timestamp (e.g. "2026-07-13T00:00:00Z"), one midnight-UTC
+        // point per day. The trailing "Z" makes Date.parse resolve
+        // it unambiguously as UTC, so day buckets never shift by a
+        // browser-local timezone offset.
+        xs[i] = Date.parse(daily[i].date) / 1000;
         ys[i] = daily[i].count;
     }
 
