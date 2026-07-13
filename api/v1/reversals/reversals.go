@@ -18,6 +18,7 @@ import (
 	"reverse-watch/render"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm/clause"
 )
 
 func createReversals(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +79,7 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
 	opts := &dto.ReversalListOptions{
 		Limit:   &defaultLimit,
-		OrderBy: dto.OrderByCol("id", dto.DESC),
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 	}
 
 	if steamIdStr := values.Get("steam_id"); steamIdStr != "" {
@@ -268,7 +269,10 @@ func listRecentHandler(w http.ResponseWriter, r *http.Request) {
 		// the daily stats (which bucket on reversed_at) and "latest reversals"
 		// semantics. id DESC is a deterministic tiebreaker for stable ordering
 		// (e.g. backfilled rows with a high id but older reversed_at).
-		OrderBy:         dto.OrderByDesc("reversed_at", "id"),
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{
+			{Column: clause.Column{Name: "reversed_at"}, Desc: true},
+			{Column: clause.Column{Name: "id"}, Desc: true},
+		}},
 		ExcludeExpunged: true,
 	}
 

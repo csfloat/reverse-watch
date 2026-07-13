@@ -12,6 +12,7 @@ import (
 	"reverse-watch/render"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm/clause"
 )
 
 type fetchUserStatusResponse struct {
@@ -32,7 +33,7 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	reversals, err := factory.Reversal().List(&dto.ReversalListOptions{
 		SteamID: steamId,
-		OrderBy: dto.OrderByCol("id", dto.DESC),
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 	})
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list reversals for steam id %q", steamId)

@@ -144,7 +144,7 @@ func TestDailyHandler(t *testing.T) {
 
 	byDate := make(map[string]uint64, len(got.Data))
 	for _, b := range got.Data {
-		byDate[b.Date] = b.Count
+		byDate[b.Date.UTC().Format("2006-01-02")] = b.Count
 	}
 	if byDate[todayKey] != 1 {
 		t.Errorf("today bucket = %d, want 1", byDate[todayKey])

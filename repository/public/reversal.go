@@ -139,10 +139,6 @@ func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
 		return nil, err
 	}
 
-	// "Steam IDs Searched" comes from the dedicated search_counts table: the
-	// number of rows is the count of distinct Steam IDs ever searched, and the
-	// sum of count is the total number of searches. Read positionally to avoid
-	// depending on column-name mapping for the aggregate aliases.
 	if err := r.conn.Raw(`
 		SELECT COUNT(*), COALESCE(SUM(count), 0)
 		FROM search_counts
@@ -160,7 +156,7 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 	var rows []dto.DailyCount
 	err := r.conn.Raw(`
 		SELECT
-			to_char(to_timestamp(reversed_at / 1000) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+			date_trunc('day', to_timestamp(reversed_at / 1000) AT TIME ZONE 'UTC') AS date,
 			COUNT(*) AS count
 		FROM reversals
 		WHERE deleted_at IS NULL
@@ -175,13 +171,12 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 
 	byDate := make(map[string]uint64, len(rows))
 	for _, row := range rows {
-		byDate[row.Date] = row.Count
+		byDate[row.Date.UTC().Format("2006-01-02")] = row.Count
 	}
 
 	result := make([]dto.DailyCount, 0, days)
 	for d := windowStart; !d.After(today); d = d.AddDate(0, 0, 1) {
-		key := d.Format("2006-01-02")
-		result = append(result, dto.DailyCount{Date: key, Count: byDate[key]})
+		result = append(result, dto.DailyCount{Date: d, Count: byDate[d.Format("2006-01-02")]})
 	}
 	return result, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func TestReversalRepository_BeforeCreate(t *testing.T) {
@@ -747,7 +748,7 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 3,
 				},
-				OrderBy: dto.OrderByCol("id", dto.DESC),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -760,7 +761,7 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 1,
 				},
-				OrderBy: dto.OrderByCol("id", dto.ASC),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -779,7 +780,7 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "withOrder",
 			opts: &dto.ReversalListOptions{
-				OrderBy: dto.OrderByCol("id", dto.DESC),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -841,7 +842,10 @@ func TestReversalRepository_List_SecondaryOrder(t *testing.T) {
 	testutil.Insert(t, db, id1, id2, id3, id4)
 
 	got, err := reversalRepo.List(&dto.ReversalListOptions{
-		OrderBy: dto.OrderByDesc("reversed_at", "id"),
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{
+			{Column: clause.Column{Name: "reversed_at"}, Desc: true},
+			{Column: clause.Column{Name: "id"}, Desc: true},
+		}},
 	})
 	if err != nil {
 		t.Fatalf("List(): %v", err)
@@ -1000,9 +1004,9 @@ func TestReversalRepository_DailyCounts(t *testing.T) {
 		t.Fatalf("DailyCounts(3): %v", err)
 	}
 	want := []dto.DailyCount{
-		{Date: today.AddDate(0, 0, -2).Format("2006-01-02"), Count: 1},
-		{Date: today.AddDate(0, 0, -1).Format("2006-01-02"), Count: 1},
-		{Date: today.Format("2006-01-02"), Count: 2},
+		{Date: today.AddDate(0, 0, -2), Count: 1},
+		{Date: today.AddDate(0, 0, -1), Count: 1},
+		{Date: today, Count: 2},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("DailyCounts(3) mismatch (-want +got):\n%s", diff)
@@ -1026,9 +1030,9 @@ func TestReversalRepository_DailyCounts_ZeroFill(t *testing.T) {
 		t.Fatalf("DailyCounts(5): got %d buckets, want 5", len(got))
 	}
 	for i, b := range got {
-		wantDate := today.AddDate(0, 0, -(4 - i)).Format("2006-01-02")
-		if b.Date != wantDate {
-			t.Errorf("bucket[%d].Date = %q, want %q", i, b.Date, wantDate)
+		wantDate := today.AddDate(0, 0, -(4 - i))
+		if !b.Date.Equal(wantDate) {
+			t.Errorf("bucket[%d].Date = %v, want %v", i, b.Date, wantDate)
 		}
 		if b.Count != 0 {
 			t.Errorf("bucket[%d].Count = %d, want 0", i, b.Count)
@@ -1083,7 +1087,7 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			name: "newestFirstExcludingExpunged",
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
-				OrderBy: dto.OrderByCol("id", dto.DESC),
+				OrderBy:         &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 			},
 			wantIDs: []models.Snowflake{5, 4, 2, 1},
 		},
@@ -1092,7 +1096,7 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
 				Limit:           util.Ptr[uint](2),
-				OrderBy: dto.OrderByCol("id", dto.DESC),
+				OrderBy:         &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 			},
 			wantIDs: []models.Snowflake{5, 4},
 		},
@@ -1169,8 +1173,8 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageDESC",
 			opts: &dto.ReversalListOptions{
-				OrderBy: dto.OrderByCol("id", dto.DESC),
-				Limit: util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				Limit:   util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[0],
@@ -1183,8 +1187,8 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderBy: dto.OrderByCol("id", dto.DESC),
-				Limit: util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				Limit:   util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -1197,8 +1201,8 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderBy: dto.OrderByCol("id", dto.DESC),
-				Limit: util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				Limit:   util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[4],
@@ -1207,8 +1211,8 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageASC",
 			opts: &dto.ReversalListOptions{
-				OrderBy: dto.OrderByCol("id", dto.ASC),
-				Limit: util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
+				Limit:   util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[4],
@@ -1221,8 +1225,8 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderBy: dto.OrderByCol("id", dto.ASC),
-				Limit: util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
+				Limit:   util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -1235,7 +1239,7 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderBy: dto.OrderByCol("id", dto.ASC),
+				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
 			},
 			want: []*models.Reversal{
 				testReversals[0],

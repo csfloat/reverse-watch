@@ -19,6 +19,7 @@ import (
 	"reverse-watch/util"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm/clause"
 )
 
 type csfloatIngestor struct {
@@ -142,7 +143,7 @@ func (i *csfloatIngestor) sync(ctx context.Context) error {
 	reversals, err := i.factory.Reversal().List(&dto.ReversalListOptions{
 		MarketplaceSlug: util.Ptr("csfloat"),
 		Limit:           util.Ptr[uint](1),
-		OrderBy: dto.OrderByCol("reporter_internal_id", dto.DESC),
+		OrderBy:         &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "reporter_internal_id"}, Desc: true}}},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list recently inserted reversals: %v", err)
