@@ -748,7 +748,11 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 3,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -761,7 +765,11 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 1,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
+				},
 			},
 			want: []*models.Reversal{
 				testReversals[1],
@@ -780,7 +788,11 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "withOrder",
 			opts: &dto.ReversalListOptions{
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -868,10 +880,6 @@ func TestReversalRepository_SummaryStats(t *testing.T) {
 	withinDay := now - hourMs       // -1h: counts as "last 24h"
 	olderThanDay := now - 36*hourMs // -36h: outside "last 24h"
 
-	// A: 1 non-expunged within 24h + 1 non-expunged older  -> indexed, flagged, flagged_24h
-	// B: 1 expunged within 24h + 1 non-expunged older      -> indexed, flagged (not 24h)
-	// C: 1 expunged older                                  -> indexed only
-	// D: 1 non-expunged within 24h                         -> indexed, flagged, flagged_24h
 	testutil.Insert(t, db,
 		&models.Reversal{
 			Model:           models.Model{ID: 1, CreatedAt: withinDay},
@@ -955,10 +963,6 @@ func TestReversalRepository_DailyCounts(t *testing.T) {
 		return uint64(today.AddDate(0, 0, offset).Add(time.Duration(addHours) * time.Hour).UnixMilli())
 	}
 
-	// today:    2 non-expunged (very early today, safely past)
-	// today-1:  1 non-expunged + 1 expunged (excluded)
-	// today-2:  1 non-expunged
-	// today-3:  1 non-expunged (outside days=3 window)
 	testutil.Insert(t, db,
 		&models.Reversal{
 			Model:           models.Model{ID: 1},
@@ -1087,7 +1091,11 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			name: "newestFirstExcludingExpunged",
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
-				OrderBy:         &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
 			},
 			wantIDs: []models.Snowflake{5, 4, 2, 1},
 		},
@@ -1096,7 +1104,11 @@ func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
 			opts: &dto.ReversalListOptions{
 				ExcludeExpunged: true,
 				Limit:           util.Ptr[uint](2),
-				OrderBy:         &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
 			},
 			wantIDs: []models.Snowflake{5, 4},
 		},
@@ -1173,8 +1185,12 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageDESC",
 			opts: &dto.ReversalListOptions{
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
-				Limit:   util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
+				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[0],
@@ -1187,8 +1203,12 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
-				Limit:   util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
+				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -1201,8 +1221,12 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
-				Limit:   util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
+				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[4],
@@ -1211,8 +1235,12 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageASC",
 			opts: &dto.ReversalListOptions{
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
-				Limit:   util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
+				},
+				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[4],
@@ -1225,8 +1253,12 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
-				Limit:   util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
+				},
+				Limit: util.Ptr[uint](2),
 			},
 			want: []*models.Reversal{
 				testReversals[2],
@@ -1239,7 +1271,11 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: false}}},
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
+				},
 			},
 			want: []*models.Reversal{
 				testReversals[0],

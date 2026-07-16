@@ -176,7 +176,10 @@ func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
 
 	result := make([]dto.DailyCount, 0, days)
 	for d := windowStart; !d.After(today); d = d.AddDate(0, 0, 1) {
-		result = append(result, dto.DailyCount{Date: d, Count: byDate[d.Format("2006-01-02")]})
+		result = append(result, dto.DailyCount{
+			Date:  d,
+			Count: byDate[d.Format("2006-01-02")],
+		})
 	}
 	return result, nil
 }

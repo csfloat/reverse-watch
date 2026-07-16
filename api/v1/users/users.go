@@ -33,16 +33,17 @@ func fetchUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	reversals, err := factory.Reversal().List(&dto.ReversalListOptions{
 		SteamID: steamId,
-		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
+		OrderBy: &clause.OrderBy{
+			Columns: []clause.OrderByColumn{
+				{Column: clause.Column{Name: "id"}, Desc: true},
+			},
+		},
 	})
 	if err != nil {
 		render.Errorf(w, r, errors.InternalServerError, "failed to list reversals for steam id %q", steamId)
 		return
 	}
 
-	// Record the lookup for the "Steam IDs Searched" KPI. This is analytics
-	// only, so a failure here must never fail the user-facing lookup: log and
-	// continue.
 	if err := factory.SearchCount().Increment(*steamId); err != nil {
 		logging.Log.Errorf("failed to increment search count for steam id %q: %v", steamId, err)
 	}
