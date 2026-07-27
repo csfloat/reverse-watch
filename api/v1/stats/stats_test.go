@@ -152,6 +152,16 @@ func TestDailyHandler(t *testing.T) {
 	if byDate[yesterdayKey] != 1 {
 		t.Errorf("yesterday bucket = %d, want 1", byDate[yesterdayKey])
 	}
+
+	for _, b := range got.Data {
+		key := b.Date.UTC().Format("2006-01-02")
+		if key == todayKey || key == yesterdayKey {
+			continue
+		}
+		if b.Count != 0 {
+			t.Errorf("bucket %s = %d, want 0", key, b.Count)
+		}
+	}
 }
 
 func TestDailyHandler_InvalidDays(t *testing.T) {
@@ -193,7 +203,6 @@ func TestDailyHandler_AcceptedDays(t *testing.T) {
 	// exactly that many buckets. Empty DB keeps the assertion focused on
 	// the length contract that the picker depends on.
 	for _, days := range []int{7, 30, 60, 90, 180, 365} {
-		days := days
 		t.Run(strconv.Itoa(days), func(t *testing.T) {
 			handler, _ := buildHandlerStack(t)
 

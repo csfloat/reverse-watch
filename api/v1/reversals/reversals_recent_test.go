@@ -247,4 +247,20 @@ func TestListRecentHandler_ResponseShape(t *testing.T) {
 	if steamIDValue != "76561197960287930" {
 		t.Errorf("steam_id = %q, want %q", steamIDValue, "76561197960287930")
 	}
+
+	marketplaceSlugValue, ok := row["marketplace_slug"].(string)
+	if !ok {
+		t.Errorf("marketplace_slug should be a JSON string, got %T", row["marketplace_slug"])
+	}
+	if marketplaceSlugValue != "csfloat" {
+		t.Errorf("marketplace_slug = %q, want %q", marketplaceSlugValue, "csfloat")
+	}
+
+	reversedAtValue, ok := row["reversed_at"].(float64)
+	if !ok {
+		t.Errorf("reversed_at should be a JSON number, got %T", row["reversed_at"])
+	}
+	if reversedAtValue != float64(base+50) {
+		t.Errorf("reversed_at = %v, want %v", reversedAtValue, float64(base+50))
+	}
 }
