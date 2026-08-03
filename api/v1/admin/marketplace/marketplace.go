@@ -101,6 +101,11 @@ func updateMarketplace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if slug == "csfloat" && opts.IsActive != nil && *opts.IsActive == false {
+		render.Errorf(w, r, errors.Forbidden, "cannot deactivate csfloat marketplace")
+		return
+	}
+
 	var updatedMarketplace *models.Marketplace
 	err := factory.RunInTransactionPrivate(func(tx repository.PrivateTransaction) error {
 		if err := tx.Marketplace().Update(slug, &opts); err != nil {

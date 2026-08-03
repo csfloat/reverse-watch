@@ -647,6 +647,64 @@ func TestUpdateMarketplace(t *testing.T) {
 			},
 		},
 		{
+			name: "cannotDeactivateCSFloat",
+			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
+				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)
+
+				isActive := false
+				reqBody := dto.MarketplaceUpdates{
+					IsActive: &isActive,
+				}
+
+				payload, err := json.Marshal(reqBody)
+				if err != nil {
+					return nil, "", "", err
+				}
+
+				r := httptest.NewRequest(http.MethodPatch, "/csfloat", bytes.NewBuffer(payload))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Authorization", "Bearer "+formattedKey)
+
+				return r, "csfloat", authKey.ID, nil
+			},
+			validateFunc: func(t *testing.T, db *gorm.DB, authKeyID string, resp *http.Response) {
+				if resp.StatusCode != http.StatusForbidden {
+					t.Errorf("wanted status code %d, got %d", http.StatusForbidden, resp.StatusCode)
+				}
+
+				defer resp.Body.Close()
+				var respData errors.Error
+				if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+					t.Fatalf("failed to decode response body: %v", err)
+				}
+
+				if diff := cmp.Diff(errors.Forbidden, respData, cmpopts.IgnoreFields(errors.Error{}, "status", "wrapped", "Details")); diff != "" {
+					t.Error(diff)
+				}
+
+				if respData.Details != "cannot deactivate csfloat marketplace" {
+					t.Errorf("wanted details %q, got %q", "cannot deactivate csfloat marketplace", respData.Details)
+				}
+
+				var storedMarketplace models.Marketplace
+				if err := db.Where("slug = ?", "csfloat").First(&storedMarketplace).Error; err != nil {
+					t.Fatalf("First(): %v", err)
+				}
+				if !storedMarketplace.IsActive {
+					t.Error("expected csfloat marketplace to remain active")
+				}
+
+				var auditCount int64
+				if err := db.Model(&models.AdminAudit{}).Where("target_action = ? AND target_resource_type = ? AND target_resource = ?",
+					models.TargetActionUpdateMarketplace, models.TargetResourceTypeMarketplace, "csfloat").Count(&auditCount).Error; err != nil {
+					t.Fatalf("Count(): %v", err)
+				}
+				if auditCount != 0 {
+					t.Errorf("wanted 0 update audit records, got %d", auditCount)
+				}
+			},
+		},
+		{
 			name: "emptySlug",
 			setup: func(t *testing.T, db *gorm.DB, f repository.Factory, keygen isecret.KeyGenerator) (*http.Request, string, string, error) {
 				_, authKey, formattedKey := testutil.SetupMarketplaceWithKey(t, db, "csfloat", keygen, models.PermissionAdmin)

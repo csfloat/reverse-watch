@@ -388,3 +388,78 @@ func TestThrottleByAPIKey(t *testing.T) {
 		})
 	}
 }
+
+func TestThrottleByMarketplace(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+
+	testMarketplace, _, firstFormattedKey := testutil.SetupMarketplaceWithKey(t, db, "test-marketplace", keygen, models.PermissionWrite)
+	secondSecretKey, err := keygen.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey(): %v", err)
+	}
+	secondKeyID, err := secondSecretKey.ID()
+	if err != nil {
+		t.Fatalf("ID(): %v", err)
+	}
+	secondKey := &models.Key{
+		ID:              secondKeyID,
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Permissions:     models.PermissionWrite,
+	}
+	testutil.Insert(t, db, secondKey)
+	secondFormattedKey, err := secondSecretKey.Format()
+	if err != nil {
+		t.Fatalf("Format(): %v", err)
+	}
+
+	_, _, otherMarketplaceFormattedKey := testutil.SetupMarketplaceWithKey(t, db, "other-marketplace", keygen, models.PermissionWrite)
+
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+	next := http.HandlerFunc(fn)
+
+	factoryMiddleware := middleware.FactoryMiddleware(f)
+	throttleMiddleware := ThrottleByMarketplace(time.Minute, 1)
+	finalHandler := factoryMiddleware(
+		middleware.AuthMiddleware(
+			throttleMiddleware(next),
+		),
+	)
+
+	requestWithKey := func(formattedKey string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, "http://testing", nil)
+		r.Header.Set("Authorization", "Bearer "+formattedKey)
+		return r
+	}
+
+	w := httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, requestWithKey(firstFormattedKey))
+	if w.Code != http.StatusOK {
+		t.Fatalf("first marketplace request got status code %d, wanted %d", w.Code, http.StatusOK)
+	}
+
+	w = httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, requestWithKey(secondFormattedKey))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("second same-marketplace key got status code %d, wanted %d", w.Code, http.StatusTooManyRequests)
+	}
+
+	w = httptest.NewRecorder()
+	finalHandler.ServeHTTP(w, requestWithKey(otherMarketplaceFormattedKey))
+	if w.Code != http.StatusOK {
+		t.Fatalf("different marketplace got status code %d, wanted %d", w.Code, http.StatusOK)
+	}
+}
