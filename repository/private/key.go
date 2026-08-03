@@ -103,5 +103,12 @@ func (k *keyRepository) List(opts *dto.KeyListOptions) ([]*models.Key, error) {
 
 func (k *keyRepository) ValidateKey(secretKey string) (*models.Key, error) {
 	hashedKey := secret.Sha256Hash(secretKey)
-	return k.Read(hashedKey)
+	key, err := k.Read(hashedKey)
+	if err != nil {
+		return nil, err
+	}
+	if key.Marketplace == nil || !key.Marketplace.IsActive {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return key, nil
 }

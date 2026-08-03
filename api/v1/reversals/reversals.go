@@ -20,6 +20,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+const maxBatchSize = 1_000
+
 func createReversals(w http.ResponseWriter, r *http.Request) {
 	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
 	if !ok {
@@ -49,8 +51,16 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, r, &errors.JSONDecode)
 		return
 	}
+	if len(req.Data) == 0 {
+		render.Errorf(w, r, errors.BadRequest, "data cannot be empty")
+		return
+	}
+	if len(req.Data) > maxBatchSize {
+		render.Errorf(w, r, errors.BadRequest, "data exceeds max length of %d", maxBatchSize)
+		return
+	}
 
-	reversals := make([]*models.Reversal, 0)
+	reversals := make([]*models.Reversal, 0, len(req.Data))
 	for _, reversal := range req.Data {
 		reversals = append(reversals, &models.Reversal{
 			SteamID:         reversal.SteamID,
