@@ -11,5 +11,8 @@
         "Port": "3434",
         "AllowedOrigins": ["allowed-origin-1", "allowed-origin-2"]
     },
-    "Environment": "development"
+    "Environment": "development",
+    "Steam": {
+        "WebAPIKeys": ["api-key-1", "api-key-2"]
+    }
 }

@@ -9,6 +9,7 @@ import (
 	"reverse-watch/config"
 	"reverse-watch/domain/repository"
 	rwmiddleware "reverse-watch/middleware"
+	steamservice "reverse-watch/service/steam"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,7 +20,7 @@ type Server struct {
 	r chi.Router
 }
 
-func New(cfg config.Config, factory repository.Factory) (*Server, error) {
+func New(cfg config.Config, factory repository.Factory, steamSvc *steamservice.Service) (*Server, error) {
 	r := chi.NewRouter()
 
 	firefoxExtensionOrigin := regexp.MustCompile("^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -36,7 +37,7 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 				// Firefox extension IDs are randomly generated for each user.
 				// Therefore, we're scoping requests made from Firefox extensions to specific endpoints only.
 				if firefoxExtensionOrigin.MatchString(origin) {
-					if strings.HasPrefix(r.RequestURI, "/api/v1/users/") {
+					if strings.HasPrefix(r.RequestURI, "/api/v1/users/") || strings.HasPrefix(r.RequestURI, "/api/v1/steam/resolve-vanity") {
 						return true
 					}
 				}
@@ -59,6 +60,7 @@ func New(cfg config.Config, factory repository.Factory) (*Server, error) {
 	}
 
 	r.Use(rwmiddleware.FactoryMiddleware(factory))
+	r.Use(rwmiddleware.SteamServiceMiddleware(steamSvc))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/index.html")

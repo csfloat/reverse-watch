@@ -388,13 +388,13 @@
                     <input 
                         type="text" 
                         id="steamIdInput" 
-                        placeholder="Steam ID (e.g., 76561198012345678)"
+                        placeholder="Steam ID or profile URL"
                         autocomplete="off"
                         required
                     >
                     <button type="submit" id="searchBtn">Check History</button>
                 </div>
-                <p class="hint">Enter a 64-bit Steam ID to check their reversal history</p>
+                <p class="hint">Paste a 64-bit Steam ID or a Steam profile link</p>
             </form>
         </div>
 
@@ -448,7 +448,8 @@
             searchBtn.innerHTML = '<span class="loading"></span>';
 
             try {
-                const response = await fetch(`/api/v1/users/${steamId}`);
+                const resolvedSteamId = await resolveSteamId(steamId);
+                const response = await fetch(`/api/v1/users/${encodeURIComponent(resolvedSteamId)}`);
                 if (!response.ok) {
                     const errorData = await response.json();
 
@@ -468,6 +469,34 @@
                 searchBtn.textContent = 'Check History';
             }
         });
+
+        async function resolveSteamId(input) {
+            const trimmed = input.trim();
+            if (!trimmed) {
+                throw new Error('missing input');
+            }
+
+            // If it already looks like a SteamID64, skip the resolve endpoint.
+            if (/^\d{16,20}$/.test(trimmed)) {
+                return trimmed;
+            }
+
+            const res = await fetch(`/api/v1/steam/resolve-vanity?vanityUrl=${encodeURIComponent(trimmed)}`);
+            if (!res.ok) {
+                let msg = 'could not resolve steam id';
+                try {
+                    const errorData = await res.json();
+                    msg = `${errorData.code} - ${errorData.message}` + (errorData.details ? ` (${errorData.details})` : '');
+                } catch (_) {}
+                throw new Error(msg);
+            }
+
+            const data = await res.json();
+            if (!data || !data.steam_id) {
+                throw new Error('invalid response from resolve endpoint');
+            }
+            return data.steam_id;
+        }
 
         function displayResult(data) {
             const statusIcon = document.getElementById('statusIcon');

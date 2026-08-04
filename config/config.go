@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"reverse-watch/domain/models/constants"
+	"reverse-watch/util"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
@@ -40,6 +41,12 @@ type Config struct {
 			SecretKey string
 		}
 	}
+
+	// Steam.WebAPIKeys is optional. If set, /api/v1/steam/resolve-vanity can use the Steam Web API
+	// (keys are rotated) instead of any fallback resolution.
+	Steam struct {
+		WebAPIKeys *util.Ring[string]
+	}
 }
 
 func Load() Config {
@@ -63,6 +70,34 @@ func load() Config {
 				return nil, fmt.Errorf("invalid environment")
 			}
 		},
+		func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			ringType := reflect.TypeOf(&util.Ring[string]{})
+			if to.Type() != ringType {
+				return from.Interface(), nil
+			}
+
+			keys := make([]string, 0)
+			switch from.Kind() {
+			case reflect.String:
+				for _, part := range strings.Split(from.String(), ",") {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						keys = append(keys, part)
+					}
+				}
+			case reflect.Slice, reflect.Array:
+				for i := 0; i < from.Len(); i++ {
+					val := strings.TrimSpace(fmt.Sprint(from.Index(i).Interface()))
+					if val != "" {
+						keys = append(keys, val)
+					}
+				}
+			default:
+				return util.NewRing[string](nil), nil
+			}
+
+			return util.NewRing(keys), nil
+		},
 	))
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -85,6 +120,7 @@ func load() Config {
 	// Need to register environment variables if defaults aren't set
 	v.BindEnv("HTTP.AllowedOrigins")
 	v.BindEnv("Ingestors.CSFloat.SecretKey")
+	v.BindEnv("Steam.WebAPIKeys")
 
 	// Try to find the root directory, but don't panic if it fails since go.mod doesn't exist in production
 	dir, err := GetProjectRootDir()
