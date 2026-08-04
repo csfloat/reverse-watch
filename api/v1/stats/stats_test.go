@@ -120,6 +120,31 @@ func TestDailyHandler(t *testing.T) {
 			MarketplaceSlug: "csfloat",
 			ReversedAt:      uint64(today.AddDate(0, 0, -1).Add(12 * time.Hour).UnixMilli()),
 		},
+		// Excluded: expunged today. Must not increment today's count (stays 1).
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: uint64(today.UnixMilli()) + 1},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.UnixMilli()) + 1,
+			ExpungedAt:      util.Ptr(uint64(time.Now().UnixMilli())),
+		},
+		// Excluded: soft-deleted yesterday. Must not increment yesterday's count (stays 1).
+		&models.Reversal{
+			Model: models.Model{
+				ID:        4,
+				DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true},
+			},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.AddDate(0, 0, -1).Add(12 * time.Hour).UnixMilli()),
+		},
+		// Excluded: reversed_at ~40 days ago, before the 30-day window. Must not add a bucket.
+		&models.Reversal{
+			Model:           models.Model{ID: 5},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.AddDate(0, 0, -40).UnixMilli()),
+		},
 	)
 
 	r := httptest.NewRequest(http.MethodGet, "/reversals/daily?days=30", nil)

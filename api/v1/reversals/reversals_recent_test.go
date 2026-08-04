@@ -222,21 +222,12 @@ func TestListRecentHandler_ResponseShape(t *testing.T) {
 	row := raw.Data[0]
 
 	expectedKeys := []string{"marketplace_slug", "steam_id", "reversed_at"}
+	if len(row) != len(expectedKeys) {
+		t.Errorf("response keys = %v, want exactly %v", row, expectedKeys)
+	}
 	for _, k := range expectedKeys {
 		if _, ok := row[k]; !ok {
 			t.Errorf("missing key %q in response", k)
-		}
-	}
-	for k := range row {
-		ok := false
-		for _, want := range expectedKeys {
-			if k == want {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			t.Errorf("unexpected key %q in response", k)
 		}
 	}
 
