@@ -461,8 +461,9 @@ func TestKeyRepository_ValidateKey(t *testing.T) {
 	keyRepo := NewKeyRepository(db, keygen)
 
 	testMarketplace := &models.Marketplace{
-		Slug: "test-marketplace",
-		Name: "Test Marketplace",
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: true,
 	}
 	testutil.Insert(t, db, testMarketplace)
 
@@ -514,6 +515,52 @@ func TestKeyRepository_ValidateKey_Errors(t *testing.T) {
 
 	secretKey := "non-existent-key"
 	_, err := keyRepo.ValidateKey(secretKey)
+	if err == nil {
+		t.Fatal("ValidateKey(): got nil error, wanted error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("ValidateKey(): got error %v, wanted %v", err, gorm.ErrRecordNotFound)
+	}
+}
+
+func TestKeyRepository_ValidateKey_InactiveMarketplace(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	keyRepo := NewKeyRepository(db, keygen)
+
+	testMarketplace := &models.Marketplace{
+		Slug:     "test-marketplace",
+		Name:     "Test Marketplace",
+		IsActive: false,
+	}
+	testutil.Insert(t, db, testMarketplace)
+
+	secretKey, err := keygen.GenerateSecretKey()
+	if err != nil {
+		t.Fatalf("GenerateSecretKey(): %v", err)
+	}
+
+	id, err := secretKey.ID()
+	if err != nil {
+		t.Fatalf("ID(): %v", err)
+	}
+
+	testKey := &models.Key{
+		ID:              id,
+		Environment:     keygen.Environment(),
+		MarketplaceSlug: testMarketplace.Slug,
+		Permissions:     models.PermissionRead,
+	}
+	testutil.Insert(t, db, testKey)
+
+	formattedKey, err := secretKey.Format()
+	if err != nil {
+		t.Fatalf("Format(): %v", err)
+	}
+
+	_, err = keyRepo.ValidateKey(formattedKey)
 	if err == nil {
 		t.Fatal("ValidateKey(): got nil error, wanted error")
 	}

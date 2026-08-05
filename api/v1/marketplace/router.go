@@ -16,7 +16,7 @@ func Router() chi.Router {
 	r.Use(rwmiddleware.RequirePermissions(models.PermissionManage))
 
 	r.Route("/keys", func(r chi.Router) {
-		r.Use(ratelimit.ThrottleByAPIKey(time.Minute, 100))
+		r.Use(ratelimit.ThrottleByMarketplace(time.Minute, 100))
 
 		r.Get("/", listKeys)
 		r.Post("/", createKey)

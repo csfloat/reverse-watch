@@ -41,6 +41,21 @@ func ThrottleByAPIKey(dur time.Duration, limit uint64) func(http.Handler) http.H
 	return newLimiter(dur, limit, byAPIKey)
 }
 
+func byMarketplace(r *http.Request) (string, error) {
+	key, ok := r.Context().Value(middleware.KeyContextKey).(*models.Key)
+	if !ok {
+		return "", fmt.Errorf("key not found in context")
+	}
+	if key.MarketplaceSlug == "" {
+		return "", fmt.Errorf("marketplace slug not found in key")
+	}
+	return key.MarketplaceSlug, nil
+}
+
+func ThrottleByMarketplace(dur time.Duration, limit uint64) func(http.Handler) http.Handler {
+	return newLimiter(dur, limit, byMarketplace)
+}
+
 func newThrottlerWithLimiter(keyFunc httplimit.KeyFunc, store limiter.Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
