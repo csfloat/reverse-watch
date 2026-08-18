@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func TestReversalRepository_BeforeCreate(t *testing.T) {
@@ -747,9 +748,10 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 3,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
 				},
 			},
 			want: []*models.Reversal{
@@ -763,9 +765,10 @@ func TestReversalRepository_List(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 1,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
 				},
 			},
 			want: []*models.Reversal{
@@ -785,9 +788,10 @@ func TestReversalRepository_List(t *testing.T) {
 		{
 			name: "withOrder",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
 				},
 			},
 			want: []*models.Reversal{
@@ -807,6 +811,322 @@ func TestReversalRepository_List(t *testing.T) {
 
 			if diff := cmp.Diff(got, tc.want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestReversalRepository_List_SecondaryOrder(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	base := models.Epoch + 1000
+
+	// id=3 is a backfill row: highest id but the oldest reversed_at, so it must
+	// sort last under reversed_at DESC. id=1 and id=2 share a reversed_at to
+	// exercise the id DESC tiebreaker (id=2 must come before id=1).
+	id1 := &models.Reversal{
+		Model:           models.Model{ID: 1},
+		SteamID:         models.SteamID(76561197960287930),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 100,
+	}
+	id2 := &models.Reversal{
+		Model:           models.Model{ID: 2},
+		SteamID:         models.SteamID(76561197960287931),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 100,
+	}
+	id3 := &models.Reversal{
+		Model:           models.Model{ID: 3},
+		SteamID:         models.SteamID(76561197960287932),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 50,
+	}
+	id4 := &models.Reversal{
+		Model:           models.Model{ID: 4},
+		SteamID:         models.SteamID(76561197960287933),
+		MarketplaceSlug: "test-slug",
+		ReversedAt:      base + 500,
+	}
+	testutil.Insert(t, db, id1, id2, id3, id4)
+
+	got, err := reversalRepo.List(&dto.ReversalListOptions{
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{
+			{Column: clause.Column{Name: "reversed_at"}, Desc: true},
+			{Column: clause.Column{Name: "id"}, Desc: true},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+
+	want := []*models.Reversal{id4, id2, id1, id3}
+	if diff := cmp.Diff(got, want, cmpopts.IgnoreFields(models.Reversal{}, "CreatedAt", "UpdatedAt", "ReversedAt")); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestReversalRepository_SummaryStats(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := uint64(time.Now().UnixMilli())
+	hourMs := uint64(60 * 60 * 1000)
+	withinDay := now - hourMs       // -1h: counts as "last 24h"
+	olderThanDay := now - 36*hourMs // -36h: outside "last 24h"
+
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      withinDay,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat-2",
+			ReversedAt:      olderThanDay,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(now),
+			ReversedAt:      withinDay,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat-2",
+			ReversedAt:      olderThanDay,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5, CreatedAt: olderThanDay},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(now - 24*hourMs),
+			ReversedAt:      olderThanDay,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 6, CreatedAt: withinDay},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      withinDay,
+		},
+	)
+
+	// "Steam IDs Searched" is sourced from the search_counts table and is
+	// independent of the reversal data above: 2 distinct Steam IDs searched a
+	// total of 5 times.
+	searchRepo := NewSearchCountRepository(db)
+	for i := 0; i < 3; i++ {
+		if err := searchRepo.Increment(models.SteamID(76561197960287940)); err != nil {
+			t.Fatalf("Increment(): %v", err)
+		}
+	}
+	for i := 0; i < 2; i++ {
+		if err := searchRepo.Increment(models.SteamID(76561197960287941)); err != nil {
+			t.Fatalf("Increment(): %v", err)
+		}
+	}
+
+	got, err := reversalRepo.SummaryStats()
+	if err != nil {
+		t.Fatalf("SummaryStats(): %v", err)
+	}
+	want := &dto.SummaryStats{
+		SteamIDsSearched:  2,
+		TotalSearches:     5,
+		TradersFlagged:    3,
+		TradersFlagged24h: 2,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("SummaryStats() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestReversalRepository_DailyCounts(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	dayMs := func(offset int, addHours int) uint64 {
+		return uint64(today.AddDate(0, 0, offset).Add(time.Duration(addHours) * time.Hour).UnixMilli())
+	}
+
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.UnixMilli()) + 1,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      uint64(today.UnixMilli()) + 2,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-1, 12),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: dayMs(-1, 15)},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-1, 15),
+			ExpungedAt:      util.Ptr(dayMs(-1, 16)),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-2, 5),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 6},
+			SteamID:         models.SteamID(76561197960287935),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      dayMs(-3, 1),
+		},
+	)
+
+	got, err := reversalRepo.DailyCounts(3)
+	if err != nil {
+		t.Fatalf("DailyCounts(3): %v", err)
+	}
+	want := []dto.DailyCount{
+		{Date: today.AddDate(0, 0, -2), Count: 1},
+		{Date: today.AddDate(0, 0, -1), Count: 1},
+		{Date: today, Count: 2},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("DailyCounts(3) mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestReversalRepository_DailyCounts_ZeroFill(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	got, err := reversalRepo.DailyCounts(5)
+	if err != nil {
+		t.Fatalf("DailyCounts(5): %v", err)
+	}
+	if len(got) != 5 {
+		t.Fatalf("DailyCounts(5): got %d buckets, want 5", len(got))
+	}
+	for i, b := range got {
+		wantDate := today.AddDate(0, 0, -(4 - i))
+		if !b.Date.Equal(wantDate) {
+			t.Errorf("bucket[%d].Date = %v, want %v", i, b.Date, wantDate)
+		}
+		if b.Count != 0 {
+			t.Errorf("bucket[%d].Count = %d, want 0", i, b.Count)
+		}
+	}
+}
+
+func TestReversalRepository_List_ExcludeExpunged(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.NewTestDB(t)
+	reversalRepo := NewReversalRepository(db)
+
+	base := models.Epoch + 1000
+
+	// 5 rows with strictly increasing CreatedAt. Row id=3 is expunged.
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: base + 100},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: base + 200},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: base + 300},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ExpungedAt:      util.Ptr(base + 400),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: base + 500},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5, CreatedAt: base + 600},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+		},
+	)
+
+	testCases := []struct {
+		name    string
+		opts    *dto.ReversalListOptions
+		wantIDs []models.Snowflake
+	}{
+		{
+			name: "newestFirstExcludingExpunged",
+			opts: &dto.ReversalListOptions{
+				ExcludeExpunged: true,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
+			},
+			wantIDs: []models.Snowflake{5, 4, 2, 1},
+		},
+		{
+			name: "respectsLimit",
+			opts: &dto.ReversalListOptions{
+				ExcludeExpunged: true,
+				Limit:           util.Ptr[uint](2),
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
+				},
+			},
+			wantIDs: []models.Snowflake{5, 4},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := reversalRepo.List(tc.opts)
+			if err != nil {
+				t.Fatalf("List(): %v", err)
+			}
+			if len(got) != len(tc.wantIDs) {
+				t.Fatalf("List(): got %d rows, want %d", len(got), len(tc.wantIDs))
+			}
+			for i, wantID := range tc.wantIDs {
+				if got[i].ID != wantID {
+					t.Errorf("List()[%d].ID = %d, want %d", i, got[i].ID, wantID)
+				}
 			}
 		})
 	}
@@ -865,9 +1185,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageDESC",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
 				},
 				Limit: util.Ptr[uint](2),
 			},
@@ -882,9 +1203,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
 				},
 				Limit: util.Ptr[uint](2),
 			},
@@ -899,9 +1221,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.DESC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: true},
+					},
 				},
 				Limit: util.Ptr[uint](2),
 			},
@@ -912,9 +1235,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 		{
 			name: "firstPageASC",
 			opts: &dto.ReversalListOptions{
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
 				},
 				Limit: util.Ptr[uint](2),
 			},
@@ -929,9 +1253,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 30,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
 				},
 				Limit: util.Ptr[uint](2),
 			},
@@ -946,9 +1271,10 @@ func TestReversalRepository_List_Pagination(t *testing.T) {
 				Cursor: &dto.Cursor{
 					ID: 50,
 				},
-				OrderParam: &dto.OrderParam{
-					Column:    "id",
-					Direction: dto.ASC,
+				OrderBy: &clause.OrderBy{
+					Columns: []clause.OrderByColumn{
+						{Column: clause.Column{Name: "id"}, Desc: false},
+					},
 				},
 			},
 			want: []*models.Reversal{

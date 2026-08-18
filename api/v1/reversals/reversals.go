@@ -18,6 +18,7 @@ import (
 	"reverse-watch/render"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm/clause"
 )
 
 const maxBatchSize = 1_000
@@ -87,11 +88,8 @@ func createReversals(w http.ResponseWriter, r *http.Request) {
 
 func listReversals(f repository.Factory, values url.Values, defaultLimit, maxLimit uint) ([]*models.Reversal, *dto.Cursor, error) {
 	opts := &dto.ReversalListOptions{
-		Limit: &defaultLimit,
-		OrderParam: &dto.OrderParam{
-			Column:    "id",
-			Direction: dto.DESC,
-		},
+		Limit:   &defaultLimit,
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}, Desc: true}}},
 	}
 
 	if steamIdStr := values.Get("steam_id"); steamIdStr != "" {
@@ -244,6 +242,62 @@ func exportReversals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Write(buf.Bytes())
+}
+
+type recentReversal struct {
+	MarketplaceSlug string         `json:"marketplace_slug"`
+	SteamID         models.SteamID `json:"steam_id"`
+	ReversedAt      uint64         `json:"reversed_at"`
+}
+
+type listRecentResponse struct {
+	Data []recentReversal `json:"data"`
+}
+
+func listRecentHandler(w http.ResponseWriter, r *http.Request) {
+	factory, ok := r.Context().Value(middleware.FactoryContextKey).(repository.Factory)
+	if !ok {
+		render.Errorf(w, r, errors.InternalServerError, "missing factory from context")
+		return
+	}
+
+	const maxRecentLimit = 100
+
+	limit := uint(maxRecentLimit)
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		parsed, err := strconv.Atoi(limitStr)
+		if err != nil || parsed <= 0 || parsed > maxRecentLimit {
+			render.Errorf(w, r, errors.BadRequest, "limit must be between 1 and %d", maxRecentLimit)
+			return
+		}
+		limit = uint(parsed)
+	}
+
+	opts := &dto.ReversalListOptions{
+		Limit: &limit,
+		OrderBy: &clause.OrderBy{Columns: []clause.OrderByColumn{
+			{Column: clause.Column{Name: "reversed_at"}, Desc: true},
+			{Column: clause.Column{Name: "id"}, Desc: true},
+		}},
+		ExcludeExpunged: true,
+	}
+
+	reversals, err := factory.Reversal().List(opts)
+	if err != nil {
+		render.Errorf(w, r, errors.InternalServerError, "failed to list recent reversals")
+		return
+	}
+
+	data := make([]recentReversal, 0, len(reversals))
+	for _, rev := range reversals {
+		data = append(data, recentReversal{
+			MarketplaceSlug: rev.MarketplaceSlug,
+			SteamID:         rev.SteamID,
+			ReversedAt:      rev.ReversedAt,
+		})
+	}
+
+	render.JSON(w, r, listRecentResponse{Data: data})
 }
 
 func expungeReversal(w http.ResponseWriter, r *http.Request) {

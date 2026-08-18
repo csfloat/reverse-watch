@@ -1,0 +1,257 @@
+package reversals
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"reverse-watch/domain/models"
+	"reverse-watch/domain/models/constants"
+	"reverse-watch/errors"
+	"reverse-watch/internal/testutil"
+	"reverse-watch/middleware"
+	"reverse-watch/repository/factory"
+	"reverse-watch/secret"
+	"reverse-watch/util"
+
+	"gorm.io/gorm"
+)
+
+func buildRecentHandlerStack(t *testing.T) (http.Handler, *gorm.DB) {
+	t.Helper()
+
+	db := testutil.NewTestDB(t)
+	keygen := secret.NewKeyGenerator(constants.EnvironmentDevelopment)
+	f, err := factory.NewFactoryWithConfig(&factory.Config{
+		PrivateDB: db,
+		PublicDB:  db,
+		KeyGen:    keygen,
+	})
+	if err != nil {
+		t.Fatalf("NewFactoryWithConfig(): %v", err)
+	}
+
+	handler := http.HandlerFunc(listRecentHandler)
+	return middleware.FactoryMiddleware(f)(handler), db
+}
+
+func TestListRecentHandler(t *testing.T) {
+	t.Parallel()
+
+	handler, db := buildRecentHandlerStack(t)
+
+	base := models.Epoch + 1000
+
+	// 5 rows. The feed orders by reversed_at DESC, id DESC. CreatedAt is set
+	// in ascending id order (i.e. ingest order) to prove the feed does NOT use
+	// id/ingest order. Row id=3 is expunged and must be excluded. Row id=5 is a
+	// backfill case: it has the highest id but the oldest reversed_at, so it
+	// must sort last rather than first. Rows id=1 and id=4 share a reversed_at
+	// to exercise the id DESC tiebreaker (id=4 must come before id=1).
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: base + 100},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 100,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: base + 200},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 500,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: base + 300},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 900,
+			ExpungedAt:      util.Ptr(base + 400),
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 4, CreatedAt: base + 500},
+			SteamID:         models.SteamID(76561197960287933),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 100,
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 5, CreatedAt: base + 600},
+			SteamID:         models.SteamID(76561197960287934),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 50,
+		},
+	)
+
+	r := httptest.NewRequest(http.MethodGet, "/recent", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+
+	var body listRecentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	wantSteamIDs := []models.SteamID{
+		76561197960287931, // id=2, reversed_at=base+500
+		76561197960287933, // id=4, reversed_at=base+100 (id tiebreaker over id=1)
+		76561197960287930, // id=1, reversed_at=base+100
+		76561197960287934, // id=5, reversed_at=base+50 (backfill: high id, oldest)
+	}
+	if len(body.Data) != len(wantSteamIDs) {
+		t.Fatalf("len(data) = %d, want %d", len(body.Data), len(wantSteamIDs))
+	}
+	for i, want := range wantSteamIDs {
+		if body.Data[i].SteamID != want {
+			t.Errorf("data[%d].SteamID = %d, want %d", i, body.Data[i].SteamID, want)
+		}
+	}
+}
+
+func TestListRecentHandler_RespectsLimit(t *testing.T) {
+	t.Parallel()
+
+	handler, db := buildRecentHandlerStack(t)
+
+	base := models.Epoch + 1000
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: base + 100},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 2, CreatedAt: base + 200},
+			SteamID:         models.SteamID(76561197960287931),
+			MarketplaceSlug: "csfloat",
+		},
+		&models.Reversal{
+			Model:           models.Model{ID: 3, CreatedAt: base + 300},
+			SteamID:         models.SteamID(76561197960287932),
+			MarketplaceSlug: "csfloat",
+		},
+	)
+
+	r := httptest.NewRequest(http.MethodGet, "/recent?limit=2", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+	var body listRecentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Data) != 2 {
+		t.Errorf("len(data) = %d, want 2", len(body.Data))
+	}
+}
+
+func TestListRecentHandler_InvalidLimit(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := buildRecentHandlerStack(t)
+
+	testCases := []struct {
+		name  string
+		limit string
+	}{
+		{name: "zero", limit: "0"},
+		{name: "negative", limit: "-1"},
+		{name: "overMax", limit: "101"},
+		{name: "nonNumeric", limit: "abc"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/recent?limit="+tc.limit, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			resp := w.Result()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
+			}
+			var body errors.Error
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if body.Details != "limit must be between 1 and 100" {
+				t.Errorf("details = %q, want %q", body.Details, "limit must be between 1 and 100")
+			}
+		})
+	}
+}
+
+func TestListRecentHandler_ResponseShape(t *testing.T) {
+	t.Parallel()
+
+	handler, db := buildRecentHandlerStack(t)
+
+	base := models.Epoch + 1000
+	testutil.Insert(t, db,
+		&models.Reversal{
+			Model:           models.Model{ID: 1, CreatedAt: base + 100},
+			SteamID:         models.SteamID(76561197960287930),
+			MarketplaceSlug: "csfloat",
+			ReversedAt:      base + 50,
+		},
+	)
+
+	r := httptest.NewRequest(http.MethodGet, "/recent", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	// Decode as raw JSON to assert the exact wire shape (especially steam_id as a string).
+	var raw struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Result().Body).Decode(&raw); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(raw.Data) != 1 {
+		t.Fatalf("len(data) = %d, want 1", len(raw.Data))
+	}
+	row := raw.Data[0]
+
+	expectedKeys := []string{"marketplace_slug", "steam_id", "reversed_at"}
+	if len(row) != len(expectedKeys) {
+		t.Errorf("response keys = %v, want exactly %v", row, expectedKeys)
+	}
+	for _, k := range expectedKeys {
+		if _, ok := row[k]; !ok {
+			t.Errorf("missing key %q in response", k)
+		}
+	}
+
+	steamIDValue, ok := row["steam_id"].(string)
+	if !ok {
+		t.Errorf("steam_id should be a JSON string, got %T", row["steam_id"])
+	}
+	if steamIDValue != "76561197960287930" {
+		t.Errorf("steam_id = %q, want %q", steamIDValue, "76561197960287930")
+	}
+
+	marketplaceSlugValue, ok := row["marketplace_slug"].(string)
+	if !ok {
+		t.Errorf("marketplace_slug should be a JSON string, got %T", row["marketplace_slug"])
+	}
+	if marketplaceSlugValue != "csfloat" {
+		t.Errorf("marketplace_slug = %q, want %q", marketplaceSlugValue, "csfloat")
+	}
+
+	reversedAtValue, ok := row["reversed_at"].(float64)
+	if !ok {
+		t.Errorf("reversed_at should be a JSON number, got %T", row["reversed_at"])
+	}
+	if reversedAtValue != float64(base+50) {
+		t.Errorf("reversed_at = %v, want %v", reversedAtValue, float64(base+50))
+	}
+}

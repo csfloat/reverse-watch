@@ -1,12 +1,13 @@
 package public
 
 import (
+	"time"
+
 	"reverse-watch/domain/dto"
 	"reverse-watch/domain/models"
 	"reverse-watch/domain/repository"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type reversalRepository struct {
@@ -85,14 +86,9 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 	}
 
 	var desc bool
-	if opts.OrderParam != nil {
-		desc = opts.OrderParam.Direction == dto.DESC
-		orderBy := clause.OrderByColumn{
-			Column: clause.Column{Name: opts.OrderParam.Column},
-			Desc:   desc,
-		}
-
-		query = query.Order(orderBy)
+	if opts.OrderBy != nil && len(opts.OrderBy.Columns) > 0 {
+		query = query.Order(*opts.OrderBy)
+		desc = opts.OrderBy.Columns[0].Desc
 	}
 
 	if opts.SteamID.IsValid() {
@@ -100,6 +96,9 @@ func (r *reversalRepository) buildListQuery(opts *dto.ReversalListOptions) *gorm
 	}
 	if opts.MarketplaceSlug != nil && *opts.MarketplaceSlug != "" {
 		query = query.Where("marketplace_slug = ?", opts.MarketplaceSlug)
+	}
+	if opts.ExcludeExpunged {
+		query = query.Where("expunged_at IS NULL")
 	}
 	if opts.Cursor != nil {
 		// Adjust direction based on order specified
@@ -122,4 +121,65 @@ func (r *reversalRepository) List(opts *dto.ReversalListOptions) ([]*models.Reve
 		return nil, err
 	}
 	return reversals, nil
+}
+
+func (r *reversalRepository) SummaryStats() (*dto.SummaryStats, error) {
+	cutoffMs := uint64(time.Now().UnixMilli() - 24*60*60*1000)
+
+	var stats dto.SummaryStats
+	err := r.conn.Raw(`
+		SELECT
+			COUNT(DISTINCT steam_id) AS traders_flagged,
+			COUNT(DISTINCT steam_id) FILTER (WHERE reversed_at >= ?) AS traders_flagged24h
+		FROM reversals
+		WHERE deleted_at IS NULL
+		  AND expunged_at IS NULL
+	`, cutoffMs).Scan(&stats).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.conn.Raw(`
+		SELECT COUNT(*), COALESCE(SUM(count), 0)
+		FROM search_counts
+	`).Row().Scan(&stats.SteamIDsSearched, &stats.TotalSearches); err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+func (r *reversalRepository) DailyCounts(days int) ([]dto.DailyCount, error) {
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	windowStart := today.AddDate(0, 0, -(days - 1))
+
+	var rows []dto.DailyCount
+	err := r.conn.Raw(`
+		SELECT
+			date_trunc('day', to_timestamp(reversed_at / 1000) AT TIME ZONE 'UTC') AS date,
+			COUNT(*) AS count
+		FROM reversals
+		WHERE deleted_at IS NULL
+		  AND expunged_at IS NULL
+		  AND reversed_at >= ?
+		GROUP BY 1
+		ORDER BY 1 ASC
+	`, uint64(windowStart.UnixMilli())).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	byDate := make(map[string]uint64, len(rows))
+	for _, row := range rows {
+		byDate[row.Date.UTC().Format("2006-01-02")] = row.Count
+	}
+
+	result := make([]dto.DailyCount, 0, days)
+	for d := windowStart; !d.After(today); d = d.AddDate(0, 0, 1) {
+		result = append(result, dto.DailyCount{
+			Date:  d,
+			Count: byDate[d.Format("2006-01-02")],
+		})
+	}
+	return result, nil
 }

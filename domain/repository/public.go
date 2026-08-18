@@ -13,4 +13,13 @@ type ReversalRepository interface {
 	Delete(id models.Snowflake) error
 	DeleteAllUserReports(steamId models.SteamID) error
 	List(opts *dto.ReversalListOptions) ([]*models.Reversal, error)
+
+	SummaryStats() (*dto.SummaryStats, error)
+	DailyCounts(days int) ([]dto.DailyCount, error)
+}
+
+type SearchCountRepository interface {
+	// Increment records a single lookup of the given Steam ID, inserting a new
+	// row or atomically incrementing the existing count.
+	Increment(steamID models.SteamID) error
 }

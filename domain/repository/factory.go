@@ -18,6 +18,7 @@ type PublicTransaction interface {
 	gorm.TxCommitter
 
 	Reversal() ReversalRepository
+	SearchCount() SearchCountRepository
 }
 
 type Factory interface {
@@ -27,6 +28,7 @@ type Factory interface {
 	Marketplace() MarketplaceRepository
 	AdminAudit() AdminAuditRepository
 	Reversal() ReversalRepository
+	SearchCount() SearchCountRepository
 
 	NewPrivateTransaction() PrivateTransaction
 	RunInTransactionPrivate(fn func(PrivateTransaction) error) error

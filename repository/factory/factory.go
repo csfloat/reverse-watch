@@ -28,6 +28,7 @@ type factory struct {
 	marketplace repository.MarketplaceRepository
 	adminAudit  repository.AdminAuditRepository
 	reversal    repository.ReversalRepository
+	searchCount repository.SearchCountRepository
 }
 
 type Config struct {
@@ -58,6 +59,7 @@ func NewFactoryWithConfig(cfg *Config) (repository.Factory, error) {
 		marketplace: private.NewMarketplaceRepository(cfg.PrivateDB),
 		adminAudit:  private.NewAdminAuditRepository(cfg.PrivateDB),
 		reversal:    public.NewReversalRepository(cfg.PublicDB),
+		searchCount: public.NewSearchCountRepository(cfg.PublicDB),
 	}, nil
 }
 
@@ -172,6 +174,10 @@ func (f *factory) AdminAudit() repository.AdminAuditRepository {
 
 func (f *factory) Reversal() repository.ReversalRepository {
 	return f.reversal
+}
+
+func (f *factory) SearchCount() repository.SearchCountRepository {
+	return f.searchCount
 }
 
 func (f *factory) Close() error {

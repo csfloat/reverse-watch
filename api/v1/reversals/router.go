@@ -12,23 +12,29 @@ import (
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.AuthMiddleware)
 
-	r.With(
-		middleware.RequirePermissions(models.PermissionWrite),
-		ratelimit.ThrottleByMarketplace(time.Hour, 2_000),
-	).Post("/", createReversals)
+	r.With(ratelimit.ThrottleByIP(time.Minute, 30)).Get("/recent", listRecentHandler)
 
-	r.With(
-		middleware.RequirePermissions(models.PermissionDelete),
-		ratelimit.ThrottleByMarketplace(time.Hour, 2_000),
-	).Delete("/{id}", expungeReversal)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
 
-	r.Route("/", func(r chi.Router) {
-		r.Use(middleware.RequirePermissions(models.PermissionExport))
+		r.With(
+			middleware.RequirePermissions(models.PermissionWrite),
+			ratelimit.ThrottleByMarketplace(time.Hour, 2_000),
+		).Post("/", createReversals)
 
-		r.With(ratelimit.ThrottleByMarketplace(time.Minute, 300)).Get("/", listReversalsHandler)
-		r.With(ratelimit.ThrottleByMarketplace(time.Minute, 60)).Get("/export", exportReversals)
+		r.With(
+			middleware.RequirePermissions(models.PermissionDelete),
+			ratelimit.ThrottleByMarketplace(time.Hour, 2_000),
+		).Delete("/{id}", expungeReversal)
+
+		r.Route("/", func(r chi.Router) {
+			r.Use(middleware.RequirePermissions(models.PermissionExport))
+
+			r.With(ratelimit.ThrottleByMarketplace(time.Minute, 300)).Get("/", listReversalsHandler)
+			r.With(ratelimit.ThrottleByMarketplace(time.Minute, 60)).Get("/export", exportReversals)
+		})
 	})
+
 	return r
 }

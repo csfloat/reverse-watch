@@ -27,6 +27,7 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		(*models.Key)(nil),
 		(*models.AdminAudit)(nil),
 		(*models.Reversal)(nil),
+		(*models.SearchCount)(nil),
 	}
 
 	for _, model := range mods {

@@ -46,14 +46,16 @@ func (t *privateTransaction) AdminAudit() repository.AdminAuditRepository {
 }
 
 type publicTransaction struct {
-	tx       *gorm.DB
-	reversal repository.ReversalRepository
+	tx          *gorm.DB
+	reversal    repository.ReversalRepository
+	searchCount repository.SearchCountRepository
 }
 
 func newPublicTransaction(tx *gorm.DB) *publicTransaction {
 	return &publicTransaction{
-		tx:       tx,
-		reversal: public.NewReversalRepository(tx),
+		tx:          tx,
+		reversal:    public.NewReversalRepository(tx),
+		searchCount: public.NewSearchCountRepository(tx),
 	}
 }
 
@@ -67,4 +69,8 @@ func (t *publicTransaction) Rollback() error {
 
 func (t *publicTransaction) Reversal() repository.ReversalRepository {
 	return t.reversal
+}
+
+func (t *publicTransaction) SearchCount() repository.SearchCountRepository {
+	return t.searchCount
 }
