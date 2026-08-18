@@ -1,0 +1,23 @@
+---
+// Reversal volume chart with the 7d/30d/3m/6m/1y period picker. The
+// uPlot instance + CS2 event annotation chips are built in app.ts and
+// mounted into #chartContainer.
+---
+<section class="block">
+    <div class="block-header">
+        <div class="block-title-row">
+            <h2>Reversal Graph</h2>
+            <div class="period-picker" role="group" aria-label="Chart time range">
+                <button type="button" class="period-btn" data-days="7"   aria-pressed="false">7d</button>
+                <button type="button" class="period-btn active" data-days="30"  aria-pressed="true">30d</button>
+                <button type="button" class="period-btn" data-days="90"  aria-pressed="false">3m</button>
+                <button type="button" class="period-btn" data-days="180" aria-pressed="false">6m</button>
+                <button type="button" class="period-btn" data-days="365" aria-pressed="false">1y</button>
+            </div>
+        </div>
+        <p class="block-subtitle">
+            Total reversals across the selected time period.
+        </p>
+    </div>
+    <div class="chart-container" id="chartContainer" aria-label="Reversal volume line chart"></div>
+</section>
