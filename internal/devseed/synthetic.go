@@ -14,32 +14,40 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// Synthetic Steam IDs live at the top of the 32-bit account space
+// (account IDs >= 0xF0000000), which Valve has not allocated. They still
+// pass SteamID.IsValid, and the dedicated range lets ResetSynthetic delete
+// exactly the rows this package generated.
 const (
-	syntheticRNGSeed      int64  = 42
-	syntheticDays                = 180
-	syntheticTargetTotal  int    = 2000
-	syntheticBaseSteamID  uint64 = 76561198000000000
-	syntheticBaseReporter uint   = 2_900_000
+	steamID64Base        uint64 = 76561197960265728
+	SyntheticSteamIDMin  uint64 = steamID64Base + 0xF0000000
+	SyntheticSteamIDMax  uint64 = steamID64Base + 0xFFFFFFFF
+	syntheticRNGSeed     int64  = 42
+	syntheticDays        int    = 180
+	syntheticTargetTotal int    = 2000
 )
 
+// Marketplace slugs are prefixed with "dev-" so synthetic rows never match a
+// real ingestor's slug. The CSFloat ingestor resumes from the highest
+// reporter_internal_id on "csfloat" rows, so sharing that slug would corrupt
+// its cursor.
 var syntheticMarketplaces = []struct {
 	slug   string
 	weight float64
 }{
-	{"csfloat", 0.80},
-	{"tradeit", 0.10},
-	{"skinport", 0.05},
-	{"swap.gg", 0.05},
+	{"dev-csfloat", 0.80},
+	{"dev-tradeit", 0.10},
+	{"dev-skinport", 0.05},
+	{"dev-swap.gg", 0.05},
 }
 
 // GenerateSynthetic returns a ~6-month dataset (~2,000 rows, at least one
-// per day, gentle sinusoid with occasional spikes / quiet days). Snowflake
-// IDs are unique within the slice and won't collide with real CSV-seeded
-// IDs, so callers can pipe the result straight into InsertReversals.
+// per day, gentle sinusoid with occasional spikes / quiet days) ending at
+// now. Snowflake IDs are unique within the slice, so callers can pipe the
+// result straight into InsertReversals.
 func GenerateSynthetic(now time.Time) []*models.Reversal {
 	now = now.UTC()
 	rng := rand.New(rand.NewSource(syntheticRNGSeed))
-	nowMs := uint64(now.UnixMilli())
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	counts := make([]int, syntheticDays)
@@ -73,16 +81,18 @@ func GenerateSynthetic(now time.Time) []*models.Reversal {
 	var seq uint16
 
 	for d := 0; d < syntheticDays; d++ {
-		dayStart := today.AddDate(0, 0, -(syntheticDays-1-d))
+		dayStart := today.AddDate(0, 0, -(syntheticDays - 1 - d))
+		dayLen := 24 * time.Hour
+		if dayEnd := dayStart.Add(dayLen); dayEnd.After(now) {
+			// Today is only partially elapsed: spread rows over [dayStart, now)
+			// so they don't pile up on a single clamped timestamp.
+			dayLen = now.Sub(dayStart)
+		}
 		for i := 0; i < counts[d]; i++ {
-			reversedAt := dayStart.Add(time.Duration(rng.Float64() * float64(24*time.Hour)))
-			if uint64(reversedAt.UnixMilli()) > nowMs {
-				reversedAt = now.Add(-1 * time.Minute)
-			}
-			reportDelay := time.Duration(rng.Intn(8*60)+1) * time.Minute
-			createdAt := reversedAt.Add(reportDelay)
-			if uint64(createdAt.UnixMilli()) > nowMs {
-				createdAt = now
+			reversedAt := dayStart.Add(time.Duration(rng.Float64() * float64(dayLen)))
+			createdAt := reversedAt.Add(time.Duration(rng.Intn(8*60)+1) * time.Minute)
+			if createdAt.After(now) {
+				createdAt = reversedAt.Add(time.Duration(rng.Float64() * float64(now.Sub(reversedAt))))
 			}
 
 			srcRoll := rng.Float64()
@@ -93,7 +103,7 @@ func GenerateSynthetic(now time.Time) []*models.Reversal {
 				src = models.SourceDirect
 			case srcRoll < 0.95:
 				src = models.SourceRelatedUser
-				relID := models.SteamID(syntheticBaseSteamID + (steamOffset+10_000)*97)
+				relID := models.SteamID(SyntheticSteamIDMin + (steamOffset+10_000)*97)
 				related = &relID
 			default:
 				src = models.SourceUserReport
@@ -102,32 +112,26 @@ func GenerateSynthetic(now time.Time) []*models.Reversal {
 			var expunged *uint64
 			if rng.Float64() < 0.015 {
 				eAt := createdAt.Add(time.Duration(rng.Intn(24*60)+1) * time.Minute)
-				if uint64(eAt.UnixMilli()) < nowMs && uint64(eAt.UnixMilli()) > uint64(createdAt.UnixMilli()) {
+				if eAt.Before(now) {
 					ems := uint64(eAt.UnixMilli())
 					expunged = &ems
 				}
 			}
 
-			steamID := models.SteamID(syntheticBaseSteamID + steamOffset*73 + uint64(rng.Intn(50)))
+			steamID := models.SteamID(SyntheticSteamIDMin + steamOffset*73 + uint64(rng.Intn(50)))
 			steamOffset++
 
 			// Snowflake encodes created_at + a 12-bit per-ms sequence;
 			// mirrors domain/models/snowflake.go so generated IDs sort
 			// chronologically alongside production rows.
 			seq = (seq + 1) & 0x0FFF
-			// createdAt is always well after models.Epoch for the ~6-month
-			// synthetic window, but clamp defensively so an out-of-range
-			// createdAt can't underflow the unsigned subtraction into a
-			// garbage snowflake (mirrors the guard in genSnowflakeWithParts).
+			// Clamp so a createdAt before models.Epoch can't underflow the
+			// unsigned subtraction (mirrors the guard in genSnowflakeWithParts).
 			createdAtMs := uint64(createdAt.UnixMilli())
 			if createdAtMs < models.Epoch {
 				createdAtMs = models.Epoch
 			}
-			sfTs := createdAtMs - models.Epoch
-			sf := models.Snowflake((sfTs << 22) | uint64(seq))
-
-			reporter := syntheticBaseReporter + uint(steamOffset)
-			mp := pickMarketplace(rng)
+			sf := models.Snowflake(((createdAtMs - models.Epoch) << 22) | uint64(seq))
 
 			rows = append(rows, &models.Reversal{
 				Model: models.Model{
@@ -135,13 +139,12 @@ func GenerateSynthetic(now time.Time) []*models.Reversal {
 					CreatedAt: uint64(createdAt.UnixMilli()),
 					UpdatedAt: uint64(createdAt.UnixMilli()),
 				},
-				SteamID:            steamID,
-				MarketplaceSlug:    mp,
-				Source:             &src,
-				RelatedSteamID:     related,
-				ReversedAt:         uint64(reversedAt.UnixMilli()),
-				ReporterInternalID: &reporter,
-				ExpungedAt:         expunged,
+				SteamID:         steamID,
+				MarketplaceSlug: pickMarketplace(rng),
+				Source:          &src,
+				RelatedSteamID:  related,
+				ReversedAt:      uint64(reversedAt.UnixMilli()),
+				ExpungedAt:      expunged,
 			})
 		}
 	}
@@ -167,11 +170,15 @@ const insertChunkSize = 1000
 
 // InsertReversals bulk-inserts reversals, skipping any row whose
 // (steam_id, marketplace_slug) already exists via ON CONFLICT DO NOTHING.
-// That pair is deterministic across runs (it does not depend on wall-clock
-// time), so re-running the seed is safe and idempotent: already-present rows
-// are skipped instead of raising a unique-constraint error. The conflict
-// target matches the partial unique index created in repository/public
-// (idx_reversals_steam_id_marketplace_slug ... WHERE deleted_at IS NULL).
+// The conflict target matches the partial unique index created in
+// repository/public (idx_reversals_steam_id_marketplace_slug ... WHERE
+// deleted_at IS NULL). Those pairs don't depend on the clock, so a rerun
+// without ResetSynthetic inserts nothing.
+//
+// Only that index is covered: a primary-key collision on id still fails the
+// whole batch. Snowflakes embed created_at plus a sequence, so this would
+// require two seeds generating the same millisecond and sequence.
+//
 // Returns the number of rows actually inserted.
 func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	if len(reversals) == 0 {
@@ -184,10 +191,7 @@ func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 	}
 	var inserted int64
 	for i := 0; i < len(reversals); i += insertChunkSize {
-		end := i + insertChunkSize
-		if end > len(reversals) {
-			end = len(reversals)
-		}
+		end := min(i+insertChunkSize, len(reversals))
 		res := db.Clauses(onConflict).Create(reversals[i:end])
 		if res.Error != nil {
 			return inserted, res.Error
@@ -195,4 +199,14 @@ func InsertReversals(db *gorm.DB, reversals []*models.Reversal) (int64, error) {
 		inserted += res.RowsAffected
 	}
 	return inserted, nil
+}
+
+// ResetSynthetic hard-deletes every reversal whose steam_id falls in the
+// synthetic range, including soft-deleted rows. Returns the number of rows
+// removed.
+func ResetSynthetic(db *gorm.DB) (int64, error) {
+	res := db.Unscoped().
+		Where("steam_id BETWEEN ? AND ?", SyntheticSteamIDMin, SyntheticSteamIDMax).
+		Delete(&models.Reversal{})
+	return res.RowsAffected, res.Error
 }
